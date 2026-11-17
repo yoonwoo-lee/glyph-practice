@@ -30,9 +30,49 @@ Walk Skylar through these in order, checking each one works before moving on.
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
    number, then `bash start.sh --camera <n>`. Steps and troubleshooting are in the README.
-8. **Pick a "Next up" item** with Yoon Woo before writing code, so they don't both build the same thing.
-   Yoon Woo is on the `camera-test` branch (real-camera testing and tuning). Make a new branch for
-   your own item (`git checkout -b <feature-name>`) and open a pull request; don't push straight to `main`.
+8. **Start Skylar's task below** on a new branch: `git checkout -b stuck-nudge`. Yoon Woo is on the
+   `camera-test` branch (real-camera testing and tuning), so the two don't overlap. Open a pull request
+   when done; don't push straight to `main`.
+
+## Skylar's task: stuck nudge (branch `stuck-nudge`)
+
+Small and self-contained: sized to finish in one sitting. Build and test it entirely with
+`--demo` and the automated checks; no camera needed. Skylar is on Claude Pro, so keep it lean:
+read only the files listed here, don't refactor anything else, and skip big rewrites.
+
+**What it does:** if the student stops writing for a while, Glyph posts one friendly "keep going"
+card in the feed. No model call (costs nothing, works offline).
+
+**Rules:**
+- "Writing" = new ink accepted on the page. Track the time of the last new ink in `Engine`.
+  Start the clock when a page is first accepted, and reset it on new ink, new page, and rotate.
+- If no new ink for `stuck_seconds` (default **90**) while a sheet is in view, add **one** event:
+  `session.add_event("nudge", "Still with it?", <message>)`. Pick the message from a short list of
+  3–5 encouraging lines (e.g. "Try writing down what you know so far." / "Stuck? Draw a spark next to
+  the problem for a hint."). Never give an answer.
+- Only **one nudge per stall**: no more nudges until new ink appears again.
+- Don't nudge while a model call is running, or while the view is blocked (hand/object on page).
+- Make it configurable: add `stuck_seconds` to the `Settings` dataclass in `glyph/engine.py` and a
+  `GLYPH_STUCK_SECONDS` override the same way the other settings are read in `glyph/config.py`
+  (add a commented example line to `.env.example`). `0` turns the feature off.
+
+**Where to change things:**
+- `glyph/engine.py`: `Settings`, `_accept_page` / new-ink handling inside `_tick` (track the time),
+  and a small check at the end of `_tick`. `_tick(frame, now)` takes `now` as an argument, so tests
+  can fake time.
+- `glyph/static/index.html`: give the `nudge` card kind a distinct look (cards get the CSS class
+  `card <kind>`, so add a `.card.nudge` style).
+- `README.md`: one line in the marks/features area mentioning the nudge and `GLYPH_STUCK_SECONDS`.
+
+**Tests (add to `tests/test_pipeline.py`, follow the existing tests' pattern):**
+1. No new ink past `stuck_seconds` → exactly one `nudge` event.
+2. Waiting longer still → still one (no repeats).
+3. New ink after the nudge, then another long gap → a second nudge.
+4. `stuck_seconds = 0` → never nudges.
+All 12 existing checks must still pass.
+
+**Done when:** tests pass, `bash start.sh --demo` runs without errors, and the PR describes what
+changed. Phone-scroll detection (from the original idea) is out of scope for now.
 
 ## What Glyph is
 
