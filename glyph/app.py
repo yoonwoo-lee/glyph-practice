@@ -5,9 +5,10 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 
+from . import tune
 from .engine import Engine
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -48,6 +49,7 @@ def create_app(engine: Engine) -> FastAPI:
                 "events": events,
                 "last_id": events[-1]["id"] if events else since,
                 "legend": engine.legend,
+                "timings": engine.session.timings()[-1:],
             },
             headers={"Cache-Control": "no-store"},
         )
@@ -77,5 +79,40 @@ def create_app(engine: Engine) -> FastAPI:
                 except OSError:
                     break
         raise HTTPException(404)
+
+    # ---- tuning page -----------------------------------------------------------
+
+    @app.get("/tune")
+    def tune_page():
+        return FileResponse(STATIC / "tune.html", headers={"Cache-Control": "no-store"})
+
+    @app.get("/api/tune")
+    def tune_get():
+        return {"values": tune.values(engine), "sliders": tune.SLIDERS, "status": engine.status()}
+
+    @app.post("/api/tune")
+    def tune_set(body: dict = Body(...)):
+        return {"values": tune.apply(engine, body)}
+
+    @app.get("/api/tune/view/{which}.jpg")
+    def tune_view(which: str):
+        if which not in ("page", "ink", "highlights", "cover"):
+            raise HTTPException(404)
+        return Response(tune.render(engine, which), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+    @app.post("/api/tune/probe")
+    def tune_probe(body: dict = Body(...)):
+        page = engine.last_page()
+        if page is None:
+            raise HTTPException(409, "no picture yet")
+        hsv = tune.probe(page, float(body.get("x", 0.5)), float(body.get("y", 0.5)))
+        return {"hsv": hsv, "fit": tune.fit(str(body.get("color", "")), hsv)}
+
+    @app.post("/api/tune/save")
+    def tune_save():
+        try:
+            return {"ok": True, "saved": tune.save_env(engine)}
+        except OSError as e:
+            return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
 
     return app

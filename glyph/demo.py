@@ -94,7 +94,10 @@ def draw_handwriting(page: np.ndarray, text: str = "a = g sin(30)", org=(110, 46
     cv2.putText(page, text, org, HAND, 1.0, PEN, 2, cv2.LINE_AA)
 
 
-def desk_scene(page: np.ndarray, shift=(0, 0), size=(1920, 1080)) -> np.ndarray:
+TILTED = [[640, 150], [1290, 95], [1420, 1010], [520, 960]]  # camera off to one side, sheet turned
+
+
+def desk_scene(page: np.ndarray, shift=(0, 0), size=(1920, 1080), corners=None) -> np.ndarray:
     """Put the sheet on a dark desk, seen slightly from the side."""
     w, h = size
     desk = np.zeros((h, w, 3), np.uint8)
@@ -102,7 +105,7 @@ def desk_scene(page: np.ndarray, shift=(0, 0), size=(1920, 1080)) -> np.ndarray:
     grain = np.random.RandomState(7).randint(-6, 7, (h, w, 1)).astype(np.int16)
     desk = np.clip(desk.astype(np.int16) + grain, 0, 255).astype(np.uint8)
     sx, sy = shift
-    quad = np.array([[590, 50], [1330, 66], [1352, 1030], [566, 1012]], np.float32) + np.array([sx, sy], np.float32)
+    quad = np.array(corners or [[590, 50], [1330, 66], [1352, 1030], [566, 1012]], np.float32) + np.array([sx, sy], np.float32)
     src = np.array([[0, 0], [PAGE_W - 1, 0], [PAGE_W - 1, PAGE_H - 1], [0, PAGE_H - 1]], np.float32)
     m = cv2.getPerspectiveTransform(src, quad)
     warped = cv2.warpPerspective(page, m, (w, h), flags=cv2.INTER_AREA)
@@ -121,18 +124,55 @@ def add_hand(scene: np.ndarray) -> np.ndarray:
     return out
 
 
-def build_steps() -> Dict[str, np.ndarray]:
+def build_steps(corners=None) -> Dict[str, np.ndarray]:
     """Named camera frames used by the demo and the tests."""
     page = base_page()
-    steps = {"blank": desk_scene(page)}
+    steps = {"blank": desk_scene(page, corners=corners)}
     draw_spark(page)
-    steps["spark"] = desk_scene(page)
+    steps["spark"] = desk_scene(page, corners=corners)
     draw_underline(page)
-    steps["underline"] = desk_scene(page)
+    steps["underline"] = desk_scene(page, corners=corners)
     draw_highlight(page, 0, "yellow")
     draw_highlight(page, 3, "green")
-    steps["highlights"] = desk_scene(page)
+    steps["highlights"] = desk_scene(page, corners=corners)
     return steps
+
+
+# ---- making the simulated camera less perfect (used by tests/test_rough.py) ----
+
+
+def lamp(scene: np.ndarray, dark: float = 0.55, warm: bool = True) -> np.ndarray:
+    """A desk lamp on one side: bright at top-left, falling off to `dark`, with a warm tint."""
+    h, w = scene.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    fall = 1.0 - (1.0 - dark) * ((xx / w) * 0.65 + (yy / h) * 0.35)
+    out = scene.astype(np.float32) * fall[..., None]
+    if warm:
+        out *= np.array([0.86, 0.95, 1.0], np.float32)  # less blue
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def glare(scene: np.ndarray, center=(1050, 560), size=(260, 170), strength: float = 70.0) -> np.ndarray:
+    """A soft bright patch, like a lamp reflecting off the paper."""
+    h, w = scene.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    d = ((xx - center[0]) / size[0]) ** 2 + ((yy - center[1]) / size[1]) ** 2
+    return np.clip(scene.astype(np.float32) + (strength * np.exp(-d))[..., None], 0, 255).astype(np.uint8)
+
+
+def soft_focus(scene: np.ndarray, k: int = 7) -> np.ndarray:
+    return cv2.GaussianBlur(scene, (k, k), 0)
+
+
+def dim(scene: np.ndarray, level: float = 0.6) -> np.ndarray:
+    return np.clip(scene.astype(np.float32) * level, 0, 255).astype(np.uint8)
+
+
+def sensor(scene: np.ndarray, rng: np.random.RandomState, noise: float = 4.0, flicker: float = 0.03) -> np.ndarray:
+    """What changes from one camera frame to the next: grain and small exposure shifts."""
+    gain = 1.0 + rng.uniform(-flicker, flicker)
+    grain = rng.normal(0.0, noise, scene.shape).astype(np.float32)
+    return np.clip(scene.astype(np.float32) * gain + grain, 0, 255).astype(np.uint8)
 
 
 def demo_frames() -> List[np.ndarray]:

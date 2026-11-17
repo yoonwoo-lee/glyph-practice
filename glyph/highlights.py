@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 
 from . import config
+from .page import normalize_light
 
 # Box colors (BGR) for drawing on the page view.
 DRAW_COLORS = {
@@ -27,7 +28,7 @@ Box = Tuple[int, int, int, int]  # x, y, w, h
 
 def detect_highlights(page: np.ndarray):
     """Return ([{color, bbox, area}], mask of all highlighted pixels)."""
-    hsv = cv2.cvtColor(page, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(normalize_light(page), cv2.COLOR_BGR2HSV)
     union = np.zeros(page.shape[:2], np.uint8)
     regions: List[dict] = []
     min_area = int(page.shape[0] * page.shape[1] * config.HIGHLIGHT_MIN_FRAC)

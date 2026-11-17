@@ -122,6 +122,32 @@ def ink_mask(page: np.ndarray) -> np.ndarray:
 _K15 = np.ones((15, 15), np.uint8)
 
 
+def normalize_light(page: np.ndarray) -> np.ndarray:
+    """Even out the lighting so blank paper comes out neutral white everywhere.
+
+    Two corrections, both measured from the page itself:
+    1. white balance: the typical paper color is scaled to gray, so a warm lamp
+       does not make the whole sheet look like yellow highlighter;
+    2. brightness: a smooth map of how bright the paper is in each area (from
+       the brightest color channel, which highlighter barely changes) is
+       divided out, so a dim room or a lamp on one side does not hide colors.
+    Used for finding highlighter colors only; ink detection has its own
+    local threshold and the saved pictures keep the real colors.
+    """
+    small = cv2.resize(page, None, fx=0.125, fy=0.125, interpolation=cv2.INTER_AREA)
+    top = small.max(axis=2)
+    bright = small[top >= np.percentile(top, 50)]
+    paper = np.median(bright.reshape(-1, 3), axis=0).astype(np.float32) if len(bright) else np.array([240, 240, 240], np.float32)
+    wb = np.clip(float(paper.max()) / np.maximum(paper, 1.0), 1.0, 1.8)
+
+    light = cv2.dilate(top, np.ones((5, 5), np.uint8))  # paint over ink
+    light = cv2.GaussianBlur(light, (0, 0), 6).astype(np.float32)
+    gain = np.clip(238.0 / np.maximum(light, 1.0), 0.8, 3.0)
+    gain = cv2.resize(gain, (page.shape[1], page.shape[0]), interpolation=cv2.INTER_LINEAR)
+    out = page.astype(np.float32) * (gain[..., None] * wb[None, None, :])
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 def page_gray(page: np.ndarray) -> np.ndarray:
     """Smoothed grayscale page, used to notice things lying on the sheet."""
     return cv2.GaussianBlur(cv2.cvtColor(page, cv2.COLOR_BGR2GRAY), (9, 9), 0)

@@ -63,6 +63,21 @@ HIGHLIGHT_HSV = {
     "blue": [((88, 60, 150), (112, 255, 255))],
     "pink": [((140, 50, 150), (175, 255, 255))],
 }
+
+
+def _hsv_override(color: str, default):
+    """GLYPH_HSV_YELLOW=hmin,smin,vmin,hmax,smax,vmax replaces a color's range (the tuner writes these)."""
+    raw = os.getenv("GLYPH_HSV_" + color.upper(), "")
+    try:
+        v = [int(float(x)) for x in raw.split(",")]
+        if len(v) == 6:
+            return [((v[0], v[1], v[2]), (v[3], v[4], v[5]))]
+    except ValueError:
+        pass
+    return default
+
+
+HIGHLIGHT_HSV = {c: _hsv_override(c, r) for c, r in HIGHLIGHT_HSV.items()}
 # A highlight must cover at least this share of the page.
 HIGHLIGHT_MIN_FRAC = 0.0009
 

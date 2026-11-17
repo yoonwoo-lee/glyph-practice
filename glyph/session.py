@@ -15,6 +15,7 @@ class Session:
         (self.dir / "looks").mkdir(parents=True, exist_ok=True)
         self.started = time.time()
         self._events: List[dict] = []
+        self._timings: List[dict] = []
         self._lock = threading.Lock()
 
     def add_event(self, kind: str, title: str, body: str = "", **meta) -> dict:
@@ -42,6 +43,20 @@ class Session:
     def events_of(self, *kinds: str) -> List[dict]:
         with self._lock:
             return [e for e in self._events if e["kind"] in kinds]
+
+    def add_timing(self, row: dict) -> None:
+        """One line per look in timings.jsonl: how long each step took."""
+        with self._lock:
+            self._timings.append(row)
+        try:
+            with open(self.dir / "timings.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(row) + "\n")
+        except OSError:
+            pass
+
+    def timings(self) -> List[dict]:
+        with self._lock:
+            return list(self._timings)
 
     def save_look(self, n: int, page_jpg: bytes, crop_jpg: Optional[bytes]) -> None:
         """Keep exactly what the vision model was shown, for debugging."""

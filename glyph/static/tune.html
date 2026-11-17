@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tune Glyph</title>
+<style>
+  :root {
+    --ink: #16224F; --ink-deep: #0E1738; --ink-soft: #2A3975; --on-ink: #E9EDFB; --on-ink-soft: #9AA6D4;
+    --paper: #FFFFFF; --tint: #F2F4FA; --line: #D8DDEB; --text: #121935; --soft: #5A6486; --mark: #FFE234;
+    --yellow: #FFE234; --green: #5ED67E; --blue: #62BEFF; --pink: #FF78BE; --r: 6px;
+    --font: "Avenir Next", Avenir, "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; } html, body { height: 100%; }
+  body { margin: 0; font: 15px/1.5 var(--font); color: var(--text); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
+  .app { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; min-height: 560px; }
+  .eye { background: var(--ink); color: var(--on-ink); display: flex; flex-direction: column; padding: 20px 24px 18px; min-height: 0; min-width: 0; }
+  .head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .head a { color: var(--on-ink); font-weight: 600; text-decoration: none; border: 1px solid var(--ink-soft); border-radius: var(--r); padding: 6px 12px; font-size: 13px; }
+  .head h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+  .switch { display: flex; border: 1px solid var(--ink-soft); border-radius: var(--r); overflow: hidden; width: fit-content; margin-bottom: 10px; }
+  .switch button { border: 0; background: transparent; color: var(--on-ink-soft); padding: 6px 13px; font-size: 13px; font-weight: 600; }
+  .switch button.on { background: var(--on-ink); color: var(--ink); }
+  .stage { flex: 1; min-height: 0; background: var(--ink-deep); border-radius: var(--r); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .stage img { max-width: 100%; max-height: 100%; display: block; cursor: crosshair; }
+  .what { margin-top: 12px; font-size: 13px; color: var(--on-ink-soft); min-height: 3em; }
+  .what b { color: #fff; }
+  .side { padding: 20px 28px 18px; display: flex; flex-direction: column; min-height: 0; }
+  .scroll { flex: 1; overflow-y: auto; min-height: 0; padding-right: 6px; }
+  h2 { font-size: 17px; margin: 0 0 4px; } h2:not(:first-child) { margin-top: 26px; }
+  .lead { color: var(--soft); margin: 0 0 12px; font-size: 14px; max-width: 38em; }
+  .ctl { padding: 10px 0; border-top: 1px solid var(--line); }
+  .ctl label { display: flex; justify-content: space-between; font-weight: 600; }
+  .ctl output { font-variant-numeric: tabular-nums; }
+  .ctl p { margin: 2px 0 0; color: var(--soft); font-size: 13px; }
+  input[type=range] { width: 100%; accent-color: var(--ink); margin: 6px 0 0; }
+  .color { border-top: 1px solid var(--line); padding: 12px 0; }
+  .color .name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .sw { width: 12px; height: 18px; border-radius: 2px; }
+  .color .name button { margin-left: auto; border: 1px solid var(--line); background: var(--paper); border-radius: var(--r); padding: 4px 10px; font-size: 13px; font-weight: 600; color: var(--text); }
+  .color .name button.armed { background: var(--mark); border-color: var(--mark); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 14px; margin-top: 6px; }
+  .grid label { font-size: 12px; color: var(--soft); display: flex; justify-content: space-between; }
+  .foot { border-top: 1px solid var(--line); padding-top: 12px; display: flex; align-items: center; gap: 14px; }
+  .foot span { color: var(--soft); font-size: 13px; }
+  .save { margin-left: auto; background: var(--ink); color: #fff; border: 0; border-radius: var(--r); padding: 10px 16px; font-weight: 600; }
+  @media (max-width: 900px) { .app { grid-template-columns: 1fr; height: auto; } .eye { height: 70vh; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="eye">
+    <div class="head"><a href="/">Back to Glyph</a><h1>Tune what Glyph sees</h1></div>
+    <div class="switch" id="views">
+      <button data-v="page" class="on">Page</button><button data-v="ink">Ink</button><button data-v="highlights">Highlighter</button><button data-v="cover">Hand and objects</button>
+    </div>
+    <div class="stage"><img id="img" alt="The page with detection painted on it" src="/api/tune/view/page.jpg"></div>
+    <div class="what" id="what">Click anywhere on the picture to read its color.</div>
+  </section>
+  <section class="side">
+    <div class="scroll">
+      <h2>Ink</h2>
+      <p class="lead">Open the Ink view. Your writing should be painted dark blue and the blank paper should stay clean. Move the first slider until that is true.</p>
+      <div id="sliders"></div>
+      <h2>Highlighter colors</h2>
+      <p class="lead">Draw a stroke with each highlighter, press “Pick from page” for that color, then click the stroke in the picture. Check the result in the Highlighter view.</p>
+      <div id="colors"></div>
+    </div>
+    <div class="foot"><span id="msg">Changes apply right away. Save to keep them for next time.</span><button class="save" id="save">Save to .env</button></div>
+  </section>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
+const NAMES = { ink_c: 'Ink sensitivity', min_new_px: 'Smallest mark to read', settle: 'Hold-still time (seconds)', cover_diff: 'Hand detection threshold' };
+const HELP = { ink: 'Dark blue = counted as ink.', highlights: 'Solid color = counted as that highlighter. Boxes = highlights big enough to save.', cover: 'Red = treated as a hand or object. Ink near it is ignored until it moves.', page: 'The flattened page with nothing painted on it.' };
+let V = null, view = 'page', armed = null, timer = null;
+
+function refresh() { $('img').src = '/api/tune/view/' + view + '.jpg?t=' + Date.now(); }
+setInterval(refresh, 900);
+
+async function send() {
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    const d = await (await fetch('/api/tune', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(V)})).json();
+    V = d.values; refresh(); $('msg').textContent = 'Not saved yet.';
+  }, 150);
+}
+
+function build(sliders) {
+  const box = $('sliders'); box.textContent = '';
+  Object.entries(sliders).forEach(([k, [lo, hi, step, help]]) => {
+    const c = el('div', 'ctl'), lab = el('label'), out = el('output', '', V[k]);
+    lab.append(NAMES[k] || k, out);
+    const r = el('input'); r.type = 'range'; r.min = lo; r.max = hi; r.step = step; r.value = V[k];
+    r.oninput = () => { V[k] = Number(r.value); out.textContent = r.value; send(); };
+    c.append(lab, r, el('p', '', help)); box.append(c);
+  });
+  const cb = $('colors'); cb.textContent = '';
+  const parts = [['hmin', 'Hue from', 179], ['hmax', 'Hue to', 179], ['smin', 'Min color', 255], ['vmin', 'Min brightness', 255]];
+  Object.keys(V.colors).forEach(color => {
+    const c = el('div', 'color'), name = el('div', 'name'), sw = el('span', 'sw'); sw.style.background = 'var(--' + color + ')';
+    const pick = el('button', '', 'Pick from page');
+    pick.onclick = () => { armed = armed === color ? null : color; document.querySelectorAll('.color button').forEach(b => b.classList.remove('armed')); if (armed) { pick.classList.add('armed'); $('what').textContent = 'Now click a ' + color + ' highlighter stroke in the picture.'; setView('page'); } };
+    name.append(sw, color[0].toUpperCase() + color.slice(1), pick);
+    const g = el('div', 'grid');
+    parts.forEach(([key, label, max]) => {
+      const w = el('div'), lab = el('label'), out = el('output', '', V.colors[color][key]);
+      lab.append(label, out);
+      const r = el('input'); r.type = 'range'; r.min = 0; r.max = max; r.value = V.colors[color][key];
+      r.oninput = () => { V.colors[color][key] = Number(r.value); out.textContent = r.value; send(); };
+      w.append(lab, r); g.append(w);
+    });
+    c.append(name, g); cb.append(c);
+  });
+}
+
+function setView(v) {
+  view = v; document.querySelectorAll('#views button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  if (!armed) $('what').textContent = HELP[v]; refresh();
+}
+document.querySelectorAll('#views button').forEach(b => b.onclick = () => setView(b.dataset.v));
+
+$('img').onclick = async ev => {
+  const r = $('img').getBoundingClientRect();
+  const body = { x: (ev.clientX - r.left) / r.width, y: (ev.clientY - r.top) / r.height, color: armed || '' };
+  const d = await (await fetch('/api/tune/probe', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})).json();
+  if (!d.hsv) return;
+  const w = $('what'); w.textContent = '';
+  w.append('That spot: hue ', el('b', '', d.hsv.h), ', color strength ', el('b', '', d.hsv.s), ', brightness ', el('b', '', d.hsv.v), '. ');
+  if (armed && d.fit) {
+    if (d.hsv.s < 35) { w.append('That looks like plain paper or ink, not highlighter. Click right on the stroke.'); return; }
+    V.colors[armed] = d.fit; w.append('Set ' + armed + ' to match. Check the Highlighter view.');
+    armed = null; await send(); setTimeout(async () => { const s = await (await fetch('/api/tune')).json(); V = s.values; build(s.sliders); setView('highlights'); }, 400);
+  }
+};
+
+$('save').onclick = async () => {
+  const d = await (await fetch('/api/tune/save', {method: 'POST'})).json();
+  $('msg').textContent = d.ok ? 'Saved. These settings load every time Glyph starts.' : 'Could not save: ' + d.error;
+};
+
+(async () => { const d = await (await fetch('/api/tune')).json(); V = d.values; build(d.sliders); $('what').textContent = HELP.page; })();
+</script>
+</body>
+</html>

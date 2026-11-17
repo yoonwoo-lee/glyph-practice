@@ -45,14 +45,39 @@ with fake answers so everything else can still be tested.
 Things worth writing down while you test: how long each answer takes, which symbols get missed, and how the
 highlight colors behave under your lamp.
 
+## Tune it to your desk
+
+Open http://127.0.0.1:8765/tune while Glyph is running (or click **Tune**).
+
+- **Ink** view: your writing should be painted dark blue and blank paper should stay clean. Move
+  "Ink sensitivity" until that is true.
+- **Highlighter** view: draw a stroke with each highlighter, press **Pick from page** for that color,
+  then click the stroke. Glyph sets the color range from that spot.
+- **Hand and objects** view: red shows what Glyph treats as covering the page.
+- **Save to .env** keeps the settings for next time. Your key line is left alone.
+
+To tune from a photo instead of the live camera: `bash start.sh --source photo.jpg`, then open `/tune`.
+
+## How fast is it?
+
+- Every look is logged to `sessions/<latest>/timings.jsonl`: `wait_s` (ink appeared → picture sent),
+  `model_s` (time inside the model call), `total_s` (ink appeared → answer). The app shows
+  "answered in N s" on each answer.
+- Compare models without the camera:
+  ```
+  source venv/bin/activate
+  python bench.py
+  ```
+  It times each Gemini model (with thinking on and off) on the demo page and writes `bench_results.md`.
+
 ## If something is off
 
 | What you see | What to try |
 |---|---|
 | "no sheet outline: using whole picture" | Darker surface under the paper, or move the camera so all four edges show. It still works without the outline, only less precisely. |
 | A symbol gets no answer | Draw it bigger and with a thicker pen. Look in `sessions/<latest>/looks/` to see exactly what was sent to the model. Click **Look now** to force a full read. |
-| Highlights are not picked up | Add light. Then adjust the color ranges in `glyph/config.py` (`HIGHLIGHT_HSV`). |
-| Glyph reacts to nothing, or to everything | `GLYPH_INK_C` in `.env`: lower catches fainter ink, higher ignores more. |
+| Highlights are not picked up | Open **Tune**, press "Pick from page" for that color and click the stroke. Glare (a lamp reflecting straight off the paper) washes color out: move the lamp. |
+| Glyph reacts to nothing, or to everything | Open **Tune** and move "Ink sensitivity": lower catches fainter ink, higher ignores more. |
 | "Paused: reached the calls-per-minute limit" | Raise `GLYPH_MAX_CALLS_PER_MIN` in `.env` if your key allows it. |
 | A red outline on the page view | Glyph thinks something is lying on the sheet there and ignores ink next to it. |
 
@@ -79,10 +104,17 @@ Every session saves its feed, highlight photos, study guide and model inputs und
 ```
 source venv/bin/activate
 python -m tests.test_pipeline
+python -m tests.test_rough
+python -m tests.test_tools
 ```
 
-Twelve checks run on simulated camera frames: the full flow, a half-drawn symbol, a hand on the page,
-a nudged sheet, a new sheet, model errors.
+- `test_pipeline` (12): the full flow, a half-drawn symbol, a hand on the page, a nudged sheet, a new
+  sheet, model errors.
+- `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
+  a tilted camera, sensor grain and flicker.
+- `test_tools` (5): timing log, lighting correction, the tuning page.
+
+Known limit from these: a strong glare patch directly on a highlight splits or hides it.
 
 Not yet tested, because it needs your desk: the real camera, real lighting, real handwriting, and live
 calls to Gemini.

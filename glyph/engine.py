@@ -117,6 +117,10 @@ class Engine:
         self._last_error = ""
         self._looks = 0
         self._handled: List[Tuple[str, str]] = []
+        self._prev_fresh_px = 0
+        self._fresh_since: Optional[float] = None  # when the ink now waiting to be read first showed up
+        self._last_page: Optional[np.ndarray] = None  # clean flattened page, for the tuner
+        self._answer_times: List[float] = []
 
     # ---- controls used by the web server ----------------------------------
 
@@ -154,7 +158,20 @@ class Engine:
         s["camera"] = getattr(self.source, "label", "")
         s["highlights"] = len(self.store.all())
         s["looks"] = self._looks
+        times = list(self._answer_times)
+        s["last_seconds"] = round(times[-1], 1) if times else None
+        s["avg_seconds"] = round(sum(times) / len(times), 1) if times else None
+        s["session_seconds"] = int(time.time() - self.session.started)
         return s
+
+    def last_page(self) -> Optional[np.ndarray]:
+        with self._lock:
+            return None if self._last_page is None else self._last_page.copy()
+
+    def request_reset(self) -> None:
+        """Forget the remembered page (used after tuning changes how ink is seen)."""
+        with self._lock:
+            self._reset_requested = True
 
     # ---- the loop ------------------------------------------------------------
 
@@ -255,6 +272,12 @@ class Engine:
             else:
                 self._big_since = None
                 fresh_box = mask_bbox(fresh) if fresh_px else None
+                # For the timing log: note the moment new ink first shows up.
+                if fresh_px == 0:
+                    self._fresh_since = None
+                elif self._fresh_since is None and fresh_px > self._prev_fresh_px + s.min_new_px // 2:
+                    self._fresh_since = now
+                self._prev_fresh_px = fresh_px
                 if covered:
                     text = "Watching (part of the page is covered)"
                     if not stable:
@@ -352,7 +375,10 @@ class Engine:
             "fresh": None if fresh is None else fresh.copy(),
             "ink": ink.copy(),
             "context": self._context(page, box),
+            "t_seen": self._fresh_since if (not full and self._fresh_since) else now,
+            "t_sent": now,
         }
+        self._fresh_since = None
         self._pool.submit(self._run_job, job)
         return "Thinking"
 
@@ -378,10 +404,30 @@ class Engine:
             page_jpg = _jpg(job["page"], 85)
             crop_jpg = _jpg(job["crop"], 90) if job["crop"] is not None else None
             self.session.save_look(job["n"], page_jpg, crop_jpg)
-            result = self.brain.analyze(page_jpg, crop_jpg, context=job["context"], shape_hint=job["shape_hint"])
+            t0 = time.time()
+            try:
+                result = self.brain.analyze(page_jpg, crop_jpg, context=job["context"], shape_hint=job["shape_hint"])
+            finally:
+                job["model_s"] = time.time() - t0
+                job["model"] = getattr(self.brain, "last_model", "") or getattr(self.brain, "name", "")
             self._results.put((job, result, None))
         except Exception as e:
             self._results.put((job, None, e))
+
+    def _log_timing(self, job: dict, now: float, triggers: int, error: str = "") -> dict:
+        row = {
+            "look": job["n"],
+            "reason": job["reason"],
+            "full_page": job["full"],
+            "wait_s": round(max(0.0, job["t_sent"] - job["t_seen"]), 2),  # ink appeared -> picture sent
+            "model_s": round(job.get("model_s", 0.0), 2),  # time inside the vision model call
+            "total_s": round(max(0.0, now - job["t_seen"]), 2),  # ink appeared -> answer ready
+            "model": job.get("model", ""),
+            "triggers": triggers,
+            "error": error,
+        }
+        self.session.add_timing(row)
+        return row
 
     def _apply_results(self, now: float) -> None:
         while True:
@@ -399,14 +445,19 @@ class Engine:
                     self.session.add_event("error", "The vision model had a problem", msg)
                 if job["full"]:
                     self._want_full = job["reason"]
+                self._log_timing(job, now, 0, msg)
                 continue
             self._errors_in_a_row, self._last_error = 0, ""
             same_page = job["epoch"] == self.epoch and self.baseline is not None
 
             if result.get("occluded"):
                 self._wait_for_motion = True
+                self._log_timing(job, now, 0, "view blocked")
                 continue
 
+            timing = self._log_timing(job, now, len(result.get("triggers", [])))
+            if result.get("triggers"):
+                self._answer_times.append(timing["total_s"])
             shown = 0
             for t in result.get("triggers", []):
                 key = (t["action"], _norm(t["target"]))
@@ -416,7 +467,10 @@ class Engine:
                 title = TITLES.get(t["action"], t["action"].title())
                 if t["action"] == "define" and t["target"]:
                     title = "Definition: " + t["target"][:60]
-                self.session.add_event(t["action"], title, t["response"], target=t["target"], symbol=t.get("symbol"))
+                self.session.add_event(
+                    t["action"], title, t["response"], target=t["target"], symbol=t.get("symbol"),
+                    seconds=timing["total_s"], model_seconds=timing["model_s"],
+                )
                 shown += 1
 
             if job["full"] or not same_page:
@@ -481,6 +535,7 @@ class Engine:
 
     def _publish(self, frame, page, fresh_box, now, text, stable) -> None:
         view = page.copy()
+        clean_page = page
         for r in self.store.on_this_page():
             x, y, w, h = r["bbox"]
             color = DRAW_COLORS.get(r["color"], (120, 120, 120))
@@ -490,7 +545,7 @@ class Engine:
             cv2.drawContours(view, outlines, -1, (60, 60, 200), 2)
         if self._trigger_box is not None and (self._busy or now - self._trigger_time < 2.5):
             x0, y0, x1, y1 = self._trigger_box
-            cv2.rectangle(view, (x0, y0), (x1, y1), (200, 90, 30), 2)
+            cv2.rectangle(view, (x0, y0), (x1, y1), (150, 60, 35), 3)  # ink blue: "reading this"
         elif fresh_box is not None:
             x0, y0, x1, y1 = fresh_box
             cv2.rectangle(view, (x0 - 6, y0 - 6), (x1 + 6, y1 + 6), (170, 170, 170), 1)
@@ -500,11 +555,12 @@ class Engine:
         raw = cv2.resize(frame, (960, max(1, int(round(h * scale)))), interpolation=cv2.INTER_AREA)
         if self.quad is not None:
             pts = (self.quad * scale).astype(np.int32).reshape(-1, 1, 2)
-            cv2.polylines(raw, [pts], True, (60, 200, 90), 2, cv2.LINE_AA)
+            cv2.polylines(raw, [pts], True, (52, 226, 255), 3, cv2.LINE_AA)  # highlighter yellow
 
         page_jpg, raw_jpg = _jpg(view, 75), _jpg(raw, 70)
         with self._lock:
             self._page_jpg, self._raw_jpg = page_jpg, raw_jpg
+            self._last_page = clean_page
             self._status = {
                 "text": text,
                 "page_found": self.quad is not None,

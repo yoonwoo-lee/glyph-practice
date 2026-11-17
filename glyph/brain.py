@@ -128,7 +128,7 @@ class Brain:
 
     name = "gemini"
 
-    def __init__(self, legend: dict) -> None:
+    def __init__(self, legend: dict, models: Optional[List[str]] = None) -> None:
         key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not key:
             raise BrainError("GEMINI_API_KEY is not set in .env")
@@ -139,7 +139,8 @@ class Brain:
         self._types = types
         self.legend = legend
         self.system = build_system_prompt(legend)
-        self.models = [config.LLM_MODEL] + [m for m in config.LLM_FALLBACKS if m != config.LLM_MODEL]
+        self.models = models or [config.LLM_MODEL] + [m for m in config.LLM_FALLBACKS if m != config.LLM_MODEL]
+        self.last_model = ""  # which model actually answered the last call
 
     def _generate(self, images: List[bytes], text: str, system: Optional[str], want_json: bool) -> str:
         types = self._types
@@ -163,6 +164,7 @@ class Brain:
                 try:
                     r = self._client.models.generate_content(model=model, contents=parts, config=cfg)
                     if r.text:
+                        self.last_model = model
                         return r.text
                     last = BrainError(f"{model} returned no text")
                 except Exception as e:  # overloaded, rate-limited, unknown model, ...

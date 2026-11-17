@@ -4,3 +4,4 @@ __pycache__/
 sessions/
 camera_check/
 .DS_Store
+bench_results.md

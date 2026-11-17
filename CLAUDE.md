@@ -100,6 +100,17 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
   half-drawn symbol, hand on page, object left on page, nudged sheet, new sheet, model errors,
   no-sheet fallback, no repeated answers.
 
+**Added on the `camera-test` branch (Nov 17, not merged to `main` yet):**
+- New UI: left half shows what Glyph sees (flattened page + camera inset), right half shows the newest
+  answer large, earlier answers, legend, study guide. Look: ink blue, white paper, highlighter yellow.
+  `.card`-style classes are gone; a `nudge` event kind is already styled and gets the spotlight.
+- `/tune` page (`glyph/tune.py`, `static/tune.html`): live views of ink / highlighter / hand detection,
+  sliders, click-to-pick highlighter colors, saves to `.env`.
+- Timing log: `sessions/<ts>/timings.jsonl`, plus "answered in N s" in the UI.
+- `bench.py`: times each Gemini model on the demo page. Not run yet: needs a machine with the key.
+- `normalize_light()` in `page.py`: white balance + brightness correction before color detection.
+- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (5). 26 checks pass in total.
+
 **Not tested yet:**
 - Real camera (plan: iPhone via macOS Continuity Camera on a gooseneck clamp, pointing straight down)
 - Real lighting and handwriting, highlighter color ranges under a real lamp
@@ -127,6 +138,8 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
 | `glyph/brain.py` | Prompt + Gemini call, returns strict JSON (hint / define / explain); `MockBrain` for testing |
 | `glyph/session.py` | Saves each session to `sessions/<timestamp>/` (events, model inputs, study guide) |
 | `glyph/app.py` | FastAPI routes: `/`, `/stream/page`, `/stream/raw`, `/api/state`, `/api/look`, `/api/rotate`, `/api/study-guide` |
+| `glyph/tune.py` | (camera-test) Tuning page backend: detection overlays, color picking, save to `.env` |
+| `bench.py` | (camera-test) Model timing on the demo page |
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
