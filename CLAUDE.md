@@ -60,8 +60,8 @@ card in the feed. No model call (costs nothing, works offline).
 - `glyph/engine.py`: `Settings`, `_accept_page` / new-ink handling inside `_tick` (track the time),
   and a small check at the end of `_tick`. `_tick(frame, now)` takes `now` as an argument, so tests
   can fake time.
-- `glyph/static/index.html`: give the `nudge` card kind a distinct look (cards get the CSS class
-  `card <kind>`, so add a `.card.nudge` style).
+- Do **not** edit `glyph/static/index.html`: the UI is being redesigned on `camera-test`, and the new
+  version already styles the `nudge` event. On `main` the card will simply appear unstyled for now.
 - `README.md`: one line in the marks/features area mentioning the nudge and `GLYPH_STUCK_SECONDS`.
 
 **Tests (add to `tests/test_pipeline.py`, follow the existing tests' pattern):**
