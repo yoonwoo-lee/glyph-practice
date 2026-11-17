@@ -16,8 +16,8 @@ The README covers how to run it; this file covers the why and the plan.
 
 Walk Skylar through these in order, checking each one works before moving on.
 
-1. **Clone the repo** (Yoon Woo added him as a collaborator; he has to accept the GitHub invite first):
-   `git clone https://github.com/yoonwoo-lee/glyph-practice.git && cd glyph-practice`
+1. **Clone the repo** (it's public for now, so no invite needed to clone; he needs to be added as a
+   collaborator before he can push): `git clone https://github.com/yoonwoo-lee/glyph-practice.git && cd glyph-practice`
 2. **Get his own Gemini API key** at https://aistudio.google.com/apikey (free tier is fine).
 3. **Make `.env`:** `cp .env.example .env`, then put the key after `GEMINI_API_KEY=`. Never commit `.env`.
    (`start.sh` tries to copy a key from a `../talking-menu` folder; that only exists on Yoon Woo's Mac,
@@ -31,7 +31,8 @@ Walk Skylar through these in order, checking each one works before moving on.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
    number, then `bash start.sh --camera <n>`. Steps and troubleshooting are in the README.
 8. **Pick a "Next up" item** with Yoon Woo before writing code, so they don't both build the same thing.
-   Work on a branch and open a pull request; don't push straight to `main`.
+   Yoon Woo is on the `camera-test` branch (real-camera testing and tuning). Make a new branch for
+   your own item (`git checkout -b <feature-name>`) and open a pull request; don't push straight to `main`.
 
 ## What Glyph is
 
