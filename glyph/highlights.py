@@ -1,0 +1,150 @@
+"""Finding highlighter marks by color and keeping a picture of each one."""
+
+from __future__ import annotations
+
+import threading
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import cv2
+import numpy as np
+
+from . import config
+
+# Box colors (BGR) for drawing on the page view.
+DRAW_COLORS = {
+    "yellow": (0, 190, 235),
+    "green": (70, 170, 60),
+    "blue": (220, 140, 40),
+    "pink": (170, 80, 230),
+}
+
+_K5 = np.ones((5, 5), np.uint8)
+_KCLOSE = cv2.getStructuringElement(cv2.MORPH_RECT, (31, 9))
+
+Box = Tuple[int, int, int, int]  # x, y, w, h
+
+
+def detect_highlights(page: np.ndarray):
+    """Return ([{color, bbox, area}], mask of all highlighted pixels)."""
+    hsv = cv2.cvtColor(page, cv2.COLOR_BGR2HSV)
+    union = np.zeros(page.shape[:2], np.uint8)
+    regions: List[dict] = []
+    min_area = int(page.shape[0] * page.shape[1] * config.HIGHLIGHT_MIN_FRAC)
+    for color, ranges in config.HIGHLIGHT_HSV.items():
+        mask = None
+        for lo, hi in ranges:
+            m = cv2.inRange(hsv, np.array(lo, np.uint8), np.array(hi, np.uint8))
+            mask = m if mask is None else cv2.bitwise_or(mask, m)
+        if mask is None or cv2.countNonZero(mask) < min_area:
+            continue
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, _K5)
+        # Letters inside a highlight break it into pieces; join them back up.
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, _KCLOSE)
+        n, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        for i in range(1, n):
+            x, y, w, h, area = (int(v) for v in stats[i])
+            if area < min_area or min(w, h) < 12:
+                continue
+            regions.append({"color": color, "bbox": (x, y, w, h), "area": area})
+            union[y : y + h, x : x + w][labels[y : y + h, x : x + w] == i] = 255
+    return regions, union
+
+
+def _iou(a: Box, b: Box) -> float:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    ix = max(0, min(ax + aw, bx + bw) - max(ax, bx))
+    iy = max(0, min(ay + ah, by + bh) - max(ay, by))
+    inter = ix * iy
+    union = aw * ah + bw * bh - inter
+    return inter / union if union else 0.0
+
+
+def _thumb(img: np.ndarray) -> np.ndarray:
+    return cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (96, 24), interpolation=cv2.INTER_AREA)
+
+
+def _similar(a: np.ndarray, b: np.ndarray) -> float:
+    return float(cv2.matchTemplate(a, b, cv2.TM_CCOEFF_NORMED)[0, 0])
+
+
+class HighlightStore:
+    """Remembers every highlight seen this session, one cropped photo each."""
+
+    def __init__(self, out_dir: Path, labels: Dict[str, str]) -> None:
+        self.out_dir = Path(out_dir)
+        self.out_dir.mkdir(parents=True, exist_ok=True)
+        self.labels = labels
+        self.regions: List[dict] = []
+        self.page_no = 0
+        self._next_id = 1
+        self._last: List[Tuple[str, Box]] = []
+        self._lock = threading.Lock()
+
+    def new_page(self) -> None:
+        self.page_no += 1
+        self._last = []
+
+    def forget_this_page(self) -> None:
+        """Drop what was captured on the current page (it is about to be re-read)."""
+        with self._lock:
+            self.regions = [r for r in self.regions if r["page_no"] != self.page_no]
+        self._last = []
+
+    def _crop(self, page: np.ndarray, bbox: Box) -> np.ndarray:
+        x, y, w, h = bbox
+        ph, pw = page.shape[:2]
+        return page[max(0, y - 8) : min(ph, y + h + 8), max(0, x - 10) : min(pw, x + w + 10)].copy()
+
+    def update(self, detections: List[dict], page: np.ndarray) -> List[dict]:
+        """Take this frame's highlights; return the ones that are new.
+
+        A highlight is accepted once it shows up in two looks in a row.
+        """
+        prev = self._last
+        self._last = [(d["color"], d["bbox"]) for d in detections]
+        fresh: List[dict] = []
+        with self._lock:
+            for d in detections:
+                color, bbox = d["color"], d["bbox"]
+                if not any(c == color and _iou(bbox, b) > 0.6 for c, b in prev):
+                    continue
+                crop = self._crop(page, bbox)
+                thumb = _thumb(crop)
+                match: Optional[dict] = None
+                for r in self.regions:
+                    if r["color"] == color and _iou(bbox, r["bbox"]) > 0.3:
+                        match = r
+                        break
+                if match is not None:
+                    grew = bbox[2] * bbox[3] > 1.15 * match["bbox"][2] * match["bbox"][3]
+                    if grew and match["page_no"] == self.page_no:
+                        # The student kept highlighting: keep the longer version.
+                        match["bbox"], match["thumb"] = bbox, thumb
+                        cv2.imwrite(str(match["path"]), crop)
+                        continue
+                    if not grew and _similar(thumb, match["thumb"]) > 0.35:
+                        continue
+                region = {
+                    "id": self._next_id,
+                    "color": color,
+                    "label": self.labels.get(color, color.title()),
+                    "bbox": bbox,
+                    "page_no": self.page_no,
+                    "thumb": thumb,
+                }
+                self._next_id += 1
+                region["path"] = self.out_dir / f"{region['id']:02d}_{color}.jpg"
+                cv2.imwrite(str(region["path"]), crop)
+                self.regions.append(region)
+                fresh.append(region)
+        return fresh
+
+    def on_this_page(self) -> List[dict]:
+        with self._lock:
+            return [r for r in self.regions if r["page_no"] == self.page_no]
+
+    def all(self) -> List[dict]:
+        with self._lock:
+            return list(self.regions)

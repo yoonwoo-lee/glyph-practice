@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glyph (practice build)</title>
+<style>
+  :root {
+    --paper: #f4f1ea; --card: #fffdf8; --ink: #22201c; --soft: #6f6a60; --line: #ddd6c8;
+    --accent: #b4491f; --ok: #2f7d4f; --warn: #a66a00;
+    --yellow: #f0c800; --green: #46aa3c; --blue: #288cdc; --pink: #e650aa;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font: 15px/1.5 ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  header { display: flex; align-items: baseline; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 20px; margin: 0; letter-spacing: .02em; }
+  .tag { font-size: 12px; color: var(--soft); border: 1px solid var(--line); border-radius: 99px; padding: 1px 9px; }
+  #status { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--soft); flex-wrap: wrap; justify-content: flex-end; }
+  .pill { border-radius: 99px; padding: 2px 10px; background: #ebe6da; color: var(--ink); white-space: nowrap; }
+  .pill.ok { background: #dcefe2; color: var(--ok); }
+  .pill.warn { background: #f6e7c4; color: var(--warn); }
+  .pill.busy { background: #f3d9cc; color: var(--accent); }
+  main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr); gap: 18px; padding: 18px 22px; align-items: start; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .bar .gap { flex: 1; }
+  button { font: inherit; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button:hover { border-color: var(--soft); }
+  button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  button.main { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button:disabled { opacity: .55; cursor: default; }
+  #view { width: 100%; max-height: 76vh; object-fit: contain; background: #2b2722; border-radius: 8px; display: block; min-height: 240px; }
+  .legend { margin: 10px 2px 0; color: var(--soft); font-size: 13px; }
+  .legend b { color: var(--ink); font-weight: 600; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: baseline; }
+  #feed, #guide { display: flex; flex-direction: column; gap: 10px; max-height: 76vh; overflow: auto; }
+  .card { border: 1px solid var(--line); border-left: 4px solid var(--soft); border-radius: 8px; padding: 9px 12px; background: #fff; }
+  .card .top { display: flex; gap: 8px; align-items: baseline; }
+  .card .title { font-weight: 650; }
+  .card .time { margin-left: auto; font-size: 12px; color: var(--soft); }
+  .card .target { color: var(--soft); font-size: 13px; margin-top: 2px; }
+  .card .body { margin-top: 5px; white-space: pre-wrap; }
+  .card.hint { border-left-color: var(--accent); }
+  .card.define { border-left-color: #5b61c9; }
+  .card.explain { border-left-color: #1f8a8a; }
+  .card.error { border-left-color: #c0392b; background: #fdf1ef; }
+  .card.highlight { padding: 7px 12px; }
+  .card.highlight img { display: block; max-width: 100%; max-height: 60px; margin-top: 6px; border-radius: 4px; border: 1px solid var(--line); }
+  .card.c-yellow { border-left-color: var(--yellow); } .card.c-green { border-left-color: var(--green); }
+  .card.c-blue { border-left-color: var(--blue); } .card.c-pink { border-left-color: var(--pink); }
+  .empty { color: var(--soft); padding: 18px 6px; text-align: center; }
+  #guideText h1 { font-size: 20px; margin: 6px 0; } #guideText h2 { font-size: 16px; margin: 16px 0 4px; }
+  #guideText ul { margin: 4px 0; padding-left: 20px; } #guideText p { margin: 4px 0; color: var(--soft); }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Glyph</h1><span class="tag">practice build</span>
+  <div id="status"><span class="pill">connecting</span></div>
+</header>
+<main>
+  <section class="panel">
+    <div class="bar">
+      <button id="vPage" class="on" title="The flattened sheet, as Glyph reads it">Page</button>
+      <button id="vRaw" title="The camera picture, with the sheet outlined in green">Camera</button>
+      <span class="gap"></span>
+      <button id="rotate" title="Turn the page view if the text is sideways or upside down">Rotate</button>
+      <button id="look" title="Read the whole page now">Look now</button>
+    </div>
+    <img id="view" alt="Live view of the paper" src="/stream/page">
+    <div class="legend" id="legend"></div>
+  </section>
+  <section class="panel">
+    <div class="bar">
+      <button id="tFeed" class="on">Feed</button>
+      <button id="tGuide">Study guide</button>
+      <span class="gap"></span>
+      <button id="make" class="main">End session: build study guide</button>
+    </div>
+    <div id="feed"><div class="empty" id="feedEmpty">Nothing yet. Draw a symbol, underline a word, or highlight a line.</div></div>
+    <div id="guide" class="hide"><div class="empty" id="guideEmpty">The study guide appears here when you end the session.</div><article id="guideText"></article></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let lastId = 0, legendDone = false;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function showStatus(s) {
+  const box = $('status'); box.textContent = '';
+  const main = el('span', 'pill ' + (s.busy ? 'busy' : s.text === 'Watching' ? 'ok' : 'warn'), s.text);
+  box.append(main);
+  box.append(el('span', 'pill ' + (s.page_found ? 'ok' : 'warn'), s.page_found ? 'sheet found' : 'no sheet outline: using whole picture'));
+  box.append(el('span', 'pill', s.mode === 'mock' ? 'fake answers (no key)' : s.mode));
+  box.append(el('span', '', s.camera + ' · ' + s.highlights + ' highlights · ' + s.looks + ' looks'));
+}
+
+function showLegend(l) {
+  const box = $('legend'); box.textContent = '';
+  const add = (label, what) => { box.append(el('b', '', label), ' ' + what + '   '); };
+  (l.symbols || []).forEach(s => add(s.name, '→ ' + s.action + '.'));
+  if (l.marks && l.marks.underline) add('underline', '→ ' + l.marks.underline + '.');
+  box.append(el('br'));
+  Object.entries(l.highlight_colors || {}).forEach(([c, label]) => {
+    const d = el('span', 'dot'); d.style.background = 'var(--' + c + ', #999)';
+    const item = el('span', '', label); item.style.marginRight = '14px';
+    box.append(d, item);
+  });
+}
+
+function addEvent(e) {
+  $('feedEmpty').classList.add('hide');
+  const card = el('div', 'card ' + e.kind + (e.meta && e.meta.color ? ' c-' + e.meta.color : ''));
+  const top = el('div', 'top');
+  top.append(el('span', 'title', e.title), el('span', 'time', e.time));
+  card.append(top);
+  if (e.kind === 'highlight') {
+    top.insertBefore(el('span', 'target', e.body), top.lastChild);
+    const img = el('img'); img.alt = 'The highlighted text'; img.onerror = () => card.remove(); img.src = '/api/highlight/' + e.meta.highlight_id + '.jpg?t=' + Date.now();
+    card.append(img);
+  } else {
+    if (e.meta && e.meta.target && e.kind !== 'define') card.append(el('div', 'target', 'About: ' + e.meta.target));
+    card.append(el('div', 'body', e.body));
+  }
+  $('feed').prepend(card);
+}
+
+async function poll() {
+  try {
+    const r = await fetch('/api/state?since=' + lastId);
+    const d = await r.json();
+    showStatus(d.status);
+    if (!legendDone) { showLegend(d.legend); legendDone = true; }
+    d.events.forEach(addEvent);
+    lastId = d.last_id;
+  } catch (err) {
+    $('status').textContent = ''; $('status').append(el('span', 'pill warn', 'Glyph is not running'));
+  }
+  setTimeout(poll, 700);
+}
+
+function renderGuide(md) {
+  const out = $('guideText'); out.textContent = '';
+  let list = null;
+  const inline = (parent, text) => {
+    text.split(/(\*\*[^*]+\*\*)/).forEach(part => {
+      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) parent.append(el('b', '', part.slice(2, -2)));
+      else if (part) parent.append(part);
+    });
+  };
+  md.split('\n').forEach(line => {
+    const t = line.trim();
+    if (!t) { list = null; return; }
+    if (t.startsWith('## ')) { list = null; out.append(el('h2', '', t.slice(3))); }
+    else if (t.startsWith('# ')) { list = null; out.append(el('h1', '', t.slice(2))); }
+    else if (/^[-*] /.test(t)) { if (!list) { list = el('ul'); out.append(list); } const li = el('li'); inline(li, t.slice(2)); list.append(li); }
+    else { list = null; const p = el('p'); inline(p, t); out.append(p); }
+  });
+}
+
+function tab(which) {
+  $('tFeed').classList.toggle('on', which === 'feed'); $('tGuide').classList.toggle('on', which === 'guide');
+  $('feed').classList.toggle('hide', which !== 'feed'); $('guide').classList.toggle('hide', which !== 'guide');
+}
+function view(which) {
+  $('vPage').classList.toggle('on', which === 'page'); $('vRaw').classList.toggle('on', which === 'raw');
+  $('view').src = '/stream/' + which;
+}
+
+$('tFeed').onclick = () => tab('feed');
+$('tGuide').onclick = () => tab('guide');
+$('vPage').onclick = () => view('page');
+$('vRaw').onclick = () => view('raw');
+$('look').onclick = () => fetch('/api/look', {method: 'POST'});
+$('rotate').onclick = () => fetch('/api/rotate', {method: 'POST'});
+$('make').onclick = async () => {
+  const b = $('make'); b.disabled = true; b.textContent = 'Building the study guide';
+  tab('guide'); $('guideEmpty').textContent = 'Reading your highlights';
+  try {
+    const r = await fetch('/api/study-guide', {method: 'POST'});
+    const d = await r.json();
+    if (d.ok) { $('guideEmpty').classList.add('hide'); renderGuide(d.markdown); }
+    else { $('guideEmpty').classList.remove('hide'); $('guideEmpty').textContent = 'Could not build the guide: ' + d.error; }
+  } catch (err) { $('guideEmpty').textContent = 'Could not reach Glyph.'; }
+  b.disabled = false; b.textContent = 'Rebuild study guide';
+};
+poll();
+</script>
+</body>
+</html>

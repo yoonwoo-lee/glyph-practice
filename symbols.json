@@ -1,0 +1,23 @@
+{
+  "symbols": [
+    {
+      "name": "spark",
+      "looks_like": "a starburst or asterisk: several straight rays crossing at one point",
+      "action": "hint"
+    },
+    {
+      "name": "circled question mark",
+      "looks_like": "a question mark with a circle drawn around it",
+      "action": "explain"
+    }
+  ],
+  "marks": {
+    "underline": "define"
+  },
+  "highlight_colors": {
+    "yellow": "Key ideas",
+    "green": "Definitions",
+    "pink": "Formulas",
+    "blue": "Examples"
+  }
+}
