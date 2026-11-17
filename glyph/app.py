@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 
 from . import tune
@@ -70,6 +71,13 @@ def create_app(engine: Engine) -> FastAPI:
         except Exception as e:
             return JSONResponse({"ok": False, "error": str(e)[:300]}, status_code=502)
 
+    @app.get("/api/snip/{n}.jpg")
+    def snip(n: int):
+        path = engine.session.snip_path(n)
+        if not path.exists():
+            raise HTTPException(404)
+        return FileResponse(path, media_type="image/jpeg")
+
     @app.get("/api/highlight/{highlight_id}.jpg")
     def highlight(highlight_id: int):
         for r in engine.store.all():
@@ -79,6 +87,8 @@ def create_app(engine: Engine) -> FastAPI:
                 except OSError:
                     break
         raise HTTPException(404)
+
+    app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
     # ---- tuning page -----------------------------------------------------------
 

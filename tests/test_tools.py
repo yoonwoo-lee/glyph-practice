@@ -42,6 +42,22 @@ def test_timing_log_has_a_row_per_look():
     assert st["last_seconds"] is not None and st["avg_seconds"] is not None, st
 
 
+def test_each_answer_gets_a_picture_of_its_mark():
+    s = demo.build_steps()
+    engine, brain, session = run([s["blank"], s["spark"], s["underline"]])
+    hint, define = session.events_of("hint")[0], session.events_of("define")[0]
+    assert hint["at"] >= 0 and define["at"] >= hint["at"], (hint, define)
+    for e in (hint, define):
+        img = cv2.imread(str(session.snip_path(e["meta"]["snip"])))
+        assert img is not None, e
+        h, w = img.shape[:2]
+        assert abs(w / float(h) - 1.5) < 0.05 and w >= 300, (w, h)
+    # the spark sits in the margin: its picture must reach left far enough to show the working
+    img = cv2.imread(str(session.snip_path(hint["meta"]["snip"])))
+    dark = (cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) < 120).sum(axis=0)
+    assert dark[: img.shape[1] // 2].sum() > 300, "no writing in the left half of the hint picture"
+
+
 def test_warm_or_dim_light_does_not_change_paper_color():
     warm = lambda f: (f.astype("float32") * [0.7, 0.9, 1.0]).clip(0, 255).astype("uint8")  # noqa: E731
     for change in (warm, lambda f: demo.dim(f, 0.4), lambda f: demo.lamp(f, 0.3)):

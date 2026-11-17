@@ -13,6 +13,8 @@ class Session:
     def __init__(self, root: Path) -> None:
         self.dir = Path(root) / time.strftime("%Y-%m-%d_%H%M%S")
         (self.dir / "looks").mkdir(parents=True, exist_ok=True)
+        (self.dir / "snips").mkdir(parents=True, exist_ok=True)
+        self._snips = 0
         self.started = time.time()
         self._events: List[dict] = []
         self._timings: List[dict] = []
@@ -23,6 +25,7 @@ class Session:
             event = {
                 "id": len(self._events) + 1,
                 "time": time.strftime("%H:%M:%S"),
+                "at": int(time.time() - self.started),  # seconds into the session
                 "kind": kind,
                 "title": title,
                 "body": body,
@@ -66,6 +69,20 @@ class Session:
                 (self.dir / "looks" / f"{n:03d}_new_ink.jpg").write_bytes(crop_jpg)
         except OSError:
             pass
+
+    def save_snip(self, jpg: bytes) -> Optional[int]:
+        """A small picture of the paper around a mark, shown next to its answer."""
+        with self._lock:
+            self._snips += 1
+            n = self._snips
+        try:
+            (self.dir / "snips" / f"{n}.jpg").write_bytes(jpg)
+            return n
+        except OSError:
+            return None
+
+    def snip_path(self, n: int) -> Path:
+        return self.dir / "snips" / f"{int(n)}.jpg"
 
     def save_text(self, name: str, text: str) -> Path:
         path = self.dir / name

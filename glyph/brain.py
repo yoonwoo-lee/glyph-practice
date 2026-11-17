@@ -199,14 +199,21 @@ class Brain:
         return self._generate([it["jpg"] for it in items], text, None, want_json=False).strip()
 
 
+DEMO_GUIDE = {
+    "Key ideas": "Newton's first law: an object stays at rest or moves at constant velocity unless a net force acts on it.",
+    "Definitions": "Momentum is the product of mass and velocity: p = m v.",
+}
+
+
 class MockBrain:
     """Canned answers, for running the app with no key and no internet."""
 
     name = "mock"
 
-    def __init__(self, legend: dict) -> None:
+    def __init__(self, legend: dict, demo: bool = False) -> None:
         self.legend = legend
         self.calls = 0
+        self.demo = demo  # the built-in demo sheet: answer as the real model would for that page
 
     def analyze(self, page_jpg: bytes, crop_jpg: Optional[bytes] = None, context: str = "", shape_hint=None) -> dict:
         self.calls += 1
@@ -220,8 +227,10 @@ class MockBrain:
                     {
                         "kind": "underline",
                         "action": "define",
-                        "target": f"underlined word #{self.calls}",
-                        "response": "(fake answer) This is where the definition of the underlined word appears.",
+                        "target": "inertia" if self.demo else "underlined word",
+                        "response": "How strongly an object resists any change in its motion. The more mass it has, the more inertia, and the harder it is to speed up, slow down or turn."
+                        if self.demo
+                        else "Practice answer. With a Gemini key in .env, the meaning of the word you underlined appears here.",
                     }
                 ]
             }
@@ -232,8 +241,10 @@ class MockBrain:
                         "kind": "symbol",
                         "symbol": "spark",
                         "action": "hint",
-                        "target": f"problem next to symbol #{self.calls}",
-                        "response": "(fake answer) This is where a hint for the nearby problem appears.",
+                        "target": "Problem 1, block on a frictionless incline" if self.demo else "the problem next to your spark",
+                        "response": "Check which part of gravity actually pulls the block along the slope. Draw the weight, then split it into one piece along the incline and one into it. Which trig function goes with each?"
+                        if self.demo
+                        else "Practice answer. With a Gemini key in .env, a hint for the problem next to your spark appears here.",
                     }
                 ]
             }
@@ -249,6 +260,9 @@ class MockBrain:
         for label in seen:
             out.append(f"## {label}")
             n = sum(1 for it in items if it["label"] == label)
-            out.extend(f"- (fake answer) text of {label.lower()} highlight {i}" for i in range(1, n + 1))
+            if self.demo and label in DEMO_GUIDE:
+                out.append("- " + DEMO_GUIDE[label])
+            else:
+                out.extend(f"- Practice answer: the text of {label.lower()} highlight {i} goes here." for i in range(1, n + 1))
             out.append("")
         return "\n".join(out).strip()

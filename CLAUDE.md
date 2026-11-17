@@ -101,15 +101,18 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
   no-sheet fallback, no repeated answers.
 
 **Added on the `camera-test` branch (Nov 17, not merged to `main` yet):**
-- New UI: left half shows what Glyph sees (flattened page + camera inset), right half shows the newest
-  answer large, earlier answers, legend, study guide. Look: ink blue, white paper, highlighter yellow.
-  `.card`-style classes are gone; a `nudge` event kind is already styled and gets the spotlight.
+- New UI: left half shows what Glyph sees (flattened page + camera inset). Right half: the newest
+  answer as a large card with a cut-out picture of the mark that triggered it, highlights grouped by
+  color, a timeline of earlier answers, and a typeset study guide (Copy / Print). Look: ink blue,
+  white paper, highlighter yellow; Instrument Serif + Instrument Sans, bundled in `static/fonts`
+  so it works offline. A `nudge` event kind is already styled. `/?guide` opens on the study guide.
+- Without a key, `--demo` shows realistic practice answers for the demo sheet (`MockBrain(demo=True)`).
 - `/tune` page (`glyph/tune.py`, `static/tune.html`): live views of ink / highlighter / hand detection,
   sliders, click-to-pick highlighter colors, saves to `.env`.
 - Timing log: `sessions/<ts>/timings.jsonl`, plus "answered in N s" in the UI.
 - `bench.py`: times each Gemini model on the demo page. Not run yet: needs a machine with the key.
 - `normalize_light()` in `page.py`: white balance + brightness correction before color detection.
-- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (5). 26 checks pass in total.
+- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (6). 27 checks pass in total.
 
 **Not tested yet:**
 - Real camera (plan: iPhone via macOS Continuity Camera on a gooseneck clamp, pointing straight down)

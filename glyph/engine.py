@@ -469,7 +469,7 @@ class Engine:
                     title = "Definition: " + t["target"][:60]
                 self.session.add_event(
                     t["action"], title, t["response"], target=t["target"], symbol=t.get("symbol"),
-                    seconds=timing["total_s"], model_seconds=timing["model_s"],
+                    seconds=timing["total_s"], model_seconds=timing["model_s"], snip=self._snip(job),
                 )
                 shown += 1
 
@@ -483,6 +483,39 @@ class Engine:
                 # Nothing recognised yet: keep this ink marked as new for a while,
                 # in case it was a symbol caught half-drawn.
                 self.pending.append((job["fresh"], now))
+
+    def _snip(self, job: dict) -> Optional[int]:
+        """The piece of paper around the mark that was just answered.
+
+        A 3:2 window that always contains the mark and is slid, within that
+        limit, to take in as much nearby writing as possible, so a spark drawn
+        in the margin is shown next to the problem it belongs to.
+        """
+        box = job.get("box")
+        if box is None:
+            return None
+        page, ink = job["page"], job["ink"]
+        ph, pw = page.shape[:2]
+        x0, y0, x1, y1 = box
+        w = int(min(max(x1 - x0, 1.5 * (y1 - y0), 0.5 * pw), pw, ph * 1.5))
+        h = int(w / 1.5)
+
+        def best(lo: int, hi: int, weight: np.ndarray, size: int) -> int:
+            lo, hi = max(0, lo), min(hi, len(weight) - size)
+            if hi <= lo:
+                return max(0, min(lo, len(weight) - size))
+            run = np.concatenate([[0.0], np.cumsum(weight)])
+            starts = np.arange(lo, hi + 1)
+            return int(starts[np.argmax(run[starts + size] - run[starts])])
+
+        top = best(y1 - h, y0, ink.sum(axis=1, dtype=np.float64), h)
+        left = best(x1 - w, x0, ink[top : top + h].sum(axis=0, dtype=np.float64), w)
+        cut = page[top : top + h, left : left + w]
+        if cut.size == 0:
+            return None
+        if cut.shape[1] > 540:
+            cut = cv2.resize(cut, (540, 360), interpolation=cv2.INTER_AREA)
+        return self.session.save_snip(_jpg(cut, 86))
 
     def _already_answered(self, key: Tuple[str, str]) -> bool:
         action, target = key

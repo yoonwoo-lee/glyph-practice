@@ -71,9 +71,9 @@ def main() -> int:
         try:
             brain = Brain(legend)
         except BrainError as e:
-            print(f"[glyph] {e}. Running with fake answers instead.")
+            print(f"[glyph] {e}. Running with practice answers instead.")
     if brain is None:
-        brain = MockBrain(legend)
+        brain = MockBrain(legend, demo=args.demo)
 
     session = Session(config.ROOT / "sessions")
     engine = Engine(source, brain, session, legend, rotate=args.rotate // 90)

@@ -5,53 +5,59 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Glyph</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2316224F'/%3E%3Cg stroke='%23FFE234' stroke-width='3.2' stroke-linecap='round'%3E%3Cpath d='M16 6v20M6 16h20M9 9l14 14M23 9L9 23'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preload" href="/static/fonts/InstrumentSans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/InstrumentSerif.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  @font-face { font-family: "Instrument Sans"; src: url(/static/fonts/InstrumentSans.woff2) format("woff2"); font-weight: 400 700; font-display: swap; }
+  @font-face { font-family: "Instrument Serif"; src: url(/static/fonts/InstrumentSerif.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Instrument Serif"; src: url(/static/fonts/InstrumentSerif-Italic.woff2) format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+
   /* Palette comes from the desk: ballpoint ink, white paper, one yellow highlighter. */
   :root {
     --ink: #16224F; --ink-deep: #0E1738; --ink-soft: #2A3975; --on-ink: #E9EDFB; --on-ink-soft: #9AA6D4;
-    --paper: #FFFFFF; --tint: #F2F4FA; --line: #D8DDEB; --text: #121935; --soft: #5A6486;
+    --paper: #FFFFFF; --desk: #F1F3F9; --line: #DFE3EF; --line-strong: #C9CFE2; --text: #121935; --soft: #59638A; --faint: #8A93B4;
     --mark: #FFE234;
-    --yellow: #FFE234; --green: #5ED67E; --blue: #62BEFF; --pink: #FF78BE; --bad: #D8362B;
-    --r: 6px;
-    --font: "Avenir Next", Avenir, "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+    --yellow: #FFE234; --green: #5ED67E; --blue: #62BEFF; --pink: #FF78BE; --bad: #C8322A;
+    --r: 6px; --r-lg: 14px;
+    --lift: 0 1px 0 rgba(22,34,79,.04), 0 18px 40px -18px rgba(22,34,79,.28);
+    --sans: "Instrument Sans", "Avenir Next", "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+    --serif: "Instrument Serif", "Iowan Old Style", Georgia, "Times New Roman", serif;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; font: 15px/1.5 var(--font); color: var(--text); background: var(--paper); -webkit-font-smoothing: antialiased; }
-  button { font: inherit; cursor: pointer; }
+  body { margin: 0; font: 15px/1.5 var(--sans); color: var(--text); background: var(--desk); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  button { font: inherit; cursor: pointer; color: inherit; }
   :focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
   .hide { display: none !important; }
+  svg.g { width: 1em; height: 1em; flex: none; }
 
-  .app { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; min-height: 560px; }
+  .app { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; min-height: 600px; }
 
-  /* ---------- left: what Glyph sees ---------- */
+  /* ================= left: what Glyph sees ================= */
   .eye { background: var(--ink); color: var(--on-ink); display: flex; flex-direction: column; padding: 20px 24px 18px; min-width: 0; min-height: 0; }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand svg { width: 26px; height: 26px; flex: none; }
-  .brand .word { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+  .brand .word { font-size: 25px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
   .state { margin-left: auto; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
   .state .lamp { width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
   .state.wait .lamp { background: var(--on-ink-soft); }
   .state.busy .lamp { background: var(--mark); animation: pulse 0.9s ease-in-out infinite; }
-  .state.bad .lamp { background: var(--bad); }
+  .state.bad .lamp { background: #FF6B61; }
   @keyframes pulse { 50% { transform: scale(1.7); opacity: .55; } }
-
   .seeing { display: flex; align-items: center; gap: 12px; margin: 16px 0 10px; }
   .seeing h2 { margin: 0; font-size: 14px; font-weight: 600; color: var(--on-ink-soft); }
   .switch { margin-left: auto; display: flex; border: 1px solid var(--ink-soft); border-radius: var(--r); overflow: hidden; }
   .switch button { border: 0; background: transparent; color: var(--on-ink-soft); padding: 5px 12px; font-size: 13px; font-weight: 600; }
   .switch button.on { background: var(--on-ink); color: var(--ink); }
-
   .stage { position: relative; flex: 1; min-height: 0; background: var(--ink-deep); border-radius: var(--r); overflow: hidden; display: flex; align-items: center; justify-content: center; }
   .stage > img.main { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .scan { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--mark); transform-origin: left; transform: scaleX(0); opacity: 0; }
+  .scan { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--mark); transform: scaleX(0); opacity: 0; }
   .stage.busy .scan { opacity: 1; animation: sweep 1.3s cubic-bezier(.6,0,.4,1) infinite; }
   @keyframes sweep { 0% { transform: scaleX(0); transform-origin: left; } 50% { transform: scaleX(1); transform-origin: left; } 51% { transform-origin: right; } 100% { transform: scaleX(0); transform-origin: right; } }
   .pip { position: absolute; right: 12px; bottom: 12px; width: 26%; max-width: 220px; padding: 0; border: 2px solid var(--on-ink); border-radius: var(--r); overflow: hidden; background: var(--ink-deep); line-height: 0; }
   .pip img { width: 100%; display: block; }
   .pip span { position: absolute; left: 0; bottom: 0; background: var(--on-ink); color: var(--ink); font-size: 11px; font-weight: 700; line-height: 1; padding: 4px 7px; border-top-right-radius: var(--r); }
   .note { position: absolute; left: 12px; bottom: 12px; background: var(--mark); color: var(--ink-deep); font-weight: 600; font-size: 13px; padding: 7px 10px; border-radius: var(--r); width: fit-content; max-width: 62%; }
-
   .under { display: flex; align-items: flex-end; gap: 22px; margin-top: 14px; flex-wrap: wrap; }
   .stat b { display: block; font-size: 20px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; color: #fff; }
   .stat span { font-size: 12px; color: var(--on-ink-soft); }
@@ -59,78 +65,139 @@
   .tools button, .tools a { border: 1px solid var(--ink-soft); background: transparent; color: var(--on-ink); border-radius: var(--r); padding: 7px 13px; font-size: 13px; font-weight: 600; text-decoration: none; }
   .tools button:hover, .tools a:hover { border-color: var(--on-ink); }
 
-  /* ---------- right: what Glyph says ---------- */
-  .say { display: flex; flex-direction: column; padding: 20px 28px 18px; min-width: 0; min-height: 0; }
-  .top { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); }
-  .tab { border: 0; background: none; padding: 6px 2px 12px; margin-right: 18px; font-size: 16px; font-weight: 600; color: var(--soft); border-bottom: 3px solid transparent; margin-bottom: -1px; }
-  .tab.on { color: var(--text); border-bottom-color: var(--ink); }
-  .clock { margin-left: auto; font-size: 13px; color: var(--soft); font-variant-numeric: tabular-nums; padding-bottom: 8px; }
-  .clock b { color: var(--text); font-weight: 600; }
+  /* ================= right: what Glyph says ================= */
+  .say { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--desk); }
 
-  .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 2px 8px; }
-  .empty { max-width: 30em; }
-  .empty h3 { font-size: 26px; line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 8px; font-weight: 700; }
-  .empty p { margin: 0; color: var(--soft); font-size: 16px; }
+  .bar { display: flex; align-items: center; padding: 18px 32px 0; }
+  .seg { display: inline-flex; padding: 3px; background: #E4E7F1; border-radius: 999px; }
+  .seg button { border: 0; background: none; border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 600; color: var(--soft); display: inline-flex; align-items: center; gap: 7px; }
+  .seg button.on { background: var(--paper); color: var(--text); box-shadow: 0 1px 2px rgba(22,34,79,.14); }
+  .seg .n { min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: var(--mark); color: var(--ink-deep); font-size: 12px; font-weight: 700; line-height: 19px; text-align: center; font-variant-numeric: tabular-nums; }
+  .clock { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
+  .clock i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+  .clock span { color: var(--soft); font-weight: 500; }
 
-  /* the newest answer, large enough to read from across a table */
-  .now { margin-bottom: 26px; }
-  .now .kind { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 15px; }
-  .now .kind svg { width: 22px; height: 22px; }
-  .now .kind .took { margin-left: auto; font-weight: 500; font-size: 13px; color: var(--soft); font-variant-numeric: tabular-nums; }
-  .now .words { font-size: clamp(21px, 2.05vw, 32px); line-height: 1.28; letter-spacing: -0.012em; font-weight: 600; margin: 12px 0 10px; max-width: 24em; }
-  .now .words mark { color: inherit; background: linear-gradient(var(--mark), var(--mark)) no-repeat 0 82% / 100% 42%; padding: 0 .08em; }
-  .now.fresh .words mark { animation: swipe .7s cubic-bezier(.3,.7,.2,1) both; }
-  @keyframes swipe { from { background-size: 0% 42%; } }
-  .now .about { color: var(--soft); font-size: 14px; max-width: 46em; }
-  .now.error .words { color: var(--bad); font-size: 18px; font-weight: 500; }
+  .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 32px 26px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .label { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--soft); display: flex; align-items: center; gap: 10px; }
+  .label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-  .earlier h4 { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--soft); }
-  .row { display: grid; grid-template-columns: 22px 1fr auto; gap: 4px 10px; padding: 11px 0; border-top: 1px solid var(--line); align-items: start; }
-  .row svg { width: 18px; height: 18px; margin-top: 2px; }
-  .row .t { font-weight: 600; }
-  .row .b { grid-column: 2 / 4; color: var(--text); }
-  .row .when { font-size: 12px; color: var(--soft); font-variant-numeric: tabular-nums; padding-top: 2px; }
-  .row.highlight .b { display: flex; align-items: center; gap: 10px; }
-  .row.highlight img { max-height: 44px; max-width: 100%; border-radius: 3px; border: 1px solid var(--line); display: block; }
-  .chip { width: 12px; height: 18px; border-radius: 2px; margin: 2px 3px 0; display: block; background: var(--line); }
+  /* ---- first screen: the three marks ---- */
+  .intro h1 { font: 400 clamp(40px, 4.2vw, 62px)/1.02 var(--serif); letter-spacing: -0.015em; margin: 14px 0 14px; color: var(--ink); }
+  .intro h1 em { font-style: italic; }
+  .intro > p { margin: 0 0 30px; font-size: 17px; color: var(--soft); max-width: 30em; }
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .how3 { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+  .how3 svg { display: block; width: 100%; height: auto; background: #FBFBFD; border-bottom: 1px solid var(--line); }
+  .how3 div { padding: 14px 16px 16px; }
+  .how3 b { display: block; font-size: 16px; }
+  .how3 span { color: var(--soft); font-size: 14px; line-height: 1.4; display: block; margin-top: 2px; }
+
+  /* ---- Glyph is reading ---- */
+  .reading { display: flex; align-items: center; gap: 12px; padding: 13px 16px; margin-bottom: 14px; background: var(--ink); color: #fff; border-radius: var(--r-lg); font-weight: 600; position: relative; overflow: hidden; }
+  .reading svg { font-size: 20px; color: var(--mark); animation: turn 2.4s linear infinite; }
+  .reading::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--mark); animation: sweep 1.3s cubic-bezier(.6,0,.4,1) infinite; }
+  @keyframes turn { to { transform: rotate(360deg); } }
+
+  /* ---- the newest answer ---- */
+  .now { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--lift); padding: 22px 26px 24px; margin-bottom: 26px; }
+  .now::after { content: ""; display: block; clear: both; }
+  .now.fresh { animation: arrive .45s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(10px); } }
+  .meta { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .tag { display: inline-flex; align-items: center; gap: 7px; background: var(--ink); color: #fff; border-radius: 999px; padding: 5px 13px 5px 10px; font-size: 13px; font-weight: 600; }
+  .tag svg { color: var(--mark); font-size: 15px; }
+  .tag.error { background: var(--bad); } .tag.error svg { color: #fff; }
+  .took { font-size: 13px; color: var(--soft); font-variant-numeric: tabular-nums; }
+  .took b { color: var(--text); font-weight: 600; }
+  .snip { float: right; width: 36%; min-width: 160px; max-width: 250px; margin: -4px -6px 12px 22px; transform: rotate(2.2deg); }
+  .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: #fff; border: 5px solid #fff; border-radius: 3px; box-shadow: 0 0 0 1px var(--line-strong), 0 10px 22px -10px rgba(22,34,79,.45); }
+  .snip figcaption { margin-top: 7px; text-align: center; font-size: 12px; color: var(--faint); transform: rotate(-2.2deg); }
+  .words { font: 400 clamp(27px, 2.5vw, 38px)/1.16 var(--serif); letter-spacing: -0.005em; color: var(--ink-deep); margin: 0; text-wrap: pretty; }
+  .words mark { color: inherit; background: linear-gradient(var(--mark), var(--mark)) no-repeat 0 88% / 100% 46%; padding: 0 .06em; margin: 0 -.06em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .now.fresh .words mark { animation: swipe .8s .25s cubic-bezier(.3,.7,.2,1) both; }
+  @keyframes swipe { from { background-size: 0% 46%; } }
+  .words .term { display: block; font-style: italic; font-size: 1.28em; line-height: 1.05; margin-bottom: .22em; width: fit-content; }
+  .about { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--soft); display: flex; gap: 8px; clear: both; }
+  .about b { color: var(--text); font-weight: 600; }
+  .now.error .words { font: 500 17px/1.5 var(--sans); color: var(--text); }
+
+  /* ---- highlights waiting for the study guide ---- */
+  .shelf { margin-bottom: 26px; }
+  .group { display: grid; grid-template-columns: 5px minmax(96px, auto) 1fr; gap: 0 12px; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px 9px 9px; margin-bottom: 8px; }
+  .group i { align-self: stretch; border-radius: 3px; min-height: 34px; }
+  .group .name { font-weight: 600; font-size: 14px; line-height: 1.25; }
+  .group .name small { display: block; font-weight: 500; font-size: 12px; color: var(--soft); }
+  .group .crops { display: flex; gap: 6px; overflow: hidden; justify-content: flex-end; }
+  .group .crops img { height: 32px; max-width: 100%; border-radius: 3px; display: block; }
+
+  /* ---- earlier answers, oldest at the bottom ---- */
+  .past { list-style: none; margin: 0; padding: 0; }
+  .past li { position: relative; display: grid; grid-template-columns: 30px 1fr auto; gap: 0 12px; padding: 0 0 20px; }
+  .past li::before { content: ""; position: absolute; left: 14.5px; top: 30px; bottom: 0; width: 1px; background: var(--line-strong); }
+  .past li:last-child { padding-bottom: 0; } .past li:last-child::before { display: none; }
+  .past .dot { width: 30px; height: 30px; border-radius: 50%; background: var(--paper); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 15px; color: var(--ink); }
+  .past .head { display: flex; align-items: baseline; gap: 10px; padding-top: 4px; }
+  .past .head b { font-size: 15px; }
+  .past .head span { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .past p { margin: 3px 0 0; color: #333B5E; line-height: 1.5; max-width: 34em; }
+  .past .thumb { width: 78px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 4px; border: 1px solid var(--line-strong); background: #fff; margin-top: 4px; }
+  .past li.error .dot { color: var(--bad); border-color: var(--bad); }
+
+  /* ---- study guide ---- */
+  .sheet { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--lift); padding: 34px 40px 38px; position: relative; }
+  .sheet .acts { position: absolute; right: 22px; top: 22px; display: flex; gap: 6px; }
+  .sheet .acts button { border: 1px solid var(--line-strong); background: var(--paper); border-radius: var(--r); padding: 5px 11px; font-size: 13px; font-weight: 600; }
+  .sheet .acts button:hover { border-color: var(--ink); }
+  #guideText h1 { font: 400 46px/1 var(--serif); letter-spacing: -0.015em; margin: 0 0 6px; color: var(--ink); }
+  #guideText h1 + p { color: var(--soft); margin: 0 0 6px; }
+  #guideText h2 { display: flex; align-items: center; gap: 10px; font-size: 17px; margin: 28px 0 8px; padding-bottom: 7px; border-bottom: 1px solid var(--line); }
+  #guideText h2 i { width: 12px; height: 20px; border-radius: 3px; flex: none; }
+  #guideText ul { margin: 0; padding: 0; list-style: none; }
+  #guideText li { position: relative; padding: 5px 0 5px 18px; font-size: 16px; line-height: 1.5; max-width: 36em; }
+  #guideText li::before { content: ""; position: absolute; left: 2px; top: .95em; width: 6px; height: 1.5px; background: var(--faint); }
+  #guideText p { margin: 4px 0; color: var(--soft); }
+  .blank { text-align: left; padding: 6px 0 0; }
+  .blank h3 { font: 400 clamp(34px, 3.4vw, 48px)/1.05 var(--serif); letter-spacing: -0.01em; margin: 12px 0 12px; color: var(--ink); }
+  .blank p { margin: 0 0 22px; font-size: 16px; color: var(--soft); max-width: 30em; }
+
+  /* ---- bottom bar ---- */
+  .foot { display: flex; align-items: center; gap: 14px; padding: 12px 32px 16px; border-top: 1px solid var(--line); background: var(--desk); }
+  .keys { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .key { display: inline-flex; align-items: center; gap: 7px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 13px; color: var(--soft); white-space: nowrap; }
+  .key .ic { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--mark); display: grid; place-items: center; font-size: 12px; }
+  .key b { color: var(--text); font-weight: 600; }
+  .key .sws { display: inline-flex; gap: 2px; padding-left: 4px; }
+  .key .sws i { width: 8px; height: 16px; border-radius: 2px; }
+  .btn { flex: none; background: var(--ink); color: #fff; border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 600; font-size: 14px; }
+  .btn:hover { background: var(--ink-deep); }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .foot .btn { margin-left: auto; }
   .c-yellow { background: var(--yellow); } .c-green { background: var(--green); } .c-blue { background: var(--blue); } .c-pink { background: var(--pink); }
-  .row.error .t { color: var(--bad); }
 
-  #guideText { max-width: 40em; }
-  #guideText h1 { font-size: 28px; letter-spacing: -0.015em; margin: 0 0 2px; }
-  #guideText h2 { font-size: 17px; margin: 24px 0 6px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
-  #guideText ul { margin: 6px 0; padding-left: 20px; } #guideText li { margin: 3px 0; }
-  #guideText p { margin: 2px 0; color: var(--soft); }
-
-  .foot { border-top: 1px solid var(--line); padding-top: 12px; display: flex; align-items: center; gap: 16px; }
-  .how { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--soft); min-width: 0; }
-  .how .i { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-  .how .i b { color: var(--text); font-weight: 600; }
-  .how svg { width: 16px; height: 16px; }
-  .how .sw { width: 10px; height: 14px; border-radius: 2px; }
-  .end { margin-left: auto; flex: none; background: var(--ink); color: #fff; border: 0; border-radius: var(--r); padding: 10px 16px; font-weight: 600; }
-  .end:hover { background: var(--ink-deep); }
-  .end:disabled { opacity: .6; cursor: default; }
-
+  @media (max-width: 1320px) { .key .d { display: none; } }
+  @media (max-width: 1180px) { .trio { grid-template-columns: 1fr; } .how3 { display: grid; grid-template-columns: 150px 1fr; align-items: center; } .how3 svg { border-bottom: 0; border-right: 1px solid var(--line); height: 100%; } }
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; height: auto; }
-    .eye { height: 72vh; } .say { min-height: 70vh; }
+    .eye { height: 72vh; } .say { min-height: 80vh; } .bar, .pane, .foot { padding-left: 18px; padding-right: 18px; }
   }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; } }
+  @media print { .eye, .bar, .foot, .acts { display: none !important; } .app { display: block; height: auto; } .sheet { border: 0; box-shadow: none; } }
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <symbol id="g-spark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></g></symbol>
-    <symbol id="g-underline" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v7a5 5 0 0 0 10 0V4"/><path d="M4 20.5h16"/></g></symbol>
-    <symbol id="g-ask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.4a2.8 2.8 0 1 1 4.2 2.4c-.9.6-1.5 1.1-1.5 2.2"/><path d="M12 17.2v.1"/></g></symbol>
-    <symbol id="g-nudge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></g></symbol>
-    <symbol id="g-error" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 4v10M12 19v.1"/></g></symbol>
+    <symbol id="g-spark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></g></symbol>
+    <symbol id="g-underline" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v7a5 5 0 0 0 10 0V4"/><path d="M4 20.5h16"/></g></symbol>
+    <symbol id="g-ask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.4a2.8 2.8 0 1 1 4.2 2.4c-.9.6-1.5 1.1-1.5 2.2"/><path d="M12 17.2v.1"/></g></symbol>
+    <symbol id="g-nudge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></g></symbol>
+    <symbol id="g-error" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 4v10M12 19v.1"/></g></symbol>
+    <symbol id="g-pen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/></g></symbol>
   </defs>
 </svg>
 
 <div class="app">
+  <!-- ============ left ============ -->
   <section class="eye" aria-label="What Glyph sees">
     <div class="brand">
       <svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="#FFE234" stroke-width="3.6" stroke-linecap="round"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8L6.8 25.2"/></g></svg>
@@ -161,28 +228,58 @@
     </div>
   </section>
 
+  <!-- ============ right ============ -->
   <section class="say" aria-label="What Glyph says">
-    <div class="top">
-      <button class="tab on" id="tFeed">Answers</button>
-      <button class="tab" id="tGuide">Study guide</button>
-      <div class="clock">Session <b id="clock">0:00</b></div>
-    </div>
-    <div class="pane" id="feed">
-      <div class="empty" id="feedEmpty">
-        <h3>Draw a spark next to a problem.</h3>
-        <p>Glyph reads the page and gives you one hint, never the answer. Underline a word for its meaning. Highlight what you want in your study guide.</p>
+    <header class="bar">
+      <div class="seg" role="tablist">
+        <button class="on" id="tFeed" role="tab">Answers</button>
+        <button id="tGuide" role="tab">Study guide <span class="n hide" id="tCount">0</span></button>
       </div>
+      <div class="clock" title="Session length"><i></i><span>Session</span><b id="clock">0:00</b></div>
+    </header>
+
+    <div class="pane" id="feed">
+      <div class="intro" id="intro">
+        <h1>Mark the page.<br><em>Glyph answers.</em></h1>
+        <p>Keep working on paper. No typing, nothing to switch to. Three marks are all you need.</p>
+        <div class="trio">
+          <div class="how3">
+            <svg viewBox="0 0 200 104" aria-hidden="true"><g fill="#D5DAE8"><rect x="18" y="24" width="96" height="7" rx="3.5"/><rect x="18" y="42" width="118" height="7" rx="3.5"/><rect x="18" y="60" width="74" height="7" rx="3.5"/><rect x="18" y="78" width="102" height="7" rx="3.5"/></g><g stroke="#16224F" stroke-width="3.2" stroke-linecap="round" transform="translate(164 46)"><path d="M0-15V15M-15 0H15M-10.6-10.6L10.6 10.6M10.6-10.6L-10.6 10.6"/></g></svg>
+            <div><b>Draw a spark</b><span>One hint for that problem. Never the answer.</span></div>
+          </div>
+          <div class="how3">
+            <svg viewBox="0 0 200 104" aria-hidden="true"><g fill="#D5DAE8"><rect x="18" y="24" width="150" height="7" rx="3.5"/><rect x="18" y="46" width="52" height="7" rx="3.5"/><rect x="134" y="46" width="44" height="7" rx="3.5"/><rect x="18" y="74" width="118" height="7" rx="3.5"/></g><rect x="78" y="46" width="48" height="7" rx="3.5" fill="#16224F"/><path d="M76 61c12-3 34 2 52-1" fill="none" stroke="#16224F" stroke-width="3" stroke-linecap="round"/></svg>
+            <div><b>Underline a word</b><span>Its meaning, in the context of your page.</span></div>
+          </div>
+          <div class="how3">
+            <svg viewBox="0 0 200 104" aria-hidden="true"><rect x="12" y="38" width="160" height="19" rx="3" fill="#FFE234"/><rect x="12" y="70" width="112" height="19" rx="3" fill="#5ED67E"/><g fill="#9AA3C2"><rect x="18" y="24" width="124" height="7" rx="3.5" fill="#D5DAE8"/><rect x="18" y="44" width="146" height="7" rx="3.5"/><rect x="18" y="76" width="98" height="7" rx="3.5"/></g></svg>
+            <div><b>Highlight a line</b><span>Saved by color for your study guide.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reading hide" id="reading"><svg class="g"><use href="#g-spark"/></svg><span>Reading your mark</span></div>
       <article class="now hide" id="now" aria-live="polite"></article>
-      <div class="earlier hide" id="earlier"><h4>Earlier</h4><div id="rows"></div></div>
+      <section class="shelf hide" id="shelf"><h4 class="label">Saved for your study guide</h4><div id="groups"></div></section>
+      <section class="hide" id="earlier"><h4 class="label">Earlier</h4><ol class="past" id="rows"></ol></section>
     </div>
+
     <div class="pane hide" id="guide">
-      <div class="empty" id="guideEmpty"><h3>Your study guide is built from your highlights.</h3><p>End the session and Glyph sorts everything you highlighted by color, with the words you looked up.</p></div>
-      <article id="guideText"></article>
+      <div class="blank" id="guideEmpty">
+        <h3>Your study guide<br><em>writes itself.</em></h3>
+        <p id="guideHint">Highlight as you read. When you finish, Glyph sorts every highlight by color and adds the words you looked up.</p>
+        <button class="btn" id="make2">Build it now</button>
+      </div>
+      <div class="sheet hide" id="sheet">
+        <div class="acts"><button id="copy">Copy</button><button id="print">Print</button></div>
+        <article id="guideText"></article>
+      </div>
     </div>
-    <div class="foot">
-      <div class="how" id="how"></div>
-      <button class="end" id="make">End session</button>
-    </div>
+
+    <footer class="foot">
+      <div class="keys" id="keys"></div>
+      <button class="btn" id="make">End session</button>
+    </footer>
   </section>
 </div>
 
@@ -191,23 +288,26 @@ const $ = id => document.getElementById(id);
 const ANSWERS = ['hint', 'explain', 'define', 'nudge', 'error'];
 const ICON = { hint: 'spark', define: 'underline', explain: 'ask', nudge: 'nudge', error: 'error' };
 const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', nudge: 'Keep going', error: 'Problem' };
-let lastId = 0, legendDone = false, current = null, answers = 0, big = 'page';
+let lastId = 0, legend = null, current = null, answers = 0, big = 'page', guideMd = '';
+const hl = {};   // color -> {label, ids: []}
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
 function icon(name) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  u.setAttribute('href', '#g-' + name); s.append(u); s.setAttribute('aria-hidden', 'true'); return s;
+  u.setAttribute('href', '#g-' + name); s.append(u); s.setAttribute('class', 'g'); s.setAttribute('aria-hidden', 'true'); return s;
 }
 const secs = n => (n == null ? '' : (n < 10 ? n.toFixed(1) : Math.round(n)) + ' s');
 const clock = t => Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 
+/* ---------- status ---------- */
 function showStatus(s) {
-  const st = $('state');
   const watching = s.text.startsWith('Watching');
-  st.className = 'state ' + (s.busy ? 'busy' : watching ? '' : 'wait');
+  $('state').className = 'state ' + (s.busy ? 'busy' : watching ? '' : 'wait');
   $('stateText').textContent = s.busy ? 'Reading your mark' : s.text;
   $('stage').classList.toggle('busy', !!s.busy);
+  $('reading').classList.toggle('hide', !s.busy);
   $('sLast').textContent = s.last_seconds == null ? '–' : secs(s.last_seconds);
   $('sHl').textContent = s.highlights;
   $('clock').textContent = clock(s.session_seconds || 0);
@@ -218,53 +318,82 @@ function showStatus(s) {
   $('note').classList.toggle('hide', !notes.length);
 }
 
-function showLegend(l) {
-  const box = $('how'); box.textContent = '';
-  const add = (ic, name, does) => { const i = el('span', 'i'); i.append(icon(ic), el('b', '', name), does); box.append(i); };
-  const verb = { hint: 'gets a hint', explain: 'gets an explanation', define: 'gets the meaning' };
-  (l.symbols || []).forEach(s => add(s.action === 'hint' ? 'spark' : 'ask', s.name[0].toUpperCase() + s.name.slice(1), verb[s.action] || s.action));
+/* ---------- the marks, along the bottom ---------- */
+function showKeys(l) {
+  const box = $('keys'); box.textContent = '';
+  const verb = { hint: 'for a hint', explain: 'for an explanation', define: 'for the meaning' };
+  const add = (ic, name, does) => { const k = el('span', 'key'), i = el('span', 'ic'); i.append(icon(ic)); k.title = name + ' ' + does; k.append(i, el('b', '', name), el('span', 'd', does)); box.append(k); };
+  (l.symbols || []).forEach(s => add(s.action === 'hint' ? 'spark' : 'ask', cap(s.name), verb[s.action] || s.action));
   if (l.marks && l.marks.underline) add('underline', 'Underline', verb[l.marks.underline] || l.marks.underline);
-  Object.entries(l.highlight_colors || {}).forEach(([c, label]) => {
-    const i = el('span', 'i'); i.append(el('span', 'sw c-' + c), label); box.append(i);
-  });
-}
-
-function rowFor(e) {
-  const r = el('div', 'row ' + e.kind);
-  if (e.kind === 'highlight') {
-    r.append(el('span', 'chip c-' + (e.meta.color || '')), el('span', 't', e.body + ' highlight'), el('span', 'when', e.time));
-    const b = el('div', 'b'); const img = el('img'); img.alt = 'The highlighted text';
-    img.onerror = () => r.remove(); img.src = '/api/highlight/' + e.meta.highlight_id + '.jpg?t=' + Date.now();
-    b.append(img); r.append(b);
-  } else {
-    r.append(icon(ICON[e.kind] || 'spark'), el('span', 't', e.kind === 'define' && e.meta.target ? e.meta.target : (KIND[e.kind] || e.title)), el('span', 'when', e.time), el('div', 'b', e.body));
+  const colors = Object.entries(l.highlight_colors || {});
+  if (colors.length) {
+    const k = el('span', 'key'), i = el('span', 'ic'), sw = el('span', 'sws'); i.append(icon('pen'));
+    colors.forEach(([c, label]) => { const x = el('i', 'c-' + c); x.title = label; sw.append(x); });
+    k.title = colors.map(([c, label]) => cap(c) + ': ' + label).join('\n');
+    k.append(i, el('b', '', 'Highlight'), el('span', 'd', 'to save'), sw); box.append(k);
   }
-  return r;
 }
 
+/* ---------- the newest answer ---------- */
 function showNow(e, fresh) {
   const n = $('now'); n.textContent = ''; n.className = 'now ' + e.kind + (fresh ? ' fresh' : '');
-  const k = el('div', 'kind'); k.append(icon(ICON[e.kind] || 'spark'), el('span', '', KIND[e.kind] || e.title));
-  if (e.meta && e.meta.seconds != null) k.append(el('span', 'took', 'answered in ' + secs(e.meta.seconds)));
-  const w = el('p', 'words');
-  if (e.kind === 'define' && e.meta.target) { w.append(el('mark', '', e.meta.target), ' ' + e.body); }
-  else { // the highlighter runs under the first sentence
-    const m = e.body.match(/^(.+?[.?!])(\s+.*)?$/s);
-    if (m && m[2] && e.kind !== 'error') w.append(el('mark', '', m[1]), m[2]); else if (e.kind === 'error') w.textContent = e.body; else w.append(el('mark', '', e.body));
+  const m = e.meta || {};
+  const meta = el('div', 'meta'), tag = el('span', 'tag ' + e.kind);
+  tag.append(icon(ICON[e.kind] || 'spark'), KIND[e.kind] || e.title); meta.append(tag);
+  if (m.seconds != null) { const t = el('span', 'took'); t.append('answered in ', el('b', '', secs(m.seconds))); meta.append(t); }
+  n.append(meta);
+  if (m.snip) {
+    const f = el('figure', 'snip'), img = el('img'); img.alt = 'The part of your page Glyph read';
+    img.onerror = () => f.remove(); img.src = '/api/snip/' + m.snip + '.jpg';
+    f.append(img, el('figcaption', '', 'your mark')); n.append(f);
   }
-  n.append(k, w);
-  if (e.kind === 'error') n.append(el('div', 'about', 'Glyph will try again by itself. If this keeps happening, check the key in .env and your connection.'));
-  else if (e.meta && e.meta.target && e.kind !== 'define') n.append(el('div', 'about', 'About: ' + e.meta.target));
+  const w = el('p', 'words');
+  if (e.kind === 'error') w.textContent = e.body;
+  else if (e.kind === 'define' && m.target) { const t = el('span', 'term'); t.append(el('mark', '', m.target)); w.append(t, e.body); }
+  else { // the highlighter runs under the first sentence
+    const s = e.body.match(/^(.+?[.?!])(\s+[\s\S]*)?$/);
+    if (s && s[2]) w.append(el('mark', '', s[1]), s[2]); else w.append(el('mark', '', e.body));
+  }
+  n.append(w);
+  if (e.kind === 'error') { const a = el('div', 'about'); a.append('Glyph will try again by itself. If this keeps happening, check the key in .env and your connection.'); n.append(a); }
+  else if (m.target && e.kind !== 'define') { const a = el('div', 'about'); a.append(el('b', '', 'About'), m.target); n.append(a); }
+}
+
+function pastRow(e) {
+  const m = e.meta || {}, li = el('li', e.kind), dot = el('span', 'dot'); dot.append(icon(ICON[e.kind] || 'spark'));
+  const body = el('div'), head = el('div', 'head');
+  head.append(el('b', '', e.kind === 'define' && m.target ? m.target : (KIND[e.kind] || e.title)), el('span', '', clock(e.at || 0)));
+  body.append(head, el('p', '', e.body)); li.append(dot, body);
+  if (m.snip) { const img = el('img', 'thumb'); img.alt = ''; img.onerror = () => img.remove(); img.src = '/api/snip/' + m.snip + '.jpg'; li.append(img); }
+  return li;
+}
+
+/* ---------- highlights, grouped by color ---------- */
+function showShelf() {
+  const box = $('groups'); box.textContent = ''; let total = 0;
+  const order = Object.keys((legend && legend.highlight_colors) || {});
+  Object.keys(hl).sort((a, b) => order.indexOf(a) - order.indexOf(b)).forEach(color => {
+    const g = hl[color]; if (!g.ids.length) return; total += g.ids.length;
+    const row = el('div', 'group'), name = el('div', 'name', g.label), crops = el('div', 'crops');
+    name.append(el('small', '', g.ids.length + (g.ids.length === 1 ? ' highlight' : ' highlights')));
+    g.ids.slice(-3).forEach(id => { const img = el('img'); img.alt = 'Highlighted text'; img.onerror = () => img.remove(); img.src = '/api/highlight/' + id + '.jpg?t=' + Date.now(); crops.append(img); });
+    row.append(el('i', 'c-' + color), name, crops); box.append(row);
+  });
+  $('shelf').classList.toggle('hide', !total);
+  $('tCount').textContent = total; $('tCount').classList.toggle('hide', !total);
 }
 
 function addEvent(e, fresh) {
-  $('feedEmpty').classList.add('hide');
+  $('intro').classList.add('hide');
   if (ANSWERS.includes(e.kind)) {
-    if (current) { $('rows').prepend(rowFor(current)); $('earlier').classList.remove('hide'); }
+    if (current) { $('rows').prepend(pastRow(current)); $('earlier').classList.remove('hide'); }
     current = e; $('now').classList.remove('hide'); showNow(e, fresh);
     if (e.kind !== 'error') { answers++; $('sAnswers').textContent = answers; }
-  } else {
-    $('rows').prepend(rowFor(e)); $('earlier').classList.remove('hide');
+    if (fresh) $('feed').scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (e.kind === 'highlight') {
+    const c = e.meta.color || 'yellow';
+    (hl[c] = hl[c] || { label: e.body, ids: [] }).ids.push(e.meta.highlight_id);
+    showShelf();
   }
 }
 
@@ -272,25 +401,28 @@ async function poll() {
   try {
     const first = lastId === 0;
     const d = await (await fetch('/api/state?since=' + lastId)).json();
+    if (!legend) { legend = d.legend; showKeys(legend); }
     showStatus(d.status);
-    if (!legendDone) { showLegend(d.legend); legendDone = true; }
     d.events.forEach(e => addEvent(e, !first));
     lastId = d.last_id;
+    if (first && location.search === '?guide') build();  // /?guide opens straight on the study guide
   } catch (err) {
     $('state').className = 'state bad'; $('stateText').textContent = 'Glyph is not running';
   }
   setTimeout(poll, 600);
 }
 
+/* ---------- study guide ---------- */
 function renderGuide(md) {
   const out = $('guideText'); out.textContent = ''; let list = null;
+  const colorOf = {}; Object.entries((legend && legend.highlight_colors) || {}).forEach(([c, label]) => colorOf[label] = c);
   const inline = (p, text) => text.split(/(\*\*[^*]+\*\*)/).forEach(part => {
     if (part.startsWith('**') && part.endsWith('**') && part.length > 4) p.append(el('b', '', part.slice(2, -2))); else if (part) p.append(part);
   });
   md.split('\n').forEach(line => {
     const t = line.trim();
     if (!t) { list = null; return; }
-    if (t.startsWith('## ')) { list = null; out.append(el('h2', '', t.slice(3))); }
+    if (t.startsWith('## ')) { list = null; const h = el('h2'), name = t.slice(3); if (colorOf[name]) h.append(el('i', 'c-' + colorOf[name])); h.append(name); out.append(h); }
     else if (t.startsWith('# ')) { list = null; out.append(el('h1', '', t.slice(2))); }
     else if (/^[-*] /.test(t)) { if (!list) { list = el('ul'); out.append(list); } const li = el('li'); inline(li, t.slice(2)); list.append(li); }
     else { list = null; const p = el('p'); inline(p, t); out.append(p); }
@@ -308,6 +440,18 @@ function view(which) {
   $('pipLabel').textContent = other === 'raw' ? 'Camera' : 'Page';
   $('seeingLabel').textContent = which === 'page' ? 'What Glyph sees: your page, flattened' : 'What Glyph sees: the camera, with your sheet outlined';
 }
+async function build() {
+  const b = $('make'), b2 = $('make2'); b.disabled = b2.disabled = true; b.textContent = b2.textContent = 'Building your study guide';
+  tab('guide');
+  let problem = '';
+  try {
+    const d = await (await fetch('/api/study-guide', {method: 'POST'})).json();
+    if (d.ok) { guideMd = d.markdown; renderGuide(guideMd); $('guideEmpty').classList.add('hide'); $('sheet').classList.remove('hide'); }
+    else problem = 'The study guide could not be built: ' + d.error;
+  } catch (err) { problem = 'Glyph is not running, so the study guide could not be built.'; }
+  if (problem) { $('sheet').classList.add('hide'); $('guideEmpty').classList.remove('hide'); $('guideHint').textContent = problem; }
+  b.disabled = b2.disabled = false; b.textContent = guideMd ? 'Rebuild study guide' : 'End session'; b2.textContent = 'Build it now';
+}
 
 $('tFeed').onclick = () => tab('feed');
 $('tGuide').onclick = () => tab('guide');
@@ -316,15 +460,11 @@ $('vRaw').onclick = () => view('raw');
 $('pip').onclick = () => view(big === 'page' ? 'raw' : 'page');
 $('look').onclick = () => fetch('/api/look', {method: 'POST'});
 $('rotate').onclick = () => fetch('/api/rotate', {method: 'POST'});
-$('make').onclick = async () => {
-  const b = $('make'); b.disabled = true; b.textContent = 'Building your study guide';
-  tab('guide');
-  try {
-    const d = await (await fetch('/api/study-guide', {method: 'POST'})).json();
-    if (d.ok) { $('guideEmpty').classList.add('hide'); renderGuide(d.markdown); }
-    else { $('guideEmpty').classList.remove('hide'); $('guideEmpty').querySelector('p').textContent = 'The study guide could not be built: ' + d.error; }
-  } catch (err) { $('guideEmpty').querySelector('p').textContent = 'Glyph is not running, so the study guide could not be built.'; }
-  b.disabled = false; b.textContent = 'Rebuild study guide';
+$('make').onclick = build; $('make2').onclick = build;
+$('print').onclick = () => window.print();
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(guideMd); $('copy').textContent = 'Copied'; } catch (err) { $('copy').textContent = 'Copy failed'; }
+  setTimeout(() => $('copy').textContent = 'Copy', 1600);
 };
 poll();
 </script>

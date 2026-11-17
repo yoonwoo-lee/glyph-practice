@@ -112,7 +112,7 @@ python -m tests.test_tools
   sheet, model errors.
 - `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
   a tilted camera, sensor grain and flicker.
-- `test_tools` (5): timing log, lighting correction, the tuning page.
+- `test_tools` (6): timing log, the picture saved with each answer, lighting correction, the tuning page.
 
 Known limit from these: a strong glare patch directly on a highlight splits or hides it.
 
