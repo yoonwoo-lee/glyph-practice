@@ -123,16 +123,48 @@ def clean_result(data, legend: dict) -> dict:
     return out
 
 
-def _model_is_gone(err: Exception) -> bool:
-    """True for "this model does not exist / is closed to this key", which retrying cannot fix."""
-    text = str(err).lower()
-    code = getattr(err, "code", None) or getattr(err, "status_code", None)
-    return code == 404 or "not_found" in text or "no longer available" in text or "is not found" in text
+class QuotaError(BrainError):
+    """Every model is over its usage limit for now. `retry_after` is seconds until the next try."""
+
+    def __init__(self, message: str, retry_after: float) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
-def _model_is_slow(err: Exception) -> bool:
+def _kind(err: Exception) -> str:
+    """Sort a failed model call into what to do about it."""
     text = (type(err).__name__ + " " + str(err)).lower()
-    return "timeout" in text or "timed out" in text or "deadline" in text or "504" in text
+    code = getattr(err, "code", None) or getattr(err, "status_code", None)
+    if code == 429 or "resource_exhausted" in text or "quota" in text:
+        return "quota"  # over the usage limit: leave this model alone for a while
+    if code == 404 or "not_found" in text or "no longer available" in text or "is not found" in text:
+        return "gone"  # this key can never use this model
+    if code in (401, 403) or "api key not valid" in text or "api_key_invalid" in text or "permission_denied" in text:
+        return "key"  # the key itself was refused
+    if code == 504 or "timeout" in text or "timed out" in text or "deadline" in text:
+        return "slow"
+    if code == 400 or "invalid_argument" in text:
+        return "refused"  # the request was not accepted as sent
+    if any(w in text for w in ("connecterror", "connection", "getaddrinfo", "name or service", "nodename nor servname", "unreachable")):
+        return "offline"
+    return "busy"  # overloaded (500 / 503) or unknown: worth one more try
+
+
+def _retry_hint(err: Exception) -> Optional[float]:
+    """Gemini often says how long to wait ("Please retry in 23.5s")."""
+    m = re.search(r"retry in ([0-9.]+) ?s", str(err), re.I) or re.search(r"retrydelay\W+([0-9.]+)s", str(err), re.I)
+    return float(m.group(1)) if m else None
+
+
+WHY = {
+    "quota": "over its usage limit",
+    "gone": "not available for this key",
+    "slow": "too slow",
+    "refused": "refused the request",
+    "busy": "busy",
+    "offline": "could not be reached",
+    "key": "refused the key",
+}
 
 
 class Brain:
@@ -163,6 +195,9 @@ class Brain:
         self.models = list(models or [config.LLM_MODEL] + [m for m in config.LLM_FALLBACKS if m != config.LLM_MODEL])
         self.last_model = ""  # which model actually answered the last call
         self._no_budget = set()  # models that refused the thinking setting
+        self._resting = {}  # model -> time until which it is over its usage limit
+        self._quota_hits = {}  # model -> how many times in a row it has been over the limit
+        self.last_errors = []  # (model, what went wrong, detail) for the last call
 
     def _generate(self, images: List[bytes], text: str, system: Optional[str], want_json: bool) -> str:
         types = self._types
@@ -174,8 +209,6 @@ class Brain:
             max_output_tokens=4096,
             temperature=0.3,
         )
-        # Optional: cap the model's thinking for faster answers (GLYPH_THINKING_BUDGET=0 turns it off
-        # on models that allow that). Left alone unless you set it.
         cfg_plain = types.GenerateContentConfig(**options)
         # Thinking is off by default: on the real camera it pushed full-page reads past the timeout.
         # GLYPH_THINKING_BUDGET changes it (-1 lets the model decide). A model that refuses the
@@ -184,41 +217,81 @@ class Brain:
         cfg_quick = cfg_plain
         if budget.lstrip("-").isdigit() and int(budget) >= 0:
             cfg_quick = types.GenerateContentConfig(thinking_config=types.ThinkingConfig(thinking_budget=int(budget)), **options)
-        last = None
+
+        def ask(model: str) -> str:
+            cfg = cfg_plain if model in self._no_budget else cfg_quick
+            try:
+                r = self._client.models.generate_content(model=model, contents=parts, config=cfg)
+            except Exception as e:
+                if cfg is cfg_plain or _kind(e) != "refused":
+                    raise
+                # Most likely the thinking setting: ask once more without it.
+                self._no_budget.add(model)
+                print(f"[glyph] {model} refused the request with the thinking setting; asking without it")
+                r = self._client.models.generate_content(model=model, contents=parts, config=cfg_plain)
+            return r.text or ""
+
+        # Every request counts against the key's allowance, so nothing is asked twice without a
+        # reason: a model over its limit is left alone for a while, a model that timed out is not
+        # asked again in the same round, and only a "busy" answer earns one more try.
+        self.last_errors = []
+        now = time.time()
+        ready = [m for m in self.models if self._resting.get(m, 0.0) <= now]
+        if self.models and not ready:
+            raise self._quota_error(now)
         for attempt in range(2):
-            for model in list(self.models):
+            again = []
+            for model in ready:
+                hint = None
                 try:
-                    try:
-                        cfg = cfg_plain if model in self._no_budget else cfg_quick
-                        r = self._client.models.generate_content(model=model, contents=parts, config=cfg)
-                    except Exception as e:
-                        if cfg is cfg_plain or "thinking" not in str(e).lower():
-                            raise
-                        self._no_budget.add(model)
-                        print(f"[glyph] {model} does not take the thinking setting; asking without it")
-                        r = self._client.models.generate_content(model=model, contents=parts, config=cfg_plain)
-                    if r.text:
+                    answer = ask(model)
+                    if answer:
                         self.last_model = model
-                        return r.text
-                    last = BrainError(f"{model} returned no text")
-                except Exception as e:  # overloaded, rate-limited, timed out, unknown model, ...
-                    last = e
-                    print(f"[glyph] {model} failed: {str(e)[:90]}")
-                    if _model_is_gone(e) and model in self.models:
-                        # This key can never use this model: stop trying it for the rest of the session.
-                        self.models.remove(model)
-                        print(f"[glyph] {model} is not available for this key; skipping it from now on")
-                    elif _model_is_slow(e) and model in self.models and len(self.models) > 1:
-                        # Too slow right now: try it last from here on, so it stops holding up answers.
-                        self.models.remove(model)
-                        self.models.append(model)
-                        print(f"[glyph] {model} timed out; trying the other models first from now on")
-            if not self.models:
+                        self._quota_hits.pop(model, None)
+                        return answer
+                    kind, note = "busy", "returned no text"
+                except Exception as e:
+                    kind, note = _kind(e), str(e)
+                    hint = _retry_hint(e)
+                self.last_errors.append((model, kind, note[:200]))
+                print(f"[glyph] {model} failed ({WHY[kind]}): {note[:90]}")
+                if kind == "key":
+                    raise BrainError("Gemini refused the key in .env. Check that GEMINI_API_KEY is right.")
+                if kind == "offline":
+                    raise BrainError("Could not reach Gemini. Check the internet connection.")
+                if kind == "gone" and model in self.models:
+                    self.models.remove(model)
+                    print(f"[glyph] {model} is not available for this key; skipping it from now on")
+                elif kind == "quota":
+                    hits = self._quota_hits.get(model, 0) + 1
+                    self._quota_hits[model] = hits
+                    rest = hint if hint else 60.0 * 2 ** (hits - 1)
+                    self._resting[model] = time.time() + max(5.0, min(900.0, rest))
+                elif kind == "slow" and model in self.models and len(self.models) > 1:
+                    # Too slow right now: try it last from here on, so it stops holding up answers.
+                    self.models.remove(model)
+                    self.models.append(model)
+                elif kind == "busy":
+                    again.append(model)
+            if not again:
                 break
-            time.sleep(1.5)
+            ready = again
+            time.sleep(1.0)
         if not self.models:
             raise BrainError("None of the Gemini models are available for this key. Set GLYPH_MODEL in .env to one that is.")
-        raise BrainError(f"The vision model did not answer: {str(last)[:160]}")
+        now = time.time()
+        if all(self._resting.get(m, 0.0) > now for m in self.models):
+            raise self._quota_error(now)
+        tried = "; ".join(f"{m} {WHY[k]}" for m, k, _ in self.last_errors) or "no model was ready"
+        raise BrainError(f"The vision model did not answer ({tried}).")
+
+    def _quota_error(self, now: float) -> QuotaError:
+        wait = max(5.0, min(self._resting.get(m, now) for m in self.models) - now)
+        return QuotaError(
+            "Gemini's usage limit for this key is used up for now. Free keys get a small allowance per minute "
+            f"and per day. Glyph will try again in about {int(round(wait))} s.",
+            retry_after=wait,
+        )
 
     def analyze(self, page_jpg: bytes, crop_jpg: Optional[bytes] = None, context: str = "", shape_hint=None) -> dict:
         images = [page_jpg] + ([crop_jpg] if crop_jpg else [])

@@ -14,7 +14,7 @@ import numpy as np
 
 from . import config
 from .highlights import DRAW_COLORS, detect_highlights
-from .page import cover_mask, ink_mask, normalize_light, page_gray
+from .page import cover_mask, ink_mask, normalize_light, page_gray, page_saturation
 
 # name -> (lowest, highest, step, what it does)
 SLIDERS = {
@@ -122,7 +122,8 @@ def render(engine, which: str) -> bytes:
         base = engine.base_gray
         if base is not None and base.shape[:2] == page.shape[:2]:
             _, hl = detect_highlights(page)
-            m = cv2.dilate(cover_mask(page_gray(page), base, hl), np.ones((31, 31), np.uint8))
+            m = cover_mask(page_gray(page), base, hl, page_saturation(page), engine.base_sat)
+            m = cv2.dilate(m, np.ones((31, 31), np.uint8))
             out[m > 0] = (70, 70, 220)
     else:
         out = page

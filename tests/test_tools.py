@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from glyph import config, demo, tune  # noqa: E402
 from glyph import engine as engine_mod  # noqa: E402
 from glyph.page import find_page_quad, normalize_light, warp_page  # noqa: E402
-from tests.test_pipeline import run  # noqa: E402
+from tests.test_pipeline import kinds, run  # noqa: E402
 
 
 def _page(step="highlights", change=None):
@@ -135,11 +135,16 @@ def test_covered_highlight_is_not_saved_again():
     assert len(store.update(other, page)) == 1
 
 
-def test_dead_model_is_dropped_and_the_next_one_answers():
-    from glyph import brain as brain_mod
+class _Err(Exception):
+    def __init__(self, code, text):
+        super().__init__(text)
+        self.code = code
 
-    class Gone(Exception):
-        code = 404
+
+def _brain_with(models, behave):
+    """A Brain wired to a fake Gemini. behave(model, config, n) returns text or raises."""
+    from glyph import brain as brain_mod
+    from google.genai import types
 
     class Models:
         def __init__(self):
@@ -147,23 +152,91 @@ def test_dead_model_is_dropped_and_the_next_one_answers():
 
         def generate_content(self, model, contents, config):
             self.asked.append(model)
-            if model == "old":
-                raise Gone("This model models/old is no longer available to new users.")
-            if model == "slow":
-                raise TimeoutError("timed out")
-            return type("R", (), {"text": '{"occluded": false, "triggers": []}'})()
-
-    from google.genai import types
+            return type("R", (), {"text": behave(model, config, len(self.asked))})()
 
     b = brain_mod.Brain.__new__(brain_mod.Brain)
     b._types, b.legend, b.system, b.last_model = types, config.load_legend(), "s", ""
-    b._no_budget = set()
-    b.models = ["old", "slow", "good"]
+    b._no_budget, b._resting, b._quota_hits, b.last_errors = set(), {}, {}, []
+    b.models = list(models)
     b._client = type("C", (), {"models": Models()})()
+    return b
+
+
+OK = '{"occluded": false, "triggers": []}'
+
+
+def test_dead_model_is_dropped_and_the_next_one_answers():
+    def behave(model, cfg, n):
+        if model == "old":
+            raise _Err(404, "This model models/old is no longer available to new users.")
+        if model == "slow":
+            raise TimeoutError("timed out")
+        return OK
+
+    b = _brain_with(["old", "slow", "good"], behave)
     assert b.analyze(b"jpg") == {"occluded": False, "triggers": []}
     assert b.last_model == "good" and b.models == ["good", "slow"], b.models  # dead one dropped, slow one last
     b.analyze(b"jpg")
     assert b._client.models.asked == ["old", "slow", "good", "good"], b._client.models.asked
+
+
+def test_model_over_its_limit_is_left_alone_for_a_while():
+    from glyph import brain as brain_mod
+
+    def behave(model, cfg, n):
+        if model == "a" or (model == "b" and n > 3):
+            raise _Err(429, "RESOURCE_EXHAUSTED. You exceeded your current quota. Please retry in 40s.")
+        return OK
+
+    b = _brain_with(["a", "b"], behave)
+    b.analyze(b"jpg")  # a is over its limit, b answers
+    b.analyze(b"jpg")  # a is resting: only b is asked
+    assert b._client.models.asked == ["a", "b", "b"], b._client.models.asked
+    try:
+        b.analyze(b"jpg")  # now b is over its limit too
+        raise AssertionError("expected a quota error")
+    except brain_mod.QuotaError as e:
+        assert 30 <= e.retry_after <= 41, e.retry_after
+        assert "usage limit" in str(e), str(e)
+    asked = len(b._client.models.asked)
+    try:
+        b.analyze(b"jpg")  # everything is resting: fail at once, without spending a request
+        raise AssertionError("expected a quota error")
+    except brain_mod.QuotaError:
+        pass
+    assert len(b._client.models.asked) == asked, b._client.models.asked
+
+
+def test_busy_model_gets_one_more_try_and_a_slow_one_does_not():
+    from glyph import brain as brain_mod
+
+    def behave(model, cfg, n):
+        if model == "busy":
+            raise _Err(503, "UNAVAILABLE. The model is overloaded.")
+        raise _Err(504, "DEADLINE_EXCEEDED")
+
+    b = _brain_with(["slow", "busy"], behave)
+    try:
+        b.analyze(b"jpg")
+        raise AssertionError("expected an error")
+    except brain_mod.BrainError as e:
+        assert "too slow" in str(e) and "busy" in str(e), str(e)
+    assert b._client.models.asked == ["slow", "busy", "busy"], b._client.models.asked
+
+
+def test_model_that_refuses_the_thinking_setting_is_asked_again_without_it():
+    seen = []
+
+    def behave(model, cfg, n):
+        seen.append(cfg.thinking_config is not None)
+        if cfg.thinking_config is not None:
+            raise _Err(400, "INVALID_ARGUMENT. Budget 0 is invalid. This model only works in thinking mode.")
+        return OK
+
+    b = _brain_with(["m"], behave)
+    b.analyze(b"jpg")
+    b.analyze(b"jpg")
+    assert seen == [True, False, False], seen  # asked with it once, then never again
 
 
 def test_client_uses_v1beta_one_attempt_and_a_timeout():
@@ -180,6 +253,7 @@ def test_client_uses_v1beta_one_attempt_and_a_timeout():
     assert opts.timeout == int(config.LLM_TIMEOUT_SECONDS * 1000) and opts.timeout >= 10000, opts.timeout  # Gemini's minimum
     assert opts.retry_options.attempts == 1, opts.retry_options
     assert not any(m.startswith("gemini-2.5") for m in b.models), b.models
+    assert b.models[0] == config.LLM_MODEL and len(b.models) == len(set(b.models)), b.models
 
 def _second_sheet():
     page = np.full((demo.PAGE_H, demo.PAGE_W, 3), 244, np.uint8)
@@ -257,6 +331,70 @@ def test_sheet_is_found_on_a_wooden_desk_with_a_shadow_across_it():
     want, _ = find_page_quad(demo.desk_scene(page))
     assert quad is not None and clean, "sheet not found"
     assert float(np.abs(quad - want).max()) < 12, np.abs(quad - want).max()
+
+def test_camera_is_chosen_by_what_it_sees():
+    from glyph import camera
+
+    desk = np.full((1080, 1920, 3), (60, 130, 190), np.uint8)  # just a desk: no sheet
+    sheet = demo.build_steps()["blank"]
+    said = []
+    real = camera.find_cameras
+    try:
+        camera.find_cameras = lambda max_index=5: [(0, sheet), (1, desk)]
+        assert camera.pick_camera(wait=0, say=said.append) == 0  # the one looking at paper, wherever it is
+        camera.find_cameras = lambda max_index=5: [(0, desk), (1, desk)]
+        assert camera.pick_camera(wait=0, say=said.append) == 1  # no paper anywhere: the phone comes last
+        camera.find_cameras = lambda max_index=5: [(0, desk)]
+        assert camera.pick_camera(wait=0, say=said.append) == 0  # only one camera: use it
+        seen = iter([[(0, desk)], [(0, desk), (1, sheet)]])
+        camera.find_cameras = lambda max_index=5: next(seen)
+        real_sleep, camera.time.sleep = camera.time.sleep, lambda s: None
+        try:
+            assert camera.pick_camera(wait=30, say=said.append) == 1  # waited, and the phone connected
+        finally:
+            camera.time.sleep = real_sleep
+        assert any("Waiting for a phone" in line for line in said), said
+    finally:
+        camera.find_cameras = real
+
+
+def test_blank_or_dark_view_is_not_sent_to_the_model():
+    dark = np.full((1080, 1920, 3), 25, np.uint8)
+    blank = demo.desk_scene(np.full((demo.PAGE_H, demo.PAGE_W, 3), 244, np.uint8))
+    for scene in (dark, blank):
+        engine, brain, session = run([scene], hold=2.0, read_first_page=True)
+        assert brain.calls == [], brain.calls
+
+
+def test_sheet_that_comes_back_is_not_read_in_full_again():
+    first = demo.build_steps()["blank"]
+    second = demo.desk_scene(_second_sheet())
+    engine, brain, session = run([first, second, first], hold=2.4, big_hold=0.6, read_first_page=True)
+    assert [c["full"] for c in brain.calls] == [True, True], brain.calls  # once per sheet, not three times
+
+
+def test_sheet_sliding_a_little_keeps_old_ink_old_and_new_ink_new():
+    page = demo.base_page()
+    before = demo.desk_scene(page)
+    demo.draw_spark(page)
+    after = demo.desk_scene(page, shift=(8, -6))  # the paper slid while the spark was drawn
+    engine, brain, session = run([before, after], hold=2.0)
+    assert len(brain.calls) == 1 and not brain.calls[0]["full"], brain.calls
+    w, h = brain.calls[0]["shape"]
+    assert max(w, h) <= 80, "only the spark is new, not the whole page: %r" % (brain.calls[0]["shape"],)
+    assert kinds(session) == ["hint"], kinds(session)
+
+
+def test_shadow_falling_on_the_page_is_not_a_cover_and_not_ink():
+    s = demo.build_steps()
+    shade = np.ones(s["blank"].shape[:2], np.float32)
+    cv2.ellipse(shade, (1000, 520), (300, 260), 0, 0, 360, 0.62, -1)
+    shade = cv2.GaussianBlur(shade, (0, 0), 30)[..., None]
+    dark = lambda f: (f.astype(np.float32) * shade).astype(np.uint8)  # noqa: E731
+    engine, brain, session = run([s["blank"], dark(s["blank"]), dark(s["spark"])], hold=1.6)
+    assert engine._cover is None, "a shadow must not count as something lying on the sheet"
+    assert len(brain.calls) == 1 and kinds(session) == ["hint"], (brain.calls, kinds(session))
+
 
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

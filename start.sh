@@ -17,8 +17,20 @@ if [ -f venv/Scripts/activate ]; then
 else
   source venv/bin/activate
 fi
-python -m pip install -q --upgrade pip
-pip install -q -r requirements.txt
+# Install the libraries only when requirements.txt has changed since the last install. That keeps
+# start-up quick, and means Glyph still starts where there is no internet (a venue's Wi-Fi, say).
+STAMP=venv/.requirements-installed
+if [ ! -f "$STAMP" ] || ! cmp -s requirements.txt "$STAMP"; then
+  python -m pip install -q --upgrade pip || true
+  if python -m pip install -q -r requirements.txt; then
+    cp requirements.txt "$STAMP"
+  elif python -c "import cv2, numpy, dotenv, fastapi, uvicorn, google.genai" 2>/dev/null; then
+    echo "[glyph] could not check for library updates (no internet?). Starting with what is installed."
+  else
+    echo "[glyph] could not install the libraries Glyph needs. Check the internet connection and run this again."
+    exit 1
+  fi
+fi
 
 if [ ! -f .env ]; then
   if [ -f ../talking-menu/agent/.env ] && grep -q '^GEMINI_API_KEY=' ../talking-menu/agent/.env; then

@@ -14,6 +14,59 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-18 (early morning), Yoon Woo's Claude
+
+Yoon Woo asked for everything that was shaky in the Nov 17 camera tests to be fixed or reinforced
+overnight. No camera and no Gemini calls were available, so the work was done against camera pictures
+saved during those tests (`sessions/<ts>/camera/`), replayed through the engine with camera noise
+added. All of it is on `main` and `camera-test`. 44 checks pass (12 + 9 + 23).
+
+**Done**
+- **Sheet outline:** corners now come from a line fitted to each side, and a sheet that reaches one
+  or two edges of the picture is accepted if it still has a sheet's proportions. The outline is
+  held fixed once a page is accepted and moves only when four frames in a row agree.
+- **New ink:** judged by how much darker a spot is than the remembered page nearby
+  (`ink_strength`, `steady_strength`, `new_ink` in `glyph/page.py`), using the middle of the last
+  three frames. Replaces the yes/no ink mask that let faint pencil through as "new ink".
+- **Sliding sheet:** when the outline moves, the remembered page is lined up with the page as
+  flattened now (`slip_between`, `Engine._line_up`). A mark drawn while the paper slid is still read.
+- **Shadows:** no longer count as something lying on the sheet (`cover_mask` now also looks at color).
+- **Requests:** a model over its usage limit rests for a minute or more; a slow model is not asked
+  twice in one read; only "busy" earns a second try; a blank or dark view and a sheet already read
+  are not read in full again. `timings.jsonl` rows have a `tried` list.
+- **Model order:** `gemini-3.5-flash-lite` first (it answered full pages in 1 to 6 s on Nov 17 when
+  the `-latest` names timed out). Thinking off by default.
+- **Start-up:** `--camera auto` is the default and picks the camera that sees a sheet; it waits and
+  explains how to connect the phone if only the computer's camera is there. `start.sh` installs
+  libraries only when `requirements.txt` changed, so a restart needs no internet. Mac launcher:
+  `Start Glyph.command`.
+- **Pages:** telling one sheet from another now compares word shapes piece by piece. The old way
+  called two pages of the same reading the same sheet.
+- **Speed:** one pass over a 1080p frame went from about 100 ms to about 50 ms here.
+- Docs: README, `docs/camera-test-checklist.md`, lessons in `docs/event-day-plan.md`, status in `CLAUDE.md`.
+
+**Found**
+- Yoon Woo's free Gemini key ran out on Nov 17 after a few dozen reads. Plan: billing on for demo day.
+- None of the checks call Gemini. The 8 s timeout bug on Nov 17 passed every check and broke every
+  live call. After any change to `glyph/brain.py`, make one live call.
+- Run the three suites one after another. Run together they starve each other and fail on timing.
+- Not verified on a real camera or a live model: everything in this entry.
+
+**Need from the other side (Skylar)**
+- `[open]` `glyph/engine.py` changed a lot inside `_tick`. Merge `main` into `stuck-nudge` before
+  going further and expect conflicts there. For the nudge: "new ink" is `fresh_px > 0` after the
+  `steady_ink` / `outline_unsure` check; "view blocked" is `covered`, the early return for a sheet
+  partly out of view, or `self.baseline is None`. Tests that fake time can still call
+  `_tick(frame, now)`. In `tests/test_pipeline.py`, `FAST` now has `read_first_page=False`.
+- `[open]` On Windows: do all three suites pass (one after another), and does `bash start.sh --demo`
+  start in Git Bash? `--camera auto` and `start.bat` are untested there.
+- `[open]` If your key has allowance: run `bash start.sh --demo` once without `--mock` and note in
+  this file which model answered, how long it took, and whether the terminal printed
+  "refused the request with the thinking setting".
+- Still on hold, do not start: writer mode / annotation mode.
+
+---
+
 ## 2026-11-17 (late night), Yoon Woo's Claude
 
 **Done** (on `main` and `camera-test`)
@@ -58,9 +111,7 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
   renumbers pages 1, 2, 3 in order.
 
 **Need from the other side (Skylar)**
-- `[open]` `glyph/engine.py` changed again inside `_tick` and `_accept_page`. Merge `main` into
-  `stuck-nudge` before going further. For the nudge clock, "new ink" should mean the steady ink
-  (`ink`, after the three-look filter), and the out-of-view early return counts as "view blocked".
+- `[superseded by the Nov 18 entry]` Merge `main` into `stuck-nudge`.
 - `[open]` Yoon Woo and Skylar want **writer mode / annotation mode**. Not designed yet; do not start
   it. Yoon Woo put it on hold (Nov 17); it comes back when he next asks for features.
 
@@ -87,8 +138,7 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
   in the middle. Theme: "Thoughtful Agents for Productivity". Details in `docs/event-day-plan.md`.
 
 **Need from the other side (Skylar)**
-- `[open]` Merge `main` into `stuck-nudge` (`git fetch origin && git merge origin/main`). Expect
-  changes in `glyph/engine.py`; keep both sides. Do not edit `glyph/static/index.html`.
+- `[superseded by the Nov 18 entry]` Merge `main` into `stuck-nudge`.
 - `[open]` On Windows, run all three suites and note the result here:
   `python -m tests.test_pipeline`, `python -m tests.test_rough`, `python -m tests.test_tools`.
   The highlight fix and the Git Bash path in `start.sh` were not tested on Windows. Say if

@@ -1,7 +1,7 @@
 """Start Glyph.
 
-    python run.py                  watch camera 0
-    python run.py --camera 1       watch another camera (your iPhone is often 1)
+    python run.py                  watch the camera that sees a sheet of paper (--camera auto)
+    python run.py --camera 1       watch one particular camera
     python run.py --list-cameras   save a photo from every camera to camera_check/
     python run.py --demo           no camera: play a simulated sheet of paper
     python run.py --source PATH    replay a video, a photo, or a folder of photos
@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore", message=".*OpenSSL.*")
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Glyph practice build")
-    ap.add_argument("--camera", type=int, default=0, help="camera number (default 0)")
+    ap.add_argument("--camera", default="auto", help="camera number, or auto (default): the one that sees a sheet of paper")
     ap.add_argument("--list-cameras", action="store_true", help="save a photo from each camera and exit")
     ap.add_argument("--demo", action="store_true", help="simulated paper instead of a camera")
     ap.add_argument("--source", help="video file, image, or folder of images to replay")
@@ -38,7 +38,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="[glyph] %(message)s")
 
     from glyph import config
-    from glyph.camera import CameraSource, FrameListSource, list_cameras, source_from_path
+    from glyph.camera import WIDE_HELP, CameraSource, FrameListSource, list_cameras, pick_camera, source_from_path
 
     if args.list_cameras:
         list_cameras(config.ROOT / "camera_check")
@@ -59,10 +59,18 @@ def main() -> int:
         elif args.source:
             source = source_from_path(args.source, hold=args.hold)
         else:
-            source = CameraSource(args.camera)
+            if str(args.camera).strip().lower() == "auto":
+                number = pick_camera(say=lambda text: print(f"[glyph] {text}", flush=True))
+            else:
+                number = int(args.camera)
+            source = CameraSource(number)
+            print(f"[glyph] {WIDE_HELP}")
         source.open()  # main thread, so macOS can ask for camera permission
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         print(f"\n[glyph] {e}\n")
+        return 1
+    except KeyboardInterrupt:
+        print("\n[glyph] stopped")
         return 1
 
     legend = config.load_legend()

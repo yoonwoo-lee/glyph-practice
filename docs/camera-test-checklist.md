@@ -5,19 +5,26 @@ Put results in `HANDOFF.md` when done.
 
 ## Setup
 
-- [ ] Phone on the gooseneck, camera pointing straight down, high enough that all four corners of the sheet
-      show in the Camera view with some desk around them (about 45 to 50 cm for a letter sheet).
-- [ ] Phone unlocked, Wi-Fi and Bluetooth on, same Apple ID as the Mac (Continuity Camera needs all three).
-      A cable between phone and Mac is steadier than wireless.
-- [ ] White sheet on a **darker** surface, lamp on, no hard shadow from the phone across the page.
-- [ ] Start: double-click **Start Glyph camera test** on the Desktop (or `bash start.sh --list-cameras`,
-      then `bash start.sh --camera <n>`).
+- [ ] Phone on the gooseneck, camera pointing straight down. **Lock the phone** (screen off) and keep
+      it still. Wi-Fi and Bluetooth on, same Apple ID as the Mac. A cable to the Mac is steadier
+      than wireless and cuts the lag.
+- [ ] White sheet on the desk, lamp on. Nothing white or cream (pencil case, another sheet) touching
+      the edge of the sheet.
+- [ ] Start: double-click **Start Glyph.command** in the Glyph folder (or `bash start.sh`). It picks the
+      camera that sees the sheet, and waits with instructions if the phone is not connected.
+- [ ] Switch the phone to **0.5x** if the whole sheet does not fit: Video (camera) icon in the Mac's
+      menu bar, Center Stage off, 0.5x. All four corners in view, some desk around them, text sharp.
+      Check again after any reconnect: the lens setting can reset.
+- [ ] Gemini key has allowance left. A free key runs out after a few dozen reads in a day.
 
 ## 1. Does it see the page? (2 min)
 
-- [ ] **Camera** view shows a green outline around the sheet.
-- [ ] **Page** view shows the sheet flat and upright. Sideways: click **Rotate**.
-- [ ] Nudge the sheet a little. It should not trigger an answer.
+- [ ] **Camera** view shows a yellow outline around the sheet, and it holds still.
+- [ ] **Page** view shows the sheet flat. Sideways or upside down: click **Rotate** until upright.
+- [ ] The sheet is read once in full within a couple of seconds of settling. Seconds it took: ____
+- [ ] Nudge the sheet a little. It should not trigger an answer, and the outline should follow it.
+- [ ] Wave a hand above the sheet so its shadow crosses the page. No red outline, no "Thinking".
+- [ ] Slide the sheet half out of view. The page holds and asks you to slide it back.
 - [ ] Tap the gooseneck. Note how long the picture takes to settle: ____ s
 
 ## 2. Marks (6 min)
@@ -32,6 +39,7 @@ Write a real physics problem with some working first. Lift your hand off the she
 | Circled question mark (explanation) | | | |
 | Ordinary writing, no mark (should stay quiet) | | | |
 | Mark drawn with your hand left on the page (should wait) | | | |
+| Mark drawn while the sheet slides a little under your hand | | | |
 
 - [ ] Did any hint give away the answer? It must not.
 - [ ] Which model answered? (shown with the "answered in N s" line, and in `sessions/<ts>/timings.jsonl`)
@@ -41,7 +49,9 @@ Write a real physics problem with some working first. Lift your hand off the she
 - [ ] One line in each highlighter color you own. Each should appear once under the right color.
 - [ ] Rest your hand over half of a highlight, then lift it. It must not be saved a second time.
 - [ ] Tilt the lamp so there is glare on a highlight. Known weak spot: note what happens.
-- [ ] **End session** builds a study guide with the highlighted text readable.
+- [ ] Swap to a second sheet, highlight and ask something there, swap back to the first.
+- [ ] **End session** builds a study guide with the highlighted text readable, a Page 1 and a Page 2
+      section, and the first sheet not counted twice.
 
 ## 4. If something is off (4 min)
 
@@ -52,6 +62,7 @@ Write a real physics problem with some working first. Lift your hand off the she
 ## Write down
 
 - Seconds per answer (best, typical, worst): ____ / ____ / ____
+- Which model answered, and which ones failed first (`tried` in `timings.jsonl`):
 - Marks that were missed or misread:
 - Highlighter colors that failed, and under what light:
 - Anything that needed the tuning page, and the values that fixed it:

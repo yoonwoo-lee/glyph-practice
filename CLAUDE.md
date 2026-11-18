@@ -38,7 +38,8 @@ Walk Skylar through these in order, checking each one works before moving on.
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 12 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 36 checks in total.)
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 44 checks in total.
+   Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
    number, then `bash start.sh --camera <n>`. Steps and troubleshooting are in the README.
@@ -102,51 +103,52 @@ Hint-first is the core idea: it should push the student to solve it themselves, 
 
 Symbol → action mapping lives in `symbols.json`, so new symbols are a config change, not a code change.
 
-## Current status (Nov 17, night)
+## Current status (Nov 18)
 
-**Built (MVP, only the three must-haves + the extra symbol):**
-- Spark → hint, underline → definition, highlights → end-of-session study guide.
-- Local web UI at http://127.0.0.1:8765 (page view / raw camera view, feed, study guide tab).
-- `--demo` mode plays a simulated worksheet so everything runs with no camera.
-- 12 automated checks pass on simulated frames (`python -m tests.test_pipeline`): full flow,
-  half-drawn symbol, hand on page, object left on page, nudged sheet, new sheet, model errors,
-  no-sheet fallback, no repeated answers.
+**Works, checked on the real camera (Nov 17, iPhone on a gooseneck, 0.5x lens, wooden desk):**
+- Sheet found and flattened; Rotate turns it upright; the first full read of a sheet; spark → hint and
+  underline → definition with good answers; yellow highlights saved.
 
-**Added on `camera-test` and merged into `main` on Nov 17:**
-- New UI: left half shows what Glyph sees (flattened page + camera inset). Right half: the newest
-  answer as a large card with a cut-out picture of the mark that triggered it, highlights grouped by
-  color, a timeline of earlier answers, and a typeset study guide (Copy / Print). Look: ink blue,
-  white paper, highlighter yellow; Instrument Serif + Instrument Sans, bundled in `static/fonts`
-  so it works offline. A `nudge` event kind is already styled. `/?guide` opens on the study guide.
-- Without a key, `--demo` shows realistic practice answers for the demo sheet (`MockBrain(demo=True)`).
-- `/tune` page (`glyph/tune.py`, `static/tune.html`): live views of ink / highlighter / hand detection,
-  sliders, click-to-pick highlighter colors, saves to `.env`.
-- Timing log: `sessions/<ts>/timings.jsonl`, plus "answered in N s" in the UI.
-- `bench.py`: times each Gemini model on the demo page. Not run yet: needs a machine with the key.
-- `normalize_light()` in `page.py`: white balance + brightness correction before color detection.
-- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (15). 36 checks pass in total.
-- Fixes from Skylar's first run: v1beta API, call timeout, current fallback models, covered highlights,
-  `start.bat` for Windows. See `HANDOFF.md`.
+**Built and covered by the checks (44 pass: 12 + 9 + 23), but not yet run on the real camera:**
+- Everything changed in the early hours of Nov 18 (see `HANDOFF.md`): steadier sheet outline, new ink
+  judged by darkness against the remembered page, the page following a sliding sheet, shadows not
+  counted as covers, usage-limit handling, automatic camera choice, faster passes.
+- Those changes were developed against camera pictures saved during the Nov 17 tests, replayed with
+  camera noise added. That is close to the real thing but is not the real thing.
+- Study guide sections per page; highlights in green, pink and blue; the circled question mark.
 
-**First real-camera test (Nov 17, iPhone on the gooseneck, wood desk):** sheet found and flattened well,
-spark gave a good hint. Problems found and fixed the same night: Flash timed out (answers took 15 to
-30 s), flickering pencil ink was read as new ink, a sheet partly out of view gave a skewed page. See
-`HANDOFF.md`.
+**What is in the app:**
+- Spark → hint, underline → definition, circled question mark → explanation, highlights → study guide
+  (one section per sheet when more than one was used).
+- Web page at http://127.0.0.1:8765: left half is what Glyph sees (flattened page with the camera as
+  an inset, swappable), right half is the newest answer as a large card with a cut-out of the mark,
+  highlights by color, a timeline, and a typeset study guide (Copy / Print). `/?guide` opens on the guide.
+- `--demo` plays a simulated worksheet with no camera; without a key it shows practice answers.
+- `/tune` page: live views of ink / highlighter / hand detection, sliders, click-to-pick highlighter
+  colors, saves to `.env`.
+- Logs per session in `sessions/<ts>/`: `timings.jsonl` (seconds per look, which model answered, which
+  failed first), `looks/` (what was sent to the model), `camera/` (pictures from moments when no
+  sheet was found).
+- `bench.py` times each model on the demo page. Still not run: it needs a key with allowance left.
 
-**Not tested yet:**
-- Underline, highlights and the study guide on the real camera
-- Highlighter color ranges under a real lamp
-- The Nov 17 fixes on the real camera
+**Known limits:**
+- A free Gemini key runs out after a few dozen reads in a day. Yoon Woo's ran out on Nov 17.
+- A full page of small print at 0.5x and 1080p is near the limit of what the camera resolves.
+- Glare directly on a highlight splits or hides it.
+- The page view updates a few times a second (each frame is analysed); the camera view is smooth.
+- Text orientation is not detected: the user clicks Rotate.
 
 ## Stack
 
 - **Python 3.9** (matches the Mac), venv created by `start.sh`
 - **OpenCV** — finds the sheet (by color first: paper is the big area that is neither colorful nor
   dark; by brightness as a fallback), flattens it, finds ink, detects highlighter by HSV color (no model call)
-- **Gemini vision** via `google-genai` — `gemini-flash-lite-latest` first (fast), falls back to
-  `gemini-flash-latest`, `gemini-3.8-flash`, `gemini-3.5-flash-lite` on errors / 503s / timeouts
-  (10 s per call, the shortest Gemini accepts; a model that times out is tried last from then on; v1beta API; the 2.5 models are closed to new keys and a 404 model is dropped for the session)
-- **FastAPI + uvicorn** — local server, MJPEG streams, JSON API
+- **Gemini vision** via `google-genai`, v1beta API, thinking off, 10 s per call (the shortest Gemini
+  accepts). Models in order: `gemini-3.5-flash-lite`, `gemini-flash-lite-latest`, `gemini-3.8-flash`,
+  `gemini-flash-latest`. A model that times out is tried last from then on, one over its usage limit
+  (429) is left alone for a minute or more, one the key cannot use (404) is dropped. The 2.5 models
+  are closed to new keys.
+- **FastAPI + uvicorn** — local server, one-picture-per-request camera and page views, JSON API
 - Vanilla HTML/JS front end (`glyph/static/index.html`)
 - Key: `GEMINI_API_KEY` in `.env` (never committed). Without a key it runs with fake answers.
 
@@ -154,24 +156,31 @@ spark gave a good hint. Problems found and fixed the same night: Flash timed out
 
 | File | Job |
 |---|---|
-| `run.py` | CLI: `--demo`, `--camera N`, `--list-cameras`, `--source <video/photos>`, `--mock`, `--rotate`, `--port` |
-| `glyph/camera.py` | Frame sources: camera, video file, photo list, demo |
-| `glyph/page.py` | Sheet detection + perspective warp, ink mask, hand/object "cover" mask, focus crop |
-| `glyph/engine.py` | Main loop. New ink + still picture → "look". Cooldown 4s, max 8 calls/min, backoff on errors, dedupes repeated answers |
+| `Start Glyph.command` | Mac: double-click to start with the camera (keeps the Mac awake) |
+| `run.py` | CLI: `--demo`, `--camera auto` (default: the camera that sees a sheet) or `--camera N`, `--list-cameras`, `--source <video/photos>`, `--mock`, `--rotate`, `--port` |
+| `glyph/camera.py` | Frame sources: camera, video file, photo list, demo. Chooses the camera; says how to connect the phone |
+| `glyph/page.py` | Sheet detection + perspective warp, ink strength, what counts as new ink, hand/object "cover" (not shadows), telling sheets apart, focus crop |
+| `glyph/engine.py` | Main loop. New ink + still picture → "look". Keeps the outline steady, follows a sliding sheet, cooldown 4s, max 8 calls/min, backoff on errors, dedupes repeated answers |
 | `glyph/highlights.py` | Highlighter detection by color, saves crops, tracks per page |
-| `glyph/brain.py` | Prompt + Gemini call, returns strict JSON (hint / define / explain); `MockBrain` for testing |
+| `glyph/brain.py` | Prompt + Gemini call with model fallbacks and usage-limit handling, returns strict JSON (hint / define / explain); `MockBrain` for testing |
 | `glyph/session.py` | Saves each session to `sessions/<timestamp>/` (events, model inputs, study guide) |
 | `glyph/app.py` | FastAPI routes: `/`, `/api/frame/page.jpg`, `/api/frame/raw.jpg` (the page asks for these in a loop), `/api/state`, `/api/look`, `/api/rotate`, `/api/study-guide` |
-| `glyph/tune.py` | (camera-test) Tuning page backend: detection overlays, color picking, save to `.env` |
-| `bench.py` | (camera-test) Model timing on the demo page |
+| `glyph/tune.py` | Tuning page backend: detection overlays, color picking, save to `.env` |
+| `bench.py` | Model timing on the demo page (spends real requests) |
 | `HANDOFF.md` | Notes between the two Claudes (see the handoff rule at the top) |
 | `docs/` | Camera test checklist, event-day plan |
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
 - Only **new** ink is sent at full contrast (old ink faded), so old symbols aren't answered twice.
+- "New" means clearly darker than anything the remembered page had within a few pixels, in the middle
+  of the last three frames. A yes/no ink mask made faint pencil flicker in and out as "new ink".
+- The sheet's outline is held fixed once a page is accepted and moves only when four frames agree.
+  When it moves, the remembered page is lined up again with the page as flattened now.
 - Ink right next to a hand/object is ignored until it moves. User should lift their hand after drawing.
+  A shadow is not an object.
 - Highlights are detected locally, so they cost no API calls.
+- Requests are scarce: nothing is read twice without a reason (see the Gemini bullet above).
 
 ## Next up (not built yet, rough priority)
 
@@ -179,7 +188,8 @@ Key design choices:
    features): the same marks do different
    jobs per mode. Writer = solving problems, annotation = readings and books.
 
-1. **Test with the real camera** and tune thresholds (biggest unknown).
+1. **Run `docs/camera-test-checklist.md` on the real camera** with the Nov 18 changes, on a key with
+   billing turned on.
 2. **Stuck nudge** — if the student stalls (or picks up their phone and scrolls), Glyph nudges them to keep going.
 3. **Mistake catcher + mistake log/calendar** — spot errors in written work, keep a running log over time.
 4. **Paper Ctrl+F** — ask where something is on the page and have it pointed out.
@@ -189,9 +199,11 @@ Key design choices:
 
 ## Open questions
 
-- Answer latency with live Gemini: is it fast enough to feel instant?
-- Does Continuity Camera hold a stable picture from above, and does the gooseneck stay steady?
-- Do highlighter colors separate cleanly under typical dorm/venue lighting?
+- Answer latency with live Gemini now that thinking is off and the fast model goes first.
+- Does `gemini-3.5-flash-lite` accept the thinking setting, and are its hints good enough? (If it
+  refuses the setting, Glyph asks again without it; the terminal says so.)
+- Do green, pink and blue highlighters separate cleanly under the desk lamp and at the venue?
+- Does Continuity Camera stay connected for a whole session on a cable?
 - HackwithBay rules: the event page lists no rule on pre-built code (checked Nov 17). Ask at the opening.
   Build time is 11:00 to 15:30. See `docs/event-day-plan.md`.
 

@@ -6,8 +6,12 @@ if not exist venv (
   py -3 -m venv venv
 )
 call venv\Scripts\activate.bat
-python -m pip install -q --upgrade pip
-pip install -q -r requirements.txt
+rem Install the libraries only when requirements.txt has changed since the last install.
+fc /b requirements.txt venv\.requirements-installed >nul 2>&1
+if errorlevel 1 (
+  python -m pip install -q --upgrade pip
+  pip install -q -r requirements.txt && copy /y requirements.txt venv\.requirements-installed >nul
+)
 if not exist .env (
   copy .env.example .env >nul
   echo [glyph] no key yet: put your Gemini key in .env (running with practice answers for now)

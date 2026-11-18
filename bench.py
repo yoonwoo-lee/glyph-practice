@@ -75,18 +75,17 @@ def main() -> int:
     legend = config.load_legend()
     cases, guide_items = build_cases()
     models = args.models.split(",") if args.models else [config.LLM_MODEL] + [m for m in config.LLM_FALLBACKS if m != config.LLM_MODEL]
-    # Each model is tried as-is and with thinking turned off (often much faster).
-    setups = [(m, b) for m in models for b in ("", "0")]
+    # Each model is tried with thinking off (what Glyph does by default) and with thinking left to
+    # the model. The whole run costs requests against the key's allowance: about
+    # models x 2 x (cases x runs + a study guide or two). On a free key, use --runs 1.
+    setups = [(m, b) for m in models for b in ("0", "-1")]
     if args.mock:
-        setups = [("mock", "")]
+        setups = [("mock", "0")]
 
     rows, failures = [], []
     for model, budget in setups:
-        label = model + (" (thinking off)" if budget == "0" else "")
-        if budget:
-            os.environ["GLYPH_THINKING_BUDGET"] = budget
-        else:
-            os.environ.pop("GLYPH_THINKING_BUDGET", None)
+        label = model + (" (thinking on)" if budget == "-1" else "")
+        os.environ["GLYPH_THINKING_BUDGET"] = budget
         try:
             brain = MockBrain(legend) if args.mock else Brain(legend, models=[model])
         except BrainError as e:
@@ -130,7 +129,7 @@ def main() -> int:
     if failures:
         out += ["", "Errors:"] + [f"- {f}" for f in failures]
     out += ["", "The app adds about 1 second before the model call (waiting for the picture to hold still).",
-            "To use a faster setup, set GLYPH_MODEL and/or GLYPH_THINKING_BUDGET=0 in .env."]
+            "To put the fastest model first, set GLYPH_MODEL in .env. Thinking is off unless GLYPH_THINKING_BUDGET=-1."]
     path = config.ROOT / "bench_results.md"
     path.write_text("\n".join(out) + "\n", encoding="utf-8")
     print(f"\nSaved {path.name}")

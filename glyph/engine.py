@@ -27,14 +27,20 @@ from . import config
 from .highlights import DRAW_COLORS, HighlightStore, detect_highlights
 from .page import (
     Stability,
-    find_page,
+    find_page_fill,
+    slide,
+    slip_between,
     page_signature,
     full_frame_page,
     cover_mask,
-    ink_mask,
+    ink_strength,
+    new_ink,
+    steady_strength,
+    strength_to_mask,
     make_focus_crop,
     mask_bbox,
     page_gray,
+    page_saturation,
     remove_small,
     warp_page,
 )
@@ -45,6 +51,7 @@ log = logging.getLogger("glyph")
 _K3 = np.ones((3, 3), np.uint8)
 _K9 = np.ones((9, 9), np.uint8)
 _K31 = np.ones((31, 31), np.uint8)
+_K61 = np.ones((61, 61), np.uint8)
 CUT_OFF_TEXT = "Part of the sheet is outside the camera's view. Slide it back, or raise the phone."
 
 TITLES = {"hint": "Hint", "explain": "Explanation", "define": "Definition"}
@@ -63,6 +70,7 @@ class Settings:
     cover_hold: float = config.COVER_HOLD
     tick: float = 0.125
     read_first_page: bool = True  # read a sheet in full as soon as it is first seen
+    min_page_ink: float = 0.01  # ...but only if at least this share of it is writing or print
 
 
 def _jpg(img: np.ndarray, quality: int = 80) -> bytes:
@@ -96,11 +104,13 @@ class Engine:
         # Page state (loop thread only).
         self.quad: Optional[np.ndarray] = None
         self.baseline: Optional[np.ndarray] = None
+        self.base_strength: Optional[np.ndarray] = None  # how dark the remembered ink was, spot by spot
         self.base_gray: Optional[np.ndarray] = None
+        self.base_sat: Optional[np.ndarray] = None
         self._base_gray_time = 0.0
         self._cover_since: Optional[float] = None
         self._cover: Optional[np.ndarray] = None
-        self.pending: List[Tuple[np.ndarray, float]] = []
+        self.pending: List[Tuple[np.ndarray, float, np.ndarray]] = []  # (new ink, when, ink strength then)
         self.epoch = 0
         self._shape: Optional[Tuple[int, int]] = None
         self._big_since: Optional[float] = None
@@ -130,6 +140,15 @@ class Engine:
         self._seen_whole = False  # the full sheet has been in view at least once
         self._page_known = False  # the sheet on view was already read earlier this session
         self._debug_last, self._debug_saved = 0.0, 0
+        self._quads: deque = deque(maxlen=7)  # recent sightings of the sheet's corners
+        self._fills: deque = deque(maxlen=7)  # ...and how much of each outline was visibly paper
+        self._quad_fill = 1.0  # the same, for the outline in use
+        self._outline_held_since: Optional[float] = None  # since when a moved outline has been held back
+        self._check_alignment = False
+        self._hl = None  # (highlights found, their mask) from the last time they were looked for
+        self._recent_frames: deque = deque(maxlen=8)  # the last second of camera pictures
+        self._bursts_saved = 0
+        self._hl_age = 0
         self._show_quad = True
         self._live_raw: Tuple[Optional[int], bytes] = (None, b"")
 
@@ -225,7 +244,9 @@ class Engine:
 
     def _reset_page(self) -> None:
         self.baseline = None
+        self.base_strength = None
         self.base_gray = None
+        self.base_sat = None
         self.pending = []
         self.epoch += 1
         self._big_since = None
@@ -242,13 +263,48 @@ class Engine:
 
         stable_for = self._stability.update(frame, now)
         stable = stable_for >= s.settle
+        self._recent_frames.append(frame)
 
-        quad, clean, touches = find_page(frame)
+        quad, clean, touches, fill = find_page_fill(frame)
+        outline_unsure = False
+        if stable_for == 0.0:
+            self._quads.clear()  # the picture moved: corners seen before no longer apply
+            self._fills.clear()
         if quad is not None and clean and stable_for >= min(0.25, s.settle):
             self._seen_whole = True
+            # Corners wobble by a few pixels from frame to frame, which would make the flattened
+            # page shake and old ink look new. Until a page has been accepted, use the middle of
+            # the last few sightings. After that, keep the outline fixed and move it only when
+            # four sightings in a row agree that the sheet now lies somewhere else.
+            self._quads.append(quad)
+            self._fills.append(fill)
             tolerance = max(3.0, 0.002 * frame.shape[1])
-            if self.quad is None or float(np.abs(quad - self.quad).max()) > tolerance:
-                self.quad = quad
+            if self.quad is None or self.baseline is None:
+                self.quad = np.median(np.array(self._quads), axis=0).astype(np.float32)
+                self._quad_fill = float(np.median(self._fills))
+            elif float(np.abs(quad - self.quad).max()) > tolerance:
+                outline_unsure = True  # maybe the sheet slid, maybe one noisy frame: wait and see
+                last = np.array(list(self._quads)[-4:])
+                middle = np.median(last, axis=0).astype(np.float32)
+                moved = len(last) == 4 and all(float(np.abs(q - self.quad).max()) > tolerance for q in last)
+                # A hand reaching onto the sheet bends the outline too, and less of the outline is
+                # visibly paper then. Keep the outline Glyph trusts until the sheet is clear again.
+                # (Whether something "covers" the page cannot be used here: a sheet that has slid
+                # looks covered until the outline has followed it.)
+                clear = min(list(self._fills)[-4:]) >= self._quad_fill - 0.015
+                if moved and not clear:
+                    # ...but not for ever: something may have been put down on the sheet to stay.
+                    if self._outline_held_since is None:
+                        self._outline_held_since = now
+                    clear = now - self._outline_held_since > 5.0
+                if moved and clear and float(np.abs(last - middle).max()) <= 1.5 * tolerance:
+                    self.quad = middle
+                    self._quad_fill = float(np.median(list(self._fills)[-4:]))
+                    self._check_alignment = True
+                    self._outline_held_since = None
+                    self._ink_hist.clear()
+            else:
+                self._outline_held_since = None
         # Keep a few camera pictures from moments when no clean sheet outline was found, so the
         # detection can be tuned afterwards against what the camera really saw.
         if not (quad is not None and clean) and stable and now - self._debug_last > 15 and self._debug_saved < 12:
@@ -259,9 +315,11 @@ class Engine:
                 cv2.imwrite(str(folder / "no_sheet_{:02d}.jpg".format(self._debug_saved)), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             except OSError:
                 pass
-        if self._seen_whole and touches in (1, 2) and not clean:
-            # The sheet slid partly out of the picture. Flattening it now would give a skewed,
-            # zoomed-in view and junk "new ink", so hold the last good view until it is back.
+        if self._seen_whole and quad is not None and not clean and touches in (1, 2) and 0.93 <= fill <= 1.08:
+            # A clean four-sided piece of paper that reaches the edge of the picture but no longer
+            # has a sheet's proportions: the sheet slid partly out of view. Flattening it now would
+            # give a skewed, zoomed-in page and junk "new ink", so hold the last good view until
+            # it is back. (An outline broken by a hand has a low fill and is not this case.)
             with self._lock:
                 held = self._last_page
             self._big_since = None
@@ -286,39 +344,54 @@ class Engine:
             self._reset_page()
             self._shape = page.shape[:2]
 
-        regions, hl_mask = detect_highlights(page)
-        ink_now = ink_mask(page)
-        # Faint pencil and camera noise make bits of ink blink on and off. Count ink as there only
-        # when it has shown up in the last three looks in a row; remember everything seen as old.
-        ink, ink_any = ink_now, ink_now
+        # Finding highlighter is the slowest step and highlights do not change from one frame to
+        # the next, so do it on every third pass and reuse the result in between.
+        self._hl_age += 1
+        if self._hl is None or self._hl_age >= 3 or self._hl[1].shape != page.shape[:2] or not stable:
+            self._hl, self._hl_age, hl_new = detect_highlights(page), 0, True
+        else:
+            hl_new = False
+        regions, hl_mask = self._hl
+        strength_now = ink_strength(page)
+        if self._check_alignment:
+            self._check_alignment = False
+            if self.baseline is not None and self.base_strength.shape == strength_now.shape:
+                self._line_up(strength_now)
+        # Faint pencil and camera noise make bits of ink blink on and off. Judge ink by the middle
+        # of the last three pictures, and remember the darkest each spot has been as "old".
+        strength, strength_any = strength_now, strength_now
         if stable:
-            for old_ink in self._ink_hist:
-                ink = cv2.bitwise_and(ink, cv2.dilate(old_ink, _K3))
-                ink_any = cv2.bitwise_or(ink_any, old_ink)
-            steady_ink = len(self._ink_hist) == self._ink_hist.maxlen
-            self._ink_hist.append(ink_now)
+            before = list(self._ink_hist)
+            strength = steady_strength(strength_now, before)
+            for old_strength in before:
+                strength_any = cv2.max(strength_any, old_strength)
+            steady_ink = len(before) == self._ink_hist.maxlen
+            self._ink_hist.append(strength_now)
         else:
             self._ink_hist.clear()
             steady_ink = False
+        ink = strength_to_mask(strength)
         text = "Watching"
         fresh_box = None
 
         if self.baseline is None:
             text = "Getting a steady view of the page"
             if stable and steady_ink:
-                self._accept_page(ink_any, page, now)
+                self._accept_page(strength_any, page, now)
                 self._add_highlights(self.store.update(regions, page))
                 if s.read_first_page and not self._page_known:
                     self._want_full = "new page"  # marks already on the sheet get answered straight away
         else:
             self._age_pending(now)
             # Anything wide lying on the sheet? Ignore the ink around it.
-            cover = cover_mask(page_gray(page), self.base_gray, hl_mask)
+            cover = cover_mask(page_gray(page), self.base_gray, hl_mask, page_saturation(page), self.base_sat)
             covered = cv2.countNonZero(cover) > 0
-            clear = cv2.bitwise_not(cv2.dilate(cover, _K31)) if covered else None
+            # Ignore ink for a good finger's width around whatever lies on the sheet: the edge of a
+            # hand and the shadow right under it are not writing.
+            clear = cv2.bitwise_not(cv2.dilate(cover, _K61)) if covered else None
             self._cover = cover if covered else None
 
-            fresh = cv2.bitwise_and(ink, cv2.bitwise_not(cv2.dilate(self.baseline, _K9)))
+            fresh = new_ink(strength, self.base_strength)
             fresh = cv2.bitwise_and(fresh, cv2.bitwise_not(cv2.dilate(hl_mask, _K9)))
             missing = cv2.bitwise_and(self.baseline, cv2.bitwise_not(cv2.dilate(ink, _K9)))
             old = self.baseline
@@ -342,8 +415,9 @@ class Engine:
                     self._big_since = now
                 elif now - self._big_since >= s.big_hold:
                     self._reset_page()
-                    self._accept_page(ink_any, page, now)
-                    self._want_full = "new page"
+                    self._accept_page(strength_any, page, now)
+                    if not self._page_known:  # a sheet that was read before is not read in full again
+                        self._want_full = "new page"
             else:
                 self._big_since = None
                 fresh_box = mask_bbox(fresh) if fresh_px else None
@@ -362,29 +436,37 @@ class Engine:
                     elif now - self._cover_since >= s.cover_hold:
                         # It is not going away (a pen left on the sheet): treat it as the page.
                         self._reset_page()
-                        self._accept_page(ink_any, page, now)
+                        self._accept_page(strength_any, page, now)
                         self._want_full = "page changed"
                         fresh_px = 0
                 else:
                     self._cover_since = None
                     if stable and now - self._base_gray_time > 2.0:
                         self.base_gray, self._base_gray_time = page_gray(page), now
-                if stable and self.baseline is not None and not steady_ink:
+                        self.base_sat = page_saturation(page)
+                if stable and self.baseline is not None and (not steady_ink or outline_unsure):
                     fresh_px = 0  # not sure yet which ink is really there
                 if stable and self.baseline is not None:
-                    self._add_highlights(self.store.update(regions, page))
+                    if hl_new:
+                        self._add_highlights(self.store.update(regions, page))
+                        if len(regions) > len(self.store.on_this_page()):
+                            self._hl_age = 3  # a highlight is waiting to be confirmed: look again next pass
+                    if self._want_full and self._want_full != "you asked" and cv2.countNonZero(ink) < s.min_page_ink * ink.size:
+                        # Nothing here worth a request: a blank sheet, a covered lens, or the phone
+                        # off its mount looking at the desk.
+                        self._want_full = None
                     if self._want_full:
-                        text = self._try_look(now, page, ink, None, full=True) or text
+                        text = self._try_look(now, page, ink, None, full=True, strength=strength_any) or text
                     elif fresh_px:
                         unread = fresh
                         if self.pending:
                             seen = self.pending[0][0].copy()
-                            for m, _ in self.pending[1:]:
-                                seen = cv2.bitwise_or(seen, m)
+                            for item in self.pending[1:]:
+                                seen = cv2.bitwise_or(seen, item[0])
                             unread = cv2.bitwise_and(fresh, cv2.bitwise_not(cv2.dilate(seen, _K9)))
                             unread = remove_small(unread, 8)
                         if cv2.countNonZero(unread) >= s.min_new_px and not self._wait_for_motion:
-                            text = self._try_look(now, page, ink, fresh, full=False) or text
+                            text = self._try_look(now, page, ink, fresh, full=False, strength=strength_any) or text
         if not stable:
             self._wait_for_motion = False
         if self._busy:
@@ -395,10 +477,30 @@ class Engine:
 
         self._publish(frame, page, fresh_box, now, text, stable)
 
-    def _accept_page(self, ink: np.ndarray, page: np.ndarray, now: float) -> None:
+    def _line_up(self, strength_now: np.ndarray) -> None:
+        """The sheet's outline was just re-measured (the paper slides a little whenever someone
+        writes on it). Check that the remembered page still sits exactly on top of the page as it
+        is flattened now, and nudge the remembered one over if not. Otherwise all the old ink
+        would land a few pixels off and look new."""
+        slip = slip_between(self.base_strength, strength_now)
+        if slip is None or max(abs(slip[0]), abs(slip[1])) < 1.0:
+            return
+        dx, dy = slip
+        self.base_strength = slide(self.base_strength, dx, dy)
+        self.baseline = strength_to_mask(self.base_strength)
+        self.base_gray = slide(self.base_gray, dx, dy)
+        if self.base_sat is not None:
+            self.base_sat = slide(self.base_sat, dx, dy)
+        self.pending = [
+            (cv2.threshold(slide(m, dx, dy), 127, 255, cv2.THRESH_BINARY)[1], t, slide(st, dx, dy)) for m, t, st in self.pending
+        ]
+
+    def _accept_page(self, strength: np.ndarray, page: np.ndarray, now: float) -> None:
         """Remember the page as it is now; only later changes count as new."""
-        self.baseline = ink.copy()
+        self.base_strength = strength.copy()
+        self.baseline = strength_to_mask(strength)
         self.base_gray, self._base_gray_time = page_gray(page), now
+        self.base_sat = page_saturation(page)
         if self._page_unnamed:
             self._page_unnamed = False
             self._page_known = self.store.identify(page_signature(page))
@@ -406,16 +508,19 @@ class Engine:
     def _age_pending(self, now: float) -> None:
         """Ink that got no response a while ago becomes part of the old page."""
         keep = []
-        for mask, t in self.pending:
+        for mask, t, strength in self.pending:
             if now - t > self.settings.recent:
                 self.baseline = cv2.bitwise_or(self.baseline, mask)
+                self.base_strength = cv2.max(self.base_strength, strength)
             else:
-                keep.append((mask, t))
+                keep.append((mask, t, strength))
         self.pending = keep
 
     # ---- asking the tutor ------------------------------------------------------
 
-    def _try_look(self, now: float, page: np.ndarray, ink: np.ndarray, fresh: Optional[np.ndarray], full: bool) -> Optional[str]:
+    def _try_look(
+        self, now: float, page: np.ndarray, ink: np.ndarray, fresh: Optional[np.ndarray], full: bool, strength: Optional[np.ndarray] = None
+    ) -> Optional[str]:
         s = self.settings
         if self._busy:
             return "Thinking"
@@ -454,6 +559,7 @@ class Engine:
             "shape_hint": shape_hint,
             "fresh": None if fresh is None else fresh.copy(),
             "ink": ink.copy(),
+            "strength": None if strength is None else strength.copy(),
             "context": self._context(page, box),
             "t_seen": self._fresh_since if (not full and self._fresh_since) else now,
             "t_sent": now,
@@ -461,7 +567,29 @@ class Engine:
         }
         self._fresh_since = None
         self._pool.submit(self._run_job, job)
+        self._save_burst("ink" if not full else "page")
         return "Thinking"
+
+    def _save_burst(self, name: str) -> None:
+        """Keep the last second of camera pictures from the first two looks of a session.
+
+        Still pictures cannot show how the camera behaves from one frame to the next (noise, the
+        sheet shaking, the lens refocusing). These can, and they are what detection gets tuned on.
+        """
+        if self._bursts_saved >= 2 or getattr(self.source, "label", "").startswith(("demo", "images")):
+            return
+        self._bursts_saved += 1
+        frames, folder, n = list(self._recent_frames), self.session.dir / "camera", self._bursts_saved
+
+        def write() -> None:
+            try:
+                folder.mkdir(exist_ok=True)
+                for i, f in enumerate(frames):
+                    cv2.imwrite(str(folder / "burst{}_{}_{:02d}.jpg".format(n, name, i)), f, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+            except Exception:  # never let a debugging aid disturb the session
+                pass
+
+        threading.Thread(target=write, daemon=True).start()
 
     def _context(self, page: np.ndarray, box) -> str:
         lines = []
@@ -491,6 +619,7 @@ class Engine:
             finally:
                 job["model_s"] = time.time() - t0
                 job["model"] = getattr(self.brain, "last_model", "") or getattr(self.brain, "name", "")
+                job["tried"] = list(getattr(self.brain, "last_errors", []))
             self._results.put((job, result, None))
         except Exception as e:
             self._results.put((job, None, e))
@@ -506,6 +635,8 @@ class Engine:
             "model": job.get("model", ""),
             "triggers": triggers,
             "error": error,
+            # Models that failed before the answer came, and why. Each one cost time and a request.
+            "tried": ["{}: {}".format(m, k) for m, k, _ in job.get("tried", [])],
         }
         self.session.add_timing(row)
         return row
@@ -519,8 +650,11 @@ class Engine:
             self._busy = False
             if error is not None:
                 self._errors_in_a_row += 1
-                self._backoff_until = now + min(60.0, 8.0 * 2 ** (self._errors_in_a_row - 1))
-                msg = str(error)[:220]
+                wait = getattr(error, "retry_after", None)  # set when the key is over its usage limit
+                if wait is None:
+                    wait = min(60.0, 8.0 * 2 ** (self._errors_in_a_row - 1))
+                self._backoff_until = now + min(300.0, float(wait))
+                msg = str(error)[:260]
                 if msg != self._last_error:
                     self._last_error = msg
                     self.session.add_event("error", "The vision model had a problem", msg)
@@ -560,11 +694,13 @@ class Engine:
             if shown:
                 # Answered: everything on the page at that moment is now old.
                 self.baseline = cv2.bitwise_or(self.baseline, job["ink"])
+                if job.get("strength") is not None:
+                    self.base_strength = cv2.max(self.base_strength, job["strength"])
                 self.pending = []
             else:
                 # Nothing recognised yet: keep this ink marked as new for a while,
                 # in case it was a symbol caught half-drawn.
-                self.pending.append((job["fresh"], now))
+                self.pending.append((job["fresh"], now, job["strength"]))
 
     def _snip(self, job: dict) -> Optional[int]:
         """The piece of paper around the mark that was just answered.

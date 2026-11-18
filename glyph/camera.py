@@ -160,24 +160,118 @@ def source_from_path(path: str, hold: float = 7.0):
     raise RuntimeError(f"Nothing found at {p}")
 
 
+class _quiet_stderr:
+    """OpenCV prints its own error lines when a camera number does not exist. Hide them while probing."""
+
+    def __enter__(self):
+        import os
+
+        self._os = os
+        try:
+            self._saved = os.dup(2)
+            self._null = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(self._null, 2)
+        except OSError:
+            self._saved = None
+        return self
+
+    def __exit__(self, *exc):
+        if self._saved is not None:
+            self._os.dup2(self._saved, 2)
+            self._os.close(self._saved)
+            self._os.close(self._null)
+        return False
+
+
+def find_cameras(max_index: int = 5):
+    """One fresh picture from every camera that works: [(number, picture)]. Numbers have no gaps,
+    so the search stops at the first number that does not open."""
+    found = []
+    with _quiet_stderr():
+        for i in range(max_index + 1):
+            cap = cv2.VideoCapture(i)
+            if not cap.isOpened():
+                cap.release()
+                if i > 0:
+                    break
+                continue
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+            frame = None
+            for _ in range(25):
+                ok, f = cap.read()
+                if ok and f is not None:
+                    frame = f
+                time.sleep(0.05)
+            cap.release()
+            found.append((i, frame))
+    return found
+
+
+PHONE_HELP = (
+    "To use an iPhone as the camera (Mac only): lock the phone and keep it still on its mount, with "
+    "Wi-Fi and Bluetooth on for both the phone and the Mac, or plug it in with a cable. If it still "
+    "does not show up, open Photo Booth and look for the iPhone in the Camera menu."
+)
+WIDE_HELP = (
+    "If the whole sheet does not fit in the picture, switch the phone to its 0.5x lens: click the "
+    "Video (camera) icon in the Mac's menu bar while Glyph runs, turn Center Stage off, and pick 0.5x."
+)
+
+
+def pick_camera(wait: float = 90.0, say=print) -> int:
+    """Choose the camera by what it sees: the one looking at a sheet of paper.
+
+    With two or more cameras and no sheet in view, the last one is used (a phone shows up after
+    the laptop's own camera). With only the laptop's camera and no sheet in front of it, wait a
+    while for the phone to connect, so it can be fixed without starting over.
+    """
+    from .page import find_page
+
+    def sees_sheet(frame) -> bool:
+        if frame is None:
+            return False
+        quad, clean, _ = find_page(frame)
+        return quad is not None and clean
+
+    deadline = time.time() + wait
+    told = False
+    while True:
+        cams = find_cameras()
+        working = [(i, f) for i, f in cams if f is not None]
+        with_sheet = [i for i, f in working if sees_sheet(f)]
+        if with_sheet:
+            say(f"camera {with_sheet[-1]} sees a sheet of paper: using it")
+            return with_sheet[-1]
+        if len(working) >= 2:
+            say(f"{len(working)} cameras found, none sees a sheet yet: using camera {working[-1][0]}")
+            return working[-1][0]
+        if time.time() >= deadline:
+            if working:
+                say(f"using camera {working[0][0]}, the only one found")
+                return working[0][0]
+            raise RuntimeError(
+                "No camera gave a picture. On a Mac: System Settings > Privacy & Security > Camera, "
+                "allow Terminal, then run this again."
+            )
+        if not told:
+            told = True
+            which = "Only the computer's own camera was found" if working else "No camera was found"
+            say(f"{which}, and no sheet of paper is in view. Waiting for a phone to connect (Ctrl+C to stop).")
+            say(PHONE_HELP)
+        time.sleep(3.0)
+
+
 def list_cameras(out_dir: Path, max_index: int = 5) -> None:
     """Save one photo from every camera so you can see which number is the phone."""
     out_dir.mkdir(parents=True, exist_ok=True)
+    for old in out_dir.glob("camera_*.jpg"):  # photos from an earlier run would point at the wrong numbers
+        try:
+            old.unlink()
+        except OSError:
+            pass
     found = 0
-    for i in range(max_index + 1):
-        cap = cv2.VideoCapture(i)
-        if not cap.isOpened():
-            cap.release()
-            continue
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-        frame = None
-        for _ in range(25):
-            ok, f = cap.read()
-            if ok and f is not None:
-                frame = f
-            time.sleep(0.05)
-        cap.release()
+    for i, frame in find_cameras(max_index):
         if frame is None:
             print(f"camera {i}: opened, but no picture (check camera permission)")
             continue
@@ -191,5 +285,7 @@ def list_cameras(out_dir: Path, max_index: int = 5) -> None:
             "allow Terminal, then run this again."
         )
     else:
+        if found == 1:
+            print("\nOnly one camera was found. " + PHONE_HELP)
         print(f"\nOpen the photos in {out_dir} and start Glyph with the number that shows your desk:")
-        print("    bash start.sh --camera <number>")
+        print("    bash start.sh --camera <number>      (or --camera auto to let Glyph choose)")
