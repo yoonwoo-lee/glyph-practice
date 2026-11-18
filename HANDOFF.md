@@ -27,7 +27,6 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
     skewed view (`find_page` in `glyph/page.py` now reports how many frame edges the sheet touches).
   - **Study guide by page:** with more than one sheet, the guide has `## Page N` sections with the
     colors as `###` sub-headings. A sheet that comes back keeps its page number (`page_signature`).
-  - **Rotate button removed** from the page. `--rotate 90` on the command line still works.
 - 32 checks pass (two new ones in `tests/test_tools.py`).
 
 **Found**
@@ -40,7 +39,7 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
   `stuck-nudge` before going further. For the nudge clock, "new ink" should mean the steady ink
   (`ink`, after the three-look filter), and the out-of-view early return counts as "view blocked".
 - `[open]` Yoon Woo and Skylar want **writer mode / annotation mode**. Not designed yet; do not start
-  it until the two of them have agreed what each mark does in each mode.
+  it. Yoon Woo put it on hold (Nov 17); it comes back when he next asks for features.
 
 ---
 

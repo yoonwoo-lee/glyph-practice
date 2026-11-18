@@ -223,6 +223,7 @@
       <div class="stat"><b id="sLast">–</b><span>last answer took</span></div>
       <div class="stat"><b id="sHl">0</b><span>highlights saved</span></div>
       <div class="tools">
+        <button id="rotate" title="Turn the page if the text is sideways">Rotate</button>
         <button id="look" title="Read the whole page now">Read page now</button>
         <a href="/tune" title="Adjust what counts as ink and highlighter">Tune</a>
       </div>
@@ -460,6 +461,7 @@ $('tGuide').onclick = () => tab('guide');
 $('vPage').onclick = () => view('page');
 $('vRaw').onclick = () => view('raw');
 $('pip').onclick = () => view(big === 'page' ? 'raw' : 'page');
+$('rotate').onclick = () => fetch('/api/rotate', {method: 'POST'});
 $('look').onclick = () => fetch('/api/look', {method: 'POST'});
 $('make').onclick = build; $('make2').onclick = build;
 $('print').onclick = () => window.print();

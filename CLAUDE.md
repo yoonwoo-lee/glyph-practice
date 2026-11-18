@@ -174,7 +174,8 @@ Key design choices:
 
 ## Next up (not built yet, rough priority)
 
-0. **Writer mode / annotation mode** (asked for Nov 17, not designed yet): the same marks do different
+0. **Writer mode / annotation mode** (asked for Nov 17, on hold; raise it when Yoon Woo next asks for
+   features): the same marks do different
    jobs per mode. Writer = solving problems, annotation = readings and books.
 
 1. **Test with the real camera** and tune thresholds (biggest unknown).

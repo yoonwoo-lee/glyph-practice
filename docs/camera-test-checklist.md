@@ -16,7 +16,7 @@ Put results in `HANDOFF.md` when done.
 ## 1. Does it see the page? (2 min)
 
 - [ ] **Camera** view shows a green outline around the sheet.
-- [ ] **Page** view shows the sheet flat and upright. Sideways: restart with `--rotate 90`.
+- [ ] **Page** view shows the sheet flat and upright. Sideways: click **Rotate**.
 - [ ] Nudge the sheet a little. It should not trigger an answer.
 - [ ] Tap the gooseneck. Note how long the picture takes to settle: ____ s
 
