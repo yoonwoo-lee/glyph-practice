@@ -3,6 +3,15 @@
 Read this first. It catches you up on what this project is, where it stands, and what's next.
 The README covers how to run it; this file covers the why and the plan.
 
+## Handoff rule (both Claudes, every session)
+
+1. **Before starting:** `git fetch origin && git show origin/main:HANDOFF.md` and read the newest
+   entries. Do anything marked `[open]` that is addressed to your side, or say why not.
+2. **Before stopping:** add an entry to `HANDOFF.md` on `main` (what you did, what you found, what you
+   need from the other side) and push it. How to do that is at the top of that file. Notes-only
+   commits to `HANDOFF.md` are the one exception to "don't push straight to `main`".
+3. Yoon Woo and Skylar should only have to say "check the handoff". Do not ask them to relay messages.
+
 ## The team and the goal
 
 - **Yoon Woo** and **Skylar**, UCLA. Building Glyph for **HackwithBay 4.0** (San Francisco, Tue Nov 24, 2026).
@@ -28,6 +37,7 @@ Walk Skylar through these in order, checking each one works before moving on.
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 12 should pass.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 30 checks in total.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
    number, then `bash start.sh --camera <n>`. Steps and troubleshooting are in the README.
@@ -61,8 +71,8 @@ card in the feed. No model call (costs nothing, works offline).
 - `glyph/engine.py`: `Settings`, `_accept_page` / new-ink handling inside `_tick` (track the time),
   and a small check at the end of `_tick`. `_tick(frame, now)` takes `now` as an argument, so tests
   can fake time.
-- Do **not** edit `glyph/static/index.html`: the UI is being redesigned on `camera-test`, and the new
-  version already styles the `nudge` event. On `main` the card will simply appear unstyled for now.
+- Do **not** edit `glyph/static/index.html`: the redesigned UI (now on `main`) already styles the
+  `nudge` event.
 - `README.md`: one line in the marks/features area mentioning the nudge and `GLYPH_STUCK_SECONDS`.
 
 **Tests (add to `tests/test_pipeline.py`, follow the existing tests' pattern):**
@@ -91,7 +101,7 @@ Hint-first is the core idea: it should push the student to solve it themselves, 
 
 Symbol → action mapping lives in `symbols.json`, so new symbols are a config change, not a code change.
 
-## Current status (Nov 17)
+## Current status (Nov 17, night)
 
 **Built (MVP, only the three must-haves + the extra symbol):**
 - Spark → hint, underline → definition, highlights → end-of-session study guide.
@@ -101,7 +111,7 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
   half-drawn symbol, hand on page, object left on page, nudged sheet, new sheet, model errors,
   no-sheet fallback, no repeated answers.
 
-**Added on the `camera-test` branch (Nov 17, not merged to `main` yet):**
+**Added on `camera-test` and merged into `main` on Nov 17:**
 - New UI: left half shows what Glyph sees (flattened page + camera inset). Right half: the newest
   answer as a large card with a cut-out picture of the mark that triggered it, highlights grouped by
   color, a timeline of earlier answers, and a typeset study guide (Copy / Print). Look: ink blue,
@@ -113,7 +123,9 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
 - Timing log: `sessions/<ts>/timings.jsonl`, plus "answered in N s" in the UI.
 - `bench.py`: times each Gemini model on the demo page. Not run yet: needs a machine with the key.
 - `normalize_light()` in `page.py`: white balance + brightness correction before color detection.
-- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (6). 27 checks pass in total.
+- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (9). 30 checks pass in total.
+- Fixes from Skylar's first run: v1beta API, call timeout, current fallback models, covered highlights,
+  `start.bat` for Windows. See `HANDOFF.md`.
 
 **Not tested yet:**
 - Real camera (plan: iPhone via macOS Continuity Camera on a gooseneck clamp, pointing straight down)
@@ -145,6 +157,8 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
 | `glyph/app.py` | FastAPI routes: `/`, `/stream/page`, `/stream/raw`, `/api/state`, `/api/look`, `/api/rotate`, `/api/study-guide` |
 | `glyph/tune.py` | (camera-test) Tuning page backend: detection overlays, color picking, save to `.env` |
 | `bench.py` | (camera-test) Model timing on the demo page |
+| `HANDOFF.md` | Notes between the two Claudes (see the handoff rule at the top) |
+| `docs/` | Camera test checklist, event-day plan |
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
@@ -167,7 +181,8 @@ Key design choices:
 - Answer latency with live Gemini: is it fast enough to feel instant?
 - Does Continuity Camera hold a stable picture from above, and does the gooseneck stay steady?
 - Do highlighter colors separate cleanly under typical dorm/venue lighting?
-- Check HackwithBay rules on pre-built code (we're planning to rebuild either way).
+- HackwithBay rules: the event page lists no rule on pre-built code (checked Nov 17). Ask at the opening.
+  Build time is 11:00 to 15:30. See `docs/event-day-plan.md`.
 
 ## Working conventions
 
