@@ -129,6 +129,7 @@ class Engine:
         self._page_unnamed = True  # the page on view has not been matched to an earlier sheet yet
         self._seen_whole = False  # the full sheet has been in view at least once
         self._page_known = False  # the sheet on view was already read earlier this session
+        self._debug_last, self._debug_saved = 0.0, 0
         self._show_quad = True
         self._live_raw: Tuple[Optional[int], bytes] = (None, b"")
 
@@ -248,6 +249,16 @@ class Engine:
             tolerance = max(3.0, 0.002 * frame.shape[1])
             if self.quad is None or float(np.abs(quad - self.quad).max()) > tolerance:
                 self.quad = quad
+        # Keep a few camera pictures from moments when no clean sheet outline was found, so the
+        # detection can be tuned afterwards against what the camera really saw.
+        if not (quad is not None and clean) and stable and now - self._debug_last > 15 and self._debug_saved < 12:
+            self._debug_last, self._debug_saved = now, self._debug_saved + 1
+            try:
+                folder = self.session.dir / "camera"
+                folder.mkdir(exist_ok=True)
+                cv2.imwrite(str(folder / "no_sheet_{:02d}.jpg".format(self._debug_saved)), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            except OSError:
+                pass
         if self._seen_whole and touches in (1, 2) and not clean:
             # The sheet slid partly out of the picture. Flattening it now would give a skewed,
             # zoomed-in view and junk "new ink", so hold the last good view until it is back.

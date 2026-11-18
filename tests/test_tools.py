@@ -176,7 +176,7 @@ def test_client_uses_v1beta_one_attempt_and_a_timeout():
         del os.environ["GEMINI_API_KEY"]
     opts = b._client._api_client._http_options
     assert opts.api_version == "v1beta", opts.api_version
-    assert opts.timeout == int(config.LLM_TIMEOUT_SECONDS * 1000), opts.timeout
+    assert opts.timeout == int(config.LLM_TIMEOUT_SECONDS * 1000) and opts.timeout >= 10000, opts.timeout  # Gemini's minimum
     assert opts.retry_options.attempts == 1, opts.retry_options
     assert not any(m.startswith("gemini-2.5") for m in b.models), b.models
 

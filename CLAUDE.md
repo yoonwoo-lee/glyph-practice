@@ -144,7 +144,7 @@ spark gave a good hint. Problems found and fixed the same night: Flash timed out
 - **OpenCV** — finds the sheet, flattens it, finds ink, detects highlighter by HSV color (no model call)
 - **Gemini vision** via `google-genai` — `gemini-flash-lite-latest` first (fast), falls back to
   `gemini-flash-latest`, `gemini-3.8-flash`, `gemini-3.5-flash-lite` on errors / 503s / timeouts
-  (8 s per call; a model that times out is tried last from then on; v1beta API; the 2.5 models are closed to new keys and a 404 model is dropped for the session)
+  (10 s per call, the shortest Gemini accepts; a model that times out is tried last from then on; v1beta API; the 2.5 models are closed to new keys and a 404 model is dropped for the session)
 - **FastAPI + uvicorn** — local server, MJPEG streams, JSON API
 - Vanilla HTML/JS front end (`glyph/static/index.html`)
 - Key: `GEMINI_API_KEY` in `.env` (never committed). Without a key it runs with fake answers.

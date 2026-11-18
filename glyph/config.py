@@ -89,7 +89,8 @@ LLM_MODEL = os.getenv("GLYPH_MODEL", "gemini-flash-lite-latest")
 # they are not listed. A model the key cannot use (404) is dropped for the rest of the session.
 LLM_FALLBACKS = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
 # Give up on one model call after this long and move to the next model.
-LLM_TIMEOUT_SECONDS = _num("GLYPH_TIMEOUT_SECONDS", 8)
+# Gemini rejects any deadline under 10 s ("Minimum allowed deadline is 10s"), so never go lower.
+LLM_TIMEOUT_SECONDS = max(10.0, _num("GLYPH_TIMEOUT_SECONDS", 10))
 
 DEFAULT_LEGEND = {
     "symbols": [

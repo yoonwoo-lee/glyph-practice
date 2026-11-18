@@ -37,6 +37,10 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
   - **New sheet is read straight away:** the first time a sheet is seen it gets one full read, so
     marks already on it are answered (`Settings.read_first_page`, off in the tests' `FAST` settings).
   - The Rotate button stays.
+- **Bug I introduced and fixed:** an 8 s timeout made every live call fail (Gemini's minimum deadline
+  is 10 s). It is 10 s now and cannot be set lower. If you pulled `8f7bcdc` to `090f814`, pull again.
+- When no clean sheet outline is found, a camera picture is saved to `sessions/<ts>/camera/` every
+  15 s (12 at most), for tuning detection.
 - 34 checks pass.
 
 **Found**
