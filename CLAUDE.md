@@ -31,8 +31,9 @@ Walk Skylar through these in order, checking each one works before moving on.
 3. **Make `.env`:** `cp .env.example .env`, then put the key after `GEMINI_API_KEY=`. Never commit `.env`.
    (`start.sh` tries to copy a key from a `../talking-menu` folder; that only exists on Yoon Woo's Mac,
    so on Skylar's machine it just copies `.env.example`. Fill the key in afterward.)
-4. **Run the demo (no camera needed):** `bash start.sh --demo` (Windows: `start.bat --demo`, and use
-   `venv\Scripts\activate` instead of `source venv/bin/activate` below). First run sets up a venv (~1 min), then a
+4. **Run the demo (no camera needed):** `bash start.sh --demo`. Skylar is on Windows with Git Bash:
+   `bash start.sh` works there too, and he activates with `source venv/Scripts/activate` instead of
+   `source venv/bin/activate` below. (`start.bat` is for plain Command Prompt.) First run sets up a venv (~1 min), then a
    browser tab opens at http://127.0.0.1:8765. He should see a simulated worksheet get a hint, a
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.

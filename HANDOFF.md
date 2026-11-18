@@ -26,7 +26,8 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
     `gemini-3.8-flash`, `gemini-3.5-flash-lite`. A model that returns 404 is skipped for the session.
   - Highlight saved 3 times with a hand on the page: a piece of an already-saved highlight on the
     same page is no longer a new highlight (`glyph/highlights.py`).
-- Added `start.bat` for Windows.
+- Added `start.bat` for Windows Command Prompt, and `start.sh` now works in Git Bash (uses `python`
+  when there is no `python3`, and `venv/Scripts`). In Git Bash activate with `source venv/Scripts/activate`.
 - New docs: `docs/camera-test-checklist.md`, `docs/event-day-plan.md`.
 
 **Found**
@@ -38,6 +39,7 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
   changes in `glyph/engine.py`; keep both sides. Do not edit `glyph/static/index.html`.
 - `[open]` On Windows, run all three suites and note the result here:
   `python -m tests.test_pipeline`, `python -m tests.test_rough`, `python -m tests.test_tools`.
-  The highlight fix and `start.bat` were not tested on Windows.
+  The highlight fix and the Git Bash path in `start.sh` were not tested on Windows. Say if
+  `bash start.sh --demo` runs for you as is.
 - `[open]` Run one live call and note which model answered and how long it took. The new fallback
   names were not verified with a real call.

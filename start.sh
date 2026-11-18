@@ -3,12 +3,21 @@
 set -e
 cd "$(dirname "$0")"
 
+# Windows (Git Bash) has "python" or "py" instead of "python3", and venv/Scripts instead of venv/bin.
+PY=python3
+command -v python3 >/dev/null 2>&1 || PY=python
+command -v "$PY" >/dev/null 2>&1 || PY="py -3"
+
 if [ ! -d venv ]; then
   echo "[glyph] first run: setting up (about a minute)"
-  python3 -m venv venv
+  $PY -m venv venv
 fi
-source venv/bin/activate
-pip install -q --upgrade pip
+if [ -f venv/Scripts/activate ]; then
+  source venv/Scripts/activate
+else
+  source venv/bin/activate
+fi
+python -m pip install -q --upgrade pip
 pip install -q -r requirements.txt
 
 if [ ! -f .env ]; then
