@@ -38,7 +38,7 @@ Walk Skylar through these in order, checking each one works before moving on.
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 12 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 32 checks in total.)
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 34 checks in total.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
    number, then `bash start.sh --camera <n>`. Steps and troubleshooting are in the README.
@@ -124,7 +124,7 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
 - Timing log: `sessions/<ts>/timings.jsonl`, plus "answered in N s" in the UI.
 - `bench.py`: times each Gemini model on the demo page. Not run yet: needs a machine with the key.
 - `normalize_light()` in `page.py`: white balance + brightness correction before color detection.
-- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (11). 32 checks pass in total.
+- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (13). 34 checks pass in total.
 - Fixes from Skylar's first run: v1beta API, call timeout, current fallback models, covered highlights,
   `start.bat` for Windows. See `HANDOFF.md`.
 
@@ -160,7 +160,7 @@ spark gave a good hint. Problems found and fixed the same night: Flash timed out
 | `glyph/highlights.py` | Highlighter detection by color, saves crops, tracks per page |
 | `glyph/brain.py` | Prompt + Gemini call, returns strict JSON (hint / define / explain); `MockBrain` for testing |
 | `glyph/session.py` | Saves each session to `sessions/<timestamp>/` (events, model inputs, study guide) |
-| `glyph/app.py` | FastAPI routes: `/`, `/stream/page`, `/stream/raw`, `/api/state`, `/api/look`, `/api/rotate`, `/api/study-guide` |
+| `glyph/app.py` | FastAPI routes: `/`, `/api/frame/page.jpg`, `/api/frame/raw.jpg` (the page asks for these in a loop), `/api/state`, `/api/look`, `/api/rotate`, `/api/study-guide` |
 | `glyph/tune.py` | (camera-test) Tuning page backend: detection overlays, color picking, save to `.env` |
 | `bench.py` | (camera-test) Model timing on the demo page |
 | `HANDOFF.md` | Notes between the two Claudes (see the handoff rule at the top) |

@@ -41,6 +41,17 @@ def create_app(engine: Engine) -> FastAPI:
             raise HTTPException(404)
         return StreamingResponse(_stream(which), media_type="multipart/x-mixed-replace; boundary=frame")
 
+    @app.get("/api/frame/{which}.jpg")
+    def frame(which: str):
+        """One picture at a time. The web page asks for these in a loop: unlike a never-ending
+        MJPEG stream, this cannot freeze when the views are swapped, and it works in Safari."""
+        if which not in ("page", "raw"):
+            raise HTTPException(404)
+        jpg = engine.live_raw_jpg() if which == "raw" else engine.jpg("page")
+        if not jpg:
+            raise HTTPException(503)
+        return Response(jpg, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
     @app.get("/api/state")
     def state(since: int = 0):
         events = engine.session.events_since(since)

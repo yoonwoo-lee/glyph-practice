@@ -21,7 +21,7 @@ from glyph.engine import Engine, Settings  # noqa: E402
 from glyph.page import find_page_quad  # noqa: E402
 from glyph.session import Session  # noqa: E402
 
-FAST = dict(settle=0.3, cooldown=0.2, big_hold=0.8, tick=0.05, max_calls_per_min=100)
+FAST = dict(settle=0.3, cooldown=0.2, big_hold=0.8, tick=0.05, max_calls_per_min=100, read_first_page=False)
 
 
 class ScriptedBrain:

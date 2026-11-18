@@ -213,10 +213,10 @@
       </div>
     </div>
     <div class="stage" id="stage">
-      <img class="main" id="view" alt="Live view of the paper" src="/stream/page">
+      <img class="main" id="view" alt="Live view of the paper">
       <div class="scan"></div>
       <div class="note hide" id="note"></div>
-      <button class="pip" id="pip" title="Swap the two pictures"><img id="pipImg" alt="" src="/stream/raw"><span id="pipLabel">Camera</span></button>
+      <button class="pip" id="pip" title="Swap the two pictures"><img id="pipImg" alt=""><span id="pipLabel">Camera</span></button>
     </div>
     <div class="under">
       <div class="stat"><b id="sAnswers">0</b><span>answers</span></div>
@@ -436,10 +436,30 @@ function tab(which) {
   $('tFeed').classList.toggle('on', which === 'feed'); $('tGuide').classList.toggle('on', which === 'guide');
   $('feed').classList.toggle('hide', which !== 'feed'); $('guide').classList.toggle('hide', which !== 'guide');
 }
+/* The two pictures are fetched one frame at a time, in a loop. Swapping them just changes which
+   picture each loop asks for, so nothing has to reconnect. */
+const feeds = {view: 'page', pipImg: 'raw'};
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function pump(id) {
+  let old = null;
+  for (;;) {
+    try {
+      const r = await fetch('/api/frame/' + feeds[id] + '.jpg', {cache: 'no-store'});
+      if (!r.ok) throw new Error(r.status);
+      const url = URL.createObjectURL(await r.blob());
+      $(id).src = url;
+      if (old) URL.revokeObjectURL(old);
+      old = url;
+      await sleep(feeds[id] === 'raw' ? 45 : 110);
+    } catch (e) { await sleep(600); }
+  }
+}
+pump('view'); pump('pipImg');
+
 function view(which) {
   big = which; const other = which === 'page' ? 'raw' : 'page';
   $('vPage').classList.toggle('on', which === 'page'); $('vRaw').classList.toggle('on', which === 'raw');
-  $('view').src = '/stream/' + which; $('pipImg').src = '/stream/' + other;
+  feeds.view = which; feeds.pipImg = other;
   $('pipLabel').textContent = other === 'raw' ? 'Camera' : 'Page';
   $('seeingLabel').textContent = which === 'page' ? 'What Glyph sees: your page, flattened' : 'What Glyph sees: the camera, with your sheet outlined';
 }

@@ -214,6 +214,24 @@ def test_sheet_sliding_out_of_view_is_not_read():
     assert engine.status()["text"] == engine_mod.CUT_OFF_TEXT, engine.status()
     assert len(engine.store._signatures) == 1, "sliding out is not a new page"
 
+def test_a_new_sheet_is_read_in_full_straight_away():
+    s = demo.build_steps()
+    engine, brain, session = run([s["spark"]], hold=2.0, read_first_page=True)
+    assert [c["full"] for c in brain.calls] == [True], brain.calls
+
+
+def test_camera_picture_endpoint():
+    from fastapi.testclient import TestClient
+    from glyph.app import create_app
+
+    s = demo.build_steps()
+    engine, brain, session = run([s["blank"]], hold=1.2)
+    client = TestClient(create_app(engine))
+    for which in ("raw", "page"):
+        r = client.get("/api/frame/%s.jpg" % which)
+        assert r.status_code == 200 and r.content[:2] == b"\xff\xd8", (which, r.status_code)
+    assert client.get("/api/frame/other.jpg").status_code == 404
+
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
 

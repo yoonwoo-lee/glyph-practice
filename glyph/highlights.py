@@ -100,8 +100,11 @@ class HighlightStore:
         self.page_no = self._top_page
         self._last = []
 
-    def identify(self, signature) -> None:
-        """Call once the new page is steady. A sheet seen earlier gets its old page number back."""
+    def identify(self, signature) -> bool:
+        """Call once the new page is steady. A sheet seen earlier gets its old page number back.
+
+        Returns True when this sheet was seen earlier in the session.
+        """
         from .page import same_page
 
         best, best_score = None, 0.6
@@ -115,6 +118,7 @@ class HighlightStore:
                 self._top_page -= 1  # that number was never used
             self.page_no = best
         self._signatures[self.page_no] = signature
+        return best is not None
 
     def forget_this_page(self) -> None:
         """Drop what was captured on the current page (it is about to be re-read)."""

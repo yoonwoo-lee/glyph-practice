@@ -29,6 +29,16 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
     colors as `###` sub-headings. A sheet that comes back keeps its page number (`page_signature`).
 - 32 checks pass (two new ones in `tests/test_tools.py`).
 
+- Second camera test (same night) showed more, also fixed:
+  - **View froze when swapping Page and Camera:** the page no longer uses never-ending MJPEG
+    streams. It fetches `/api/frame/page.jpg` and `/api/frame/raw.jpg` in a loop.
+  - **Camera view was choppy:** the camera picture now comes straight from the camera
+    (`Engine.live_raw_jpg`), not from the main loop, which only manages a few frames a second.
+  - **New sheet is read straight away:** the first time a sheet is seen it gets one full read, so
+    marks already on it are answered (`Settings.read_first_page`, off in the tests' `FAST` settings).
+  - The Rotate button stays.
+- 34 checks pass.
+
 **Found**
 - The flicker fix and the out-of-view hold are tested on simulated frames only, not the real camera yet.
 - Page numbers in `HighlightStore` start at 2, not 1 (two resets at startup). Harmless: the guide

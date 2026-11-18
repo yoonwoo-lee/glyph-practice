@@ -62,6 +62,7 @@ class Settings:
     recent: float = config.RECENT_SECONDS
     cover_hold: float = config.COVER_HOLD
     tick: float = 0.125
+    read_first_page: bool = True  # read a sheet in full as soon as it is first seen
 
 
 def _jpg(img: np.ndarray, quality: int = 80) -> bytes:
@@ -127,6 +128,9 @@ class Engine:
         self._ink_hist: deque = deque(maxlen=2)  # the last two ink masks, to ignore ink that flickers
         self._page_unnamed = True  # the page on view has not been matched to an earlier sheet yet
         self._seen_whole = False  # the full sheet has been in view at least once
+        self._page_known = False  # the sheet on view was already read earlier this session
+        self._show_quad = True
+        self._live_raw: Tuple[Optional[int], bytes] = (None, b"")
 
     # ---- controls used by the web server ----------------------------------
 
@@ -169,6 +173,32 @@ class Engine:
         s["avg_seconds"] = round(sum(times) / len(times), 1) if times else None
         s["session_seconds"] = int(time.time() - self.session.started)
         return s
+
+    def _outlined(self, frame: np.ndarray) -> np.ndarray:
+        """The camera picture, smaller, with the sheet outlined."""
+        h, w = frame.shape[:2]
+        scale = 960.0 / w
+        raw = cv2.resize(frame, (960, max(1, int(round(h * scale)))), interpolation=cv2.INTER_AREA)
+        quad = self.quad
+        if quad is not None and self._show_quad:
+            pts = (quad * scale).astype(np.int32).reshape(-1, 1, 2)
+            cv2.polylines(raw, [pts], True, (52, 226, 255), 3, cv2.LINE_AA)  # highlighter yellow
+        return raw
+
+    def live_raw_jpg(self) -> bytes:
+        """The newest camera frame, straight from the camera.
+
+        The main loop does heavy work on every frame, so the picture it publishes updates only a
+        few times a second. The camera view on the web page uses this instead, so it stays smooth.
+        """
+        frame = self.source.read() if self.source is not None else None
+        if frame is None:
+            return self.jpg("raw")
+        key, jpg = self._live_raw
+        if key != id(frame):
+            jpg = _jpg(self._outlined(frame), 70)
+            self._live_raw = (id(frame), jpg)
+        return jpg
 
     def last_page(self) -> Optional[np.ndarray]:
         with self._lock:
@@ -267,6 +297,8 @@ class Engine:
             if stable and steady_ink:
                 self._accept_page(ink_any, page, now)
                 self._add_highlights(self.store.update(regions, page))
+                if s.read_first_page and not self._page_known:
+                    self._want_full = "new page"  # marks already on the sheet get answered straight away
         else:
             self._age_pending(now)
             # Anything wide lying on the sheet? Ignore the ink around it.
@@ -358,7 +390,7 @@ class Engine:
         self.base_gray, self._base_gray_time = page_gray(page), now
         if self._page_unnamed:
             self._page_unnamed = False
-            self.store.identify(page_signature(page))
+            self._page_known = self.store.identify(page_signature(page))
 
     def _age_pending(self, now: float) -> None:
         """Ink that got no response a while ago becomes part of the old page."""
@@ -631,14 +663,8 @@ class Engine:
             x0, y0, x1, y1 = fresh_box
             cv2.rectangle(view, (x0 - 6, y0 - 6), (x1 + 6, y1 + 6), (170, 170, 170), 1)
 
-        h, w = frame.shape[:2]
-        scale = 960.0 / w
-        raw = cv2.resize(frame, (960, max(1, int(round(h * scale)))), interpolation=cv2.INTER_AREA)
-        if self.quad is not None and show_quad:
-            pts = (self.quad * scale).astype(np.int32).reshape(-1, 1, 2)
-            cv2.polylines(raw, [pts], True, (52, 226, 255), 3, cv2.LINE_AA)  # highlighter yellow
-
-        page_jpg, raw_jpg = _jpg(view, 75), _jpg(raw, 70)
+        self._show_quad = show_quad
+        page_jpg, raw_jpg = _jpg(view, 75), _jpg(self._outlined(frame), 70)
         with self._lock:
             self._page_jpg, self._raw_jpg = page_jpg, raw_jpg
             self._last_page = clean_page
