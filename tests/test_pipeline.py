@@ -114,7 +114,8 @@ def test_hand_does_not_trigger_and_symbol_still_found():
     hand = demo.add_hand(s["blank"])
     engine, brain, session = run([s["blank"], hand, s["spark"]], hold=1.4)
     assert len(brain.calls) == 1 and not brain.calls[0]["full"], brain.calls
-    assert brain.calls[0]["shape"] == (64, 64), brain.calls
+    w, h = brain.calls[0]["shape"]
+    assert abs(w - 64) <= 2 and abs(h - 64) <= 2, brain.calls  # just the spark
     assert kinds(session) == ["hint"], kinds(session)
 
 

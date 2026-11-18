@@ -457,6 +457,7 @@ class Engine:
             "context": self._context(page, box),
             "t_seen": self._fresh_since if (not full and self._fresh_since) else now,
             "t_sent": now,
+            "page_no": self.store.page_no,
         }
         self._fresh_since = None
         self._pool.submit(self._run_job, job)
@@ -550,6 +551,7 @@ class Engine:
                 self.session.add_event(
                     t["action"], title, t["response"], target=t["target"], symbol=t.get("symbol"),
                     seconds=timing["total_s"], model_seconds=timing["model_s"], snip=self._snip(job),
+                    page=job.get("page_no"),
                 )
                 shown += 1
 
@@ -617,40 +619,58 @@ class Engine:
             )
 
     def study_guide(self) -> str:
-        """Build the end-of-session guide. Called from a web request."""
+        """Build the end-of-session guide. Called from a web request.
+
+        With one sheet it is a single list. With more than one, each sheet gets its own
+        "Page N" section holding its highlights, the words looked up on it and the hints given.
+        """
         regions = self.store.all()
-        parts = ["# Study guide", "", time.strftime("%A, %B %d, %Y")]
-        if regions:
-            order = list(self.legend.get("highlight_colors", {}).keys())
-            regions.sort(key=lambda r: (order.index(r["color"]) if r["color"] in order else 99, r["id"]))
-            pages = sorted({r["page_no"] for r in regions})
-            for n, page_no in enumerate(pages, 1):
-                items = []
-                for r in regions:
-                    if r["page_no"] != page_no:
-                        continue
-                    try:
-                        items.append({"color": r["color"], "label": r["label"], "jpg": r["path"].read_bytes()})
-                    except OSError:
-                        pass
-                if not items:
-                    continue
-                section = self.brain.study_guide(items)
-                if len(pages) > 1:
-                    # One section per sheet, with the colors as sub-headings under it.
-                    section = "\n".join("#" + line if line.startswith("## ") else line for line in section.splitlines())
-                    parts += ["", "## Page {}".format(n)]
-                parts += ["", section]
-        else:
-            parts += ["", "No highlights were captured this session."]
+        order = list(self.legend.get("highlight_colors", {}).keys())
+        regions.sort(key=lambda r: (order.index(r["color"]) if r["color"] in order else 99, r["id"]))
         defs = self.session.events_of("define")
-        if defs:
-            parts += ["", "## Words you looked up"]
-            parts += ["- **{}**: {}".format(e["meta"].get("target", "?"), e["body"]) for e in defs]
         helped = self.session.events_of("hint", "explain")
-        if helped:
-            parts += ["", "## Where you asked for help"]
-            parts += ["- {} ({})".format(e["meta"].get("target", "?"), e["body"]) for e in helped]
+        pages = sorted(
+            {r["page_no"] for r in regions} | {e["meta"].get("page") for e in defs + helped if e["meta"].get("page") is not None}
+        )
+        split = len(pages) > 1
+        head = "###" if split else "##"
+
+        def section(page_no) -> List[str]:
+            mine = lambda e: not split or e["meta"].get("page") == page_no  # noqa: E731
+            out: List[str] = []
+            items = []
+            for r in regions:
+                if split and r["page_no"] != page_no:
+                    continue
+                try:
+                    items.append({"color": r["color"], "label": r["label"], "jpg": r["path"].read_bytes()})
+                except OSError:
+                    pass
+            if items:
+                text = self.brain.study_guide(items)
+                if split:
+                    text = "\n".join("#" + line if line.startswith("## ") else line for line in text.splitlines())
+                out += ["", text]
+            elif not split:
+                out += ["", "No highlights were captured this session."]
+            words = [e for e in defs if mine(e)]
+            if words:
+                out += ["", head + " Words you looked up"]
+                out += ["- **{}**: {}".format(e["meta"].get("target", "?"), e["body"]) for e in words]
+            hints = [e for e in helped if mine(e)]
+            if hints:
+                out += ["", head + " Where you asked for help"]
+                out += ["- {} ({})".format(e["meta"].get("target", "?"), e["body"]) for e in hints]
+            return out
+
+        parts = ["# Study guide", "", time.strftime("%A, %B %d, %Y")]
+        if split:
+            for n, page_no in enumerate(pages, 1):
+                body = section(page_no)
+                if body:
+                    parts += ["", "## Page {}".format(n)] + body
+        else:
+            parts += section(None)
         text = "\n".join(parts).strip() + "\n"
         self.session.save_text("study_guide.md", text)
         return text

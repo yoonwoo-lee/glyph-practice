@@ -40,28 +40,55 @@ def same_page(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def find_page(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int]:
-    """Find the paper: the largest bright four-sided shape in the frame.
+    """Find the paper in the camera picture.
 
-    The third value is how many edges of the camera picture the sheet touches:
-    1 or 2 means part of the sheet is outside the camera's view.
+    Returns (corners, clean, touches). `clean` is False when something (a hand, a pen)
+    breaks the outline, so the caller can keep using the last good corners. `touches` is how
+    many edges of the camera picture the sheet reaches: 1 or 2 means part of it may be out of
+    view. Corners are None when no sheet stands out, for example when the paper fills the whole
+    frame or sits on a white desk.
 
-    Returns (corners, clean). `clean` is False when something (a hand, a pen)
-    breaks the outline, so the caller can keep using the last good corners.
-    Returns (None, False) when no sheet stands out, for example when the paper
-    fills the whole frame or sits on a white desk.
+    Two ways of looking are tried. By color: paper is the big area that is neither colorful nor
+    dark, which holds up on a wooden desk with glare and with shadows lying across the sheet.
+    By brightness: the largest bright shape, which works on a dark desk in any light.
     """
     h, w = frame.shape[:2]
     scale = 640.0 / w
     small = cv2.resize(frame, (640, max(1, int(round(h * scale)))), interpolation=cv2.INTER_AREA)
-    gray = cv2.GaussianBlur(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+    small = cv2.GaussianBlur(small, (5, 5), 0)
+    by_color = _outline(_paper_by_color(small), strict=False)
+    if by_color[0] is not None and by_color[1]:
+        return order_quad(by_color[0] / scale), True, by_color[2]
+    by_light = _outline(_paper_by_brightness(small), strict=True)
+    if by_light[0] is not None and by_light[1]:
+        return order_quad(by_light[0] / scale), True, by_light[2]
+    quad, _, touches = by_light if by_light[0] is not None else by_color
+    return (None if quad is None else order_quad(quad / scale)), False, touches
+
+
+def _paper_by_color(small: np.ndarray) -> np.ndarray:
+    hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
+    sat, val = hsv[..., 1], hsv[..., 2]
+    bright = float(np.percentile(val, 95))
+    mask = ((sat < 75) & (val > 0.38 * bright)).astype(np.uint8) * 255
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
+
+
+def _paper_by_brightness(small: np.ndarray) -> np.ndarray:
+    gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
     _, th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    th = cv2.morphologyEx(th, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
-    contours, _ = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    return cv2.morphologyEx(th, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+
+
+def _outline(mask: np.ndarray, strict: bool) -> Tuple[Optional[np.ndarray], bool, int]:
+    """The four corners of the largest shape in a mask, and whether it really is a clean sheet."""
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return None, False, 0
     c = max(contours, key=cv2.contourArea)
     area = cv2.contourArea(c)
-    sh, sw = small.shape[:2]
+    sh, sw = mask.shape[:2]
     if area < 0.12 * sh * sw:
         return None, False, 0
     x, y, bw, bh = cv2.boundingRect(c)
@@ -69,9 +96,9 @@ def find_page(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int]:
     if touches >= 3:
         return None, False, touches
 
-    peri = cv2.arcLength(c, True)
     quad = None
     direct = False
+    peri = cv2.arcLength(c, True)
     for eps in (0.02, 0.03, 0.05):
         approx = cv2.approxPolyDP(c, eps * peri, True)
         if len(approx) == 4 and cv2.isContourConvex(approx):
@@ -81,7 +108,7 @@ def find_page(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int]:
     if quad is None:
         hull = cv2.convexHull(c)
         hperi = cv2.arcLength(hull, True)
-        for eps in (0.02, 0.03, 0.05):
+        for eps in (0.02, 0.03, 0.05, 0.08):
             approx = cv2.approxPolyDP(hull, eps * hperi, True)
             if len(approx) == 4:
                 quad = approx.reshape(4, 2).astype(np.float32)
@@ -90,8 +117,19 @@ def find_page(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int]:
         return None, False, touches
     quad_area = cv2.contourArea(quad)
     fill = area / quad_area if quad_area > 0 else 0.0
-    clean = direct and 0.93 <= fill <= 1.05 and touches == 0
-    return order_quad(quad / scale), clean, touches
+    if strict:
+        clean = direct and 0.93 <= fill <= 1.05 and touches == 0
+    else:
+        # A real sheet has slightly bowed edges and may just reach the edge of the picture.
+        clean = 0.93 <= fill <= 1.08 and touches <= 1
+        if clean and touches == 1:
+            # At the edge of the picture: fine if it still has the proportions of a sheet of paper,
+            # not if a chunk of it is out of view.
+            o = order_quad(quad)
+            a = float(np.linalg.norm(o[1] - o[0]) + np.linalg.norm(o[2] - o[3]))
+            b = float(np.linalg.norm(o[3] - o[0]) + np.linalg.norm(o[2] - o[1]))
+            clean = 1.15 <= max(a, b) / max(min(a, b), 1.0) <= 1.5
+    return quad, clean, touches
 
 
 def _rotate(img: np.ndarray, quarter_turns: int) -> np.ndarray:

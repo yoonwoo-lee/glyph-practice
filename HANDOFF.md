@@ -41,7 +41,16 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
   is 10 s). It is 10 s now and cannot be set lower. If you pulled `8f7bcdc` to `090f814`, pull again.
 - When no clean sheet outline is found, a camera picture is saved to `sessions/<ts>/camera/` every
   15 s (12 at most), for tuning detection.
-- 34 checks pass.
+- Third camera test (0.5x lens, sheet fully in view, wooden desk):
+  - **Sheet was never found**, so the page was never flattened and only whole-frame reads happened.
+    Cause: brightness alone cannot separate paper from a glossy wooden desk with shadows across the
+    sheet. `find_page` in `glyph/page.py` now looks by color first (low saturation, not dark) and
+    falls back to brightness. Checked against four saved pictures from that test: all four flatten.
+  - **Full-page reads took 12 to 26 s** (two models timed out first). Thinking is now off by default
+    (`GLYPH_THINKING_BUDGET=0`; a model that refuses the setting is asked again without it).
+  - **Study guide by page** now also puts "Words you looked up" and "Where you asked for help" under
+    their page. Each answer event carries `meta.page`.
+- 36 checks pass.
 
 **Found**
 - The flicker fix and the out-of-view hold are tested on simulated frames only, not the real camera yet.

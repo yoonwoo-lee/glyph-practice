@@ -162,6 +162,7 @@ class Brain:
         self.system = build_system_prompt(legend)
         self.models = list(models or [config.LLM_MODEL] + [m for m in config.LLM_FALLBACKS if m != config.LLM_MODEL])
         self.last_model = ""  # which model actually answered the last call
+        self._no_budget = set()  # models that refused the thinking setting
 
     def _generate(self, images: List[bytes], text: str, system: Optional[str], want_json: bool) -> str:
         types = self._types
@@ -175,15 +176,27 @@ class Brain:
         )
         # Optional: cap the model's thinking for faster answers (GLYPH_THINKING_BUDGET=0 turns it off
         # on models that allow that). Left alone unless you set it.
-        budget = os.getenv("GLYPH_THINKING_BUDGET", "").strip()
-        if budget.lstrip("-").isdigit():
-            options["thinking_config"] = types.ThinkingConfig(thinking_budget=int(budget))
-        cfg = types.GenerateContentConfig(**options)
+        cfg_plain = types.GenerateContentConfig(**options)
+        # Thinking is off by default: on the real camera it pushed full-page reads past the timeout.
+        # GLYPH_THINKING_BUDGET changes it (-1 lets the model decide). A model that refuses the
+        # setting is asked again without it, and remembered.
+        budget = os.getenv("GLYPH_THINKING_BUDGET", "0").strip()
+        cfg_quick = cfg_plain
+        if budget.lstrip("-").isdigit() and int(budget) >= 0:
+            cfg_quick = types.GenerateContentConfig(thinking_config=types.ThinkingConfig(thinking_budget=int(budget)), **options)
         last = None
         for attempt in range(2):
             for model in list(self.models):
                 try:
-                    r = self._client.models.generate_content(model=model, contents=parts, config=cfg)
+                    try:
+                        cfg = cfg_plain if model in self._no_budget else cfg_quick
+                        r = self._client.models.generate_content(model=model, contents=parts, config=cfg)
+                    except Exception as e:
+                        if cfg is cfg_plain or "thinking" not in str(e).lower():
+                            raise
+                        self._no_budget.add(model)
+                        print(f"[glyph] {model} does not take the thinking setting; asking without it")
+                        r = self._client.models.generate_content(model=model, contents=parts, config=cfg_plain)
                     if r.text:
                         self.last_model = model
                         return r.text

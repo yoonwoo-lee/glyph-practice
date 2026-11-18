@@ -157,6 +157,7 @@ def test_dead_model_is_dropped_and_the_next_one_answers():
 
     b = brain_mod.Brain.__new__(brain_mod.Brain)
     b._types, b.legend, b.system, b.last_model = types, config.load_legend(), "s", ""
+    b._no_budget = set()
     b.models = ["old", "slow", "good"]
     b._client = type("C", (), {"models": Models()})()
     assert b.analyze(b"jpg") == {"occluded": False, "triggers": []}
@@ -231,6 +232,31 @@ def test_camera_picture_endpoint():
         r = client.get("/api/frame/%s.jpg" % which)
         assert r.status_code == 200 and r.content[:2] == b"\xff\xd8", (which, r.status_code)
     assert client.get("/api/frame/other.jpg").status_code == 404
+
+def test_study_guide_puts_hints_and_words_under_their_page():
+    s = demo.build_steps()
+    engine, brain, session = run([s["blank"]], hold=1.0)
+    session.add_event("hint", "Hint", "try the power rule", target="problem 1", page=2)
+    session.add_event("define", "Definition: panzootic", "a very wide outbreak", target="panzootic", page=3)
+    guide = engine.study_guide()
+    one, two = guide.index("## Page 1"), guide.index("## Page 2")
+    assert one < guide.index("problem 1") < two < guide.index("panzootic"), guide
+    assert "### Where you asked for help" in guide and "### Words you looked up" in guide, guide
+
+
+def test_sheet_is_found_on_a_wooden_desk_with_a_shadow_across_it():
+    page = demo.base_page()
+    scene = demo.desk_scene(page)
+    paper = cv2.inRange(scene, (150, 150, 150), (255, 255, 255))
+    scene[paper == 0] = (60, 130, 190)  # orange-brown wood, about as bright as shaded paper
+    shade = np.ones(scene.shape[:2], np.float32)
+    cv2.ellipse(shade, (1000, 500), (260, 330), 0, 0, 360, 0.55, -1)  # the phone's shadow on the sheet
+    shade = cv2.GaussianBlur(shade, (0, 0), 25)
+    scene = (scene.astype(np.float32) * shade[..., None]).astype(np.uint8)
+    quad, clean = find_page_quad(scene)
+    want, _ = find_page_quad(demo.desk_scene(page))
+    assert quad is not None and clean, "sheet not found"
+    assert float(np.abs(quad - want).max()) < 12, np.abs(quad - want).max()
 
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
