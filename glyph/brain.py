@@ -123,6 +123,13 @@ def clean_result(data, legend: dict) -> dict:
     return out
 
 
+def _model_is_gone(err: Exception) -> bool:
+    """True for "this model does not exist / is closed to this key", which retrying cannot fix."""
+    text = str(err).lower()
+    code = getattr(err, "code", None) or getattr(err, "status_code", None)
+    return code == 404 or "not_found" in text or "no longer available" in text or "is not found" in text
+
+
 class Brain:
     """Gemini, through the google-genai SDK."""
 
@@ -135,11 +142,20 @@ class Brain:
         from google import genai
         from google.genai import types
 
-        self._client = genai.Client(api_key=key)
+        # v1beta is where the "-latest" model names live; newer SDK versions default to v1, which 404s
+        # on them. One attempt and a timeout per call: the SDK's own retries made a slow model look
+        # frozen. Falling back to the next model is handled in _generate.
+        http = {"api_version": "v1beta", "timeout": int(config.LLM_TIMEOUT_SECONDS * 1000)}
+        if hasattr(types, "HttpRetryOptions"):
+            http["retry_options"] = types.HttpRetryOptions(attempts=1)
+        try:
+            self._client = genai.Client(api_key=key, http_options=http)
+        except Exception:  # an SDK version that rejects one of the options above
+            self._client = genai.Client(api_key=key, http_options={"api_version": "v1beta"})
         self._types = types
         self.legend = legend
         self.system = build_system_prompt(legend)
-        self.models = models or [config.LLM_MODEL] + [m for m in config.LLM_FALLBACKS if m != config.LLM_MODEL]
+        self.models = list(models or [config.LLM_MODEL] + [m for m in config.LLM_FALLBACKS if m != config.LLM_MODEL])
         self.last_model = ""  # which model actually answered the last call
 
     def _generate(self, images: List[bytes], text: str, system: Optional[str], want_json: bool) -> str:
@@ -160,17 +176,25 @@ class Brain:
         cfg = types.GenerateContentConfig(**options)
         last = None
         for attempt in range(2):
-            for model in self.models:
+            for model in list(self.models):
                 try:
                     r = self._client.models.generate_content(model=model, contents=parts, config=cfg)
                     if r.text:
                         self.last_model = model
                         return r.text
                     last = BrainError(f"{model} returned no text")
-                except Exception as e:  # overloaded, rate-limited, unknown model, ...
+                except Exception as e:  # overloaded, rate-limited, timed out, unknown model, ...
                     last = e
                     print(f"[glyph] {model} failed: {str(e)[:90]}")
+                    if _model_is_gone(e) and model in self.models:
+                        # This key can never use this model: stop trying it for the rest of the session.
+                        self.models.remove(model)
+                        print(f"[glyph] {model} is not available for this key; skipping it from now on")
+            if not self.models:
+                break
             time.sleep(1.5)
+        if not self.models:
+            raise BrainError("None of the Gemini models are available for this key. Set GLYPH_MODEL in .env to one that is.")
         raise BrainError(f"The vision model did not answer: {str(last)[:160]}")
 
     def analyze(self, page_jpg: bytes, crop_jpg: Optional[bytes] = None, context: str = "", shape_hint=None) -> dict:

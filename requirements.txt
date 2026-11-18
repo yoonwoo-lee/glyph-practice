@@ -1,6 +1,6 @@
 opencv-python
 numpy
 python-dotenv
-google-genai
+google-genai>=1.40
 fastapi
 uvicorn

@@ -22,7 +22,8 @@ Walk Skylar through these in order, checking each one works before moving on.
 3. **Make `.env`:** `cp .env.example .env`, then put the key after `GEMINI_API_KEY=`. Never commit `.env`.
    (`start.sh` tries to copy a key from a `../talking-menu` folder; that only exists on Yoon Woo's Mac,
    so on Skylar's machine it just copies `.env.example`. Fill the key in afterward.)
-4. **Run the demo (no camera needed):** `bash start.sh --demo`. First run sets up a venv (~1 min), then a
+4. **Run the demo (no camera needed):** `bash start.sh --demo` (Windows: `start.bat --demo`, and use
+   `venv\Scripts\activate` instead of `source venv/bin/activate` below). First run sets up a venv (~1 min), then a
    browser tab opens at http://127.0.0.1:8765. He should see a simulated worksheet get a hint, a
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
@@ -124,7 +125,8 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
 - **Python 3.9** (matches the Mac), venv created by `start.sh`
 - **OpenCV** — finds the sheet, flattens it, finds ink, detects highlighter by HSV color (no model call)
 - **Gemini vision** via `google-genai` — `gemini-flash-latest`, falls back to
-  `gemini-flash-lite-latest`, `gemini-2.5-flash`, `gemini-2.5-flash-lite` on errors / 503s
+  `gemini-flash-lite-latest`, `gemini-3.8-flash`, `gemini-3.5-flash-lite` on errors / 503s / timeouts
+  (15 s per call; v1beta API; the 2.5 models are closed to new keys and a 404 model is dropped for the session)
 - **FastAPI + uvicorn** — local server, MJPEG streams, JSON API
 - Vanilla HTML/JS front end (`glyph/static/index.html`)
 - Key: `GEMINI_API_KEY` in `.env` (never committed). Without a key it runs with fake answers.

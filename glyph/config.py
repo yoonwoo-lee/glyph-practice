@@ -83,7 +83,11 @@ HIGHLIGHT_MIN_FRAC = 0.0009
 
 # --- Vision model ------------------------------------------------------------
 LLM_MODEL = os.getenv("GLYPH_MODEL", "gemini-flash-latest")
-LLM_FALLBACKS = ["gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite"]
+# Tried in order when the main model errors. The 2.5 models are closed to new keys (Nov 2026), so
+# they are not listed. A model the key cannot use (404) is dropped for the rest of the session.
+LLM_FALLBACKS = ["gemini-flash-lite-latest", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
+# Give up on one model call after this long and move to the next model.
+LLM_TIMEOUT_SECONDS = _num("GLYPH_TIMEOUT_SECONDS", 15)
 
 DEFAULT_LEGEND = {
     "symbols": [

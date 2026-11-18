@@ -62,6 +62,16 @@ def _iou(a: Box, b: Box) -> float:
     return inter / union if union else 0.0
 
 
+def _inside(a: Box, b: Box) -> float:
+    """Share of the smaller box that lies inside the other one."""
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    ix = max(0, min(ax + aw, bx + bw) - max(ax, bx))
+    iy = max(0, min(ay + ah, by + bh) - max(ay, by))
+    small = min(aw * ah, bw * bh)
+    return ix * iy / small if small else 0.0
+
+
 def _thumb(img: np.ndarray) -> np.ndarray:
     return cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (96, 24), interpolation=cv2.INTER_AREA)
 
@@ -115,7 +125,12 @@ class HighlightStore:
                 thumb = _thumb(crop)
                 match: Optional[dict] = None
                 for r in self.regions:
-                    if r["color"] == color and _iou(bbox, r["bbox"]) > 0.3:
+                    if r["color"] != color:
+                        continue
+                    # A hand or object over part of a saved highlight leaves a smaller piece (or two)
+                    # inside the saved box. Those are the same highlight, not new ones.
+                    piece = r["page_no"] == self.page_no and _inside(bbox, r["bbox"]) > 0.6
+                    if piece or _iou(bbox, r["bbox"]) > 0.3:
                         match = r
                         break
                 if match is not None:
@@ -125,6 +140,8 @@ class HighlightStore:
                         match["bbox"], match["thumb"] = bbox, thumb
                         cv2.imwrite(str(match["path"]), crop)
                         continue
+                    if not grew and match["page_no"] == self.page_no:
+                        continue  # same spot, same color, same page: already saved
                     if not grew and _similar(thumb, match["thumb"]) > 0.35:
                         continue
                 region = {

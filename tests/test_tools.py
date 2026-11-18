@@ -111,6 +111,75 @@ def test_tuner_pictures_render():
         assert img is not None and img.shape[0] > 500, which
 
 
+
+def test_covered_highlight_is_not_saved_again():
+    """A hand over part of a saved highlight leaves smaller pieces of it. They are not new highlights."""
+    from glyph.highlights import HighlightStore
+
+    page = np.full((900, 700, 3), 245, np.uint8)
+    cv2.rectangle(page, (100, 200), (500, 240), (60, 230, 250), -1)
+    store = HighlightStore(Path(tempfile.mkdtemp(prefix="glyph_hl_")), {"yellow": "Key ideas"})
+    store.new_page()
+    whole = [{"color": "yellow", "bbox": (100, 200, 400, 40), "area": 16000}]
+    store.update(whole, page)
+    assert len(store.update(whole, page)) == 1
+    for piece in [(100, 200, 110, 40), (100, 202, 90, 36), (420, 200, 80, 40)]:  # overlap as low as 0.2
+        part = [{"color": "yellow", "bbox": piece, "area": piece[2] * piece[3]}]
+        store.update(part, page)
+        assert store.update(part, page) == [], piece
+    assert len(store.all()) == 1
+    # A separate highlight further down the page still counts.
+    other = [{"color": "yellow", "bbox": (100, 400, 300, 40), "area": 12000}]
+    store.update(other, page)
+    assert len(store.update(other, page)) == 1
+
+
+def test_dead_model_is_dropped_and_the_next_one_answers():
+    from glyph import brain as brain_mod
+
+    class Gone(Exception):
+        code = 404
+
+    class Models:
+        def __init__(self):
+            self.asked = []
+
+        def generate_content(self, model, contents, config):
+            self.asked.append(model)
+            if model == "old":
+                raise Gone("This model models/old is no longer available to new users.")
+            if model == "slow":
+                raise TimeoutError("timed out")
+            return type("R", (), {"text": '{"occluded": false, "triggers": []}'})()
+
+    from google.genai import types
+
+    b = brain_mod.Brain.__new__(brain_mod.Brain)
+    b._types, b.legend, b.system, b.last_model = types, config.load_legend(), "s", ""
+    b.models = ["old", "slow", "good"]
+    b._client = type("C", (), {"models": Models()})()
+    assert b.analyze(b"jpg") == {"occluded": False, "triggers": []}
+    assert b.last_model == "good" and b.models == ["slow", "good"], b.models
+    b.analyze(b"jpg")
+    assert b._client.models.asked == ["old", "slow", "good", "slow", "good"], b._client.models.asked
+
+
+def test_client_uses_v1beta_one_attempt_and_a_timeout():
+    import os
+    from glyph import brain as brain_mod
+
+    os.environ["GEMINI_API_KEY"] = "test-key-not-real"
+    try:
+        b = brain_mod.Brain(config.load_legend())
+    finally:
+        del os.environ["GEMINI_API_KEY"]
+    opts = b._client._api_client._http_options
+    assert opts.api_version == "v1beta", opts.api_version
+    assert opts.timeout == int(config.LLM_TIMEOUT_SECONDS * 1000), opts.timeout
+    assert opts.retry_options.attempts == 1, opts.retry_options
+    assert not any(m.startswith("gemini-2.5") for m in b.models), b.models
+
+
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
 
 if __name__ == "__main__":

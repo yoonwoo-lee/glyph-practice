@@ -15,7 +15,7 @@ This is the practice version for learning what is hard. Rebuild from scratch, in
 
 ```
 cd ~/Desktop/glyph-practice
-bash start.sh --demo
+bash start.sh --demo        # Windows: start.bat --demo
 ```
 
 The first run takes about a minute to set up. `--demo` needs no camera: it plays a simulated worksheet that
