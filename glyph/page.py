@@ -22,7 +22,28 @@ def order_quad(pts: np.ndarray) -> np.ndarray:
 
 
 def find_page_quad(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool]:
+    quad, clean, _ = find_page(frame)
+    return quad, clean
+
+
+def page_signature(page: np.ndarray) -> np.ndarray:
+    """A small map of where the writing sits on a page, to tell one sheet from another."""
+    density = cv2.resize(ink_mask(page).astype(np.float32), (24, 32), interpolation=cv2.INTER_AREA)
+    return cv2.GaussianBlur(density, (3, 3), 0)
+
+
+def same_page(a: np.ndarray, b: np.ndarray) -> float:
+    """How alike two page signatures are: about 1 for the same sheet, near 0 for different ones."""
+    if float(a.std()) < 1e-3 or float(b.std()) < 1e-3:
+        return 0.0
+    return float(cv2.matchTemplate(a, b, cv2.TM_CCOEFF_NORMED)[0, 0])
+
+
+def find_page(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int]:
     """Find the paper: the largest bright four-sided shape in the frame.
+
+    The third value is how many edges of the camera picture the sheet touches:
+    1 or 2 means part of the sheet is outside the camera's view.
 
     Returns (corners, clean). `clean` is False when something (a hand, a pen)
     breaks the outline, so the caller can keep using the last good corners.
@@ -37,16 +58,16 @@ def find_page_quad(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool]:
     th = cv2.morphologyEx(th, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
     contours, _ = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
-        return None, False
+        return None, False, 0
     c = max(contours, key=cv2.contourArea)
     area = cv2.contourArea(c)
     sh, sw = small.shape[:2]
     if area < 0.12 * sh * sw:
-        return None, False
+        return None, False, 0
     x, y, bw, bh = cv2.boundingRect(c)
     touches = int(x <= 2) + int(y <= 2) + int(x + bw >= sw - 2) + int(y + bh >= sh - 2)
     if touches >= 3:
-        return None, False
+        return None, False, touches
 
     peri = cv2.arcLength(c, True)
     quad = None
@@ -66,11 +87,11 @@ def find_page_quad(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool]:
                 quad = approx.reshape(4, 2).astype(np.float32)
                 break
     if quad is None:
-        return None, False
+        return None, False, touches
     quad_area = cv2.contourArea(quad)
     fill = area / quad_area if quad_area > 0 else 0.0
-    clean = direct and 0.93 <= fill <= 1.05
-    return order_quad(quad / scale), clean
+    clean = direct and 0.93 <= fill <= 1.05 and touches == 0
+    return order_quad(quad / scale), clean, touches
 
 
 def _rotate(img: np.ndarray, quarter_turns: int) -> np.ndarray:

@@ -17,6 +17,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from glyph import config, demo, tune  # noqa: E402
+from glyph import engine as engine_mod  # noqa: E402
 from glyph.page import find_page_quad, normalize_light, warp_page  # noqa: E402
 from tests.test_pipeline import run  # noqa: E402
 
@@ -159,9 +160,9 @@ def test_dead_model_is_dropped_and_the_next_one_answers():
     b.models = ["old", "slow", "good"]
     b._client = type("C", (), {"models": Models()})()
     assert b.analyze(b"jpg") == {"occluded": False, "triggers": []}
-    assert b.last_model == "good" and b.models == ["slow", "good"], b.models
+    assert b.last_model == "good" and b.models == ["good", "slow"], b.models  # dead one dropped, slow one last
     b.analyze(b"jpg")
-    assert b._client.models.asked == ["old", "slow", "good", "slow", "good"], b._client.models.asked
+    assert b._client.models.asked == ["old", "slow", "good", "good"], b._client.models.asked
 
 
 def test_client_uses_v1beta_one_attempt_and_a_timeout():
@@ -178,6 +179,40 @@ def test_client_uses_v1beta_one_attempt_and_a_timeout():
     assert opts.timeout == int(config.LLM_TIMEOUT_SECONDS * 1000), opts.timeout
     assert opts.retry_options.attempts == 1, opts.retry_options
     assert not any(m.startswith("gemini-2.5") for m in b.models), b.models
+
+def _second_sheet():
+    page = np.full((demo.PAGE_H, demo.PAGE_W, 3), 244, np.uint8)
+    for i in range(9):
+        cv2.putText(page, "Chapter 4 reading, a different page, line %d." % i, (70, 640 + 45 * i), demo.FONT, 0.8, demo.INK, 2, cv2.LINE_AA)
+    return page
+
+
+def test_study_guide_has_a_section_per_sheet():
+    first = demo.build_steps()["highlights"]
+    page2 = _second_sheet()
+    blank2 = demo.desk_scene(page2)
+    tint = np.array(demo.MARKER["yellow"], np.float32) / 255.0
+    page2[690:730, 60:640] = (page2[690:730, 60:640].astype(np.float32) * tint).astype(np.uint8)
+    marked2 = demo.desk_scene(page2)
+    # Sheet 1, sheet 2, then sheet 1 again: still two pages, not three.
+    engine, brain, session = run([first, blank2, marked2, first], hold=2.6, big_hold=0.6)
+    pages = sorted({r["page_no"] for r in engine.store.all()})
+    assert len(pages) == 2, [(r["page_no"], r["color"]) for r in engine.store.all()]
+    assert engine.store.page_no == pages[0], "back on the first sheet, it keeps its number"
+    guide = engine.study_guide()
+    assert "## Page 1" in guide and "## Page 2" in guide and "## Page 3" not in guide, guide
+    assert "### Key ideas" in guide, guide
+
+
+def test_sheet_sliding_out_of_view_is_not_read():
+    s = demo.build_steps()
+    page = demo.base_page()
+    demo.draw_spark(page)
+    off = demo.desk_scene(page, shift=(760, 0))  # the right part of the sheet leaves the picture
+    engine, brain, session = run([s["blank"], off], hold=2.4)
+    assert brain.calls == [], brain.calls
+    assert engine.status()["text"] == engine_mod.CUT_OFF_TEXT, engine.status()
+    assert len(engine.store._signatures) == 1, "sliding out is not a new page"
 
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

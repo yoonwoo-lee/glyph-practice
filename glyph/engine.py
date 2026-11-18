@@ -27,7 +27,8 @@ from . import config
 from .highlights import DRAW_COLORS, HighlightStore, detect_highlights
 from .page import (
     Stability,
-    find_page_quad,
+    find_page,
+    page_signature,
     full_frame_page,
     cover_mask,
     ink_mask,
@@ -41,8 +42,10 @@ from .session import Session
 
 log = logging.getLogger("glyph")
 
+_K3 = np.ones((3, 3), np.uint8)
 _K9 = np.ones((9, 9), np.uint8)
 _K31 = np.ones((31, 31), np.uint8)
+CUT_OFF_TEXT = "Part of the sheet is outside the camera's view. Slide it back, or raise the phone."
 
 TITLES = {"hint": "Hint", "explain": "Explanation", "define": "Definition"}
 
@@ -121,6 +124,9 @@ class Engine:
         self._fresh_since: Optional[float] = None  # when the ink now waiting to be read first showed up
         self._last_page: Optional[np.ndarray] = None  # clean flattened page, for the tuner
         self._answer_times: List[float] = []
+        self._ink_hist: deque = deque(maxlen=2)  # the last two ink masks, to ignore ink that flickers
+        self._page_unnamed = True  # the page on view has not been matched to an earlier sheet yet
+        self._seen_whole = False  # the full sheet has been in view at least once
 
     # ---- controls used by the web server ----------------------------------
 
@@ -195,6 +201,8 @@ class Engine:
         self._cover_since = None
         self._cover = None
         self._wait_for_motion = False
+        self._ink_hist.clear()
+        self._page_unnamed = True
         self.store.new_page()
 
     def _tick(self, frame: np.ndarray, now: float) -> None:
@@ -204,11 +212,23 @@ class Engine:
         stable_for = self._stability.update(frame, now)
         stable = stable_for >= s.settle
 
-        quad, clean = find_page_quad(frame)
+        quad, clean, touches = find_page(frame)
         if quad is not None and clean and stable_for >= min(0.25, s.settle):
+            self._seen_whole = True
             tolerance = max(3.0, 0.002 * frame.shape[1])
             if self.quad is None or float(np.abs(quad - self.quad).max()) > tolerance:
                 self.quad = quad
+        if self._seen_whole and touches in (1, 2) and not clean:
+            # The sheet slid partly out of the picture. Flattening it now would give a skewed,
+            # zoomed-in view and junk "new ink", so hold the last good view until it is back.
+            with self._lock:
+                held = self._last_page
+            self._big_since = None
+            self._ink_hist.clear()
+            if held is not None:
+                text = "Thinking" if self._busy else CUT_OFF_TEXT
+                self._publish(frame, held, None, now, text, stable, show_quad=False)
+                return
 
         with self._lock:
             turns = self._rotate
@@ -226,14 +246,26 @@ class Engine:
             self._shape = page.shape[:2]
 
         regions, hl_mask = detect_highlights(page)
-        ink = ink_mask(page)
+        ink_now = ink_mask(page)
+        # Faint pencil and camera noise make bits of ink blink on and off. Count ink as there only
+        # when it has shown up in the last three looks in a row; remember everything seen as old.
+        ink, ink_any = ink_now, ink_now
+        if stable:
+            for old_ink in self._ink_hist:
+                ink = cv2.bitwise_and(ink, cv2.dilate(old_ink, _K3))
+                ink_any = cv2.bitwise_or(ink_any, old_ink)
+            steady_ink = len(self._ink_hist) == self._ink_hist.maxlen
+            self._ink_hist.append(ink_now)
+        else:
+            self._ink_hist.clear()
+            steady_ink = False
         text = "Watching"
         fresh_box = None
 
         if self.baseline is None:
             text = "Getting a steady view of the page"
-            if stable:
-                self._accept_page(ink, page, now)
+            if stable and steady_ink:
+                self._accept_page(ink_any, page, now)
                 self._add_highlights(self.store.update(regions, page))
         else:
             self._age_pending(now)
@@ -267,7 +299,7 @@ class Engine:
                     self._big_since = now
                 elif now - self._big_since >= s.big_hold:
                     self._reset_page()
-                    self._accept_page(ink, page, now)
+                    self._accept_page(ink_any, page, now)
                     self._want_full = "new page"
             else:
                 self._big_since = None
@@ -287,13 +319,15 @@ class Engine:
                     elif now - self._cover_since >= s.cover_hold:
                         # It is not going away (a pen left on the sheet): treat it as the page.
                         self._reset_page()
-                        self._accept_page(ink, page, now)
+                        self._accept_page(ink_any, page, now)
                         self._want_full = "page changed"
                         fresh_px = 0
                 else:
                     self._cover_since = None
                     if stable and now - self._base_gray_time > 2.0:
                         self.base_gray, self._base_gray_time = page_gray(page), now
+                if stable and self.baseline is not None and not steady_ink:
+                    fresh_px = 0  # not sure yet which ink is really there
                 if stable and self.baseline is not None:
                     self._add_highlights(self.store.update(regions, page))
                     if self._want_full:
@@ -322,6 +356,9 @@ class Engine:
         """Remember the page as it is now; only later changes count as new."""
         self.baseline = ink.copy()
         self.base_gray, self._base_gray_time = page_gray(page), now
+        if self._page_unnamed:
+            self._page_unnamed = False
+            self.store.identify(page_signature(page))
 
     def _age_pending(self, now: float) -> None:
         """Ink that got no response a while ago becomes part of the old page."""
@@ -543,13 +580,24 @@ class Engine:
         if regions:
             order = list(self.legend.get("highlight_colors", {}).keys())
             regions.sort(key=lambda r: (order.index(r["color"]) if r["color"] in order else 99, r["id"]))
-            items = []
-            for r in regions:
-                try:
-                    items.append({"color": r["color"], "label": r["label"], "jpg": r["path"].read_bytes()})
-                except OSError:
-                    pass
-            parts += ["", self.brain.study_guide(items)]
+            pages = sorted({r["page_no"] for r in regions})
+            for n, page_no in enumerate(pages, 1):
+                items = []
+                for r in regions:
+                    if r["page_no"] != page_no:
+                        continue
+                    try:
+                        items.append({"color": r["color"], "label": r["label"], "jpg": r["path"].read_bytes()})
+                    except OSError:
+                        pass
+                if not items:
+                    continue
+                section = self.brain.study_guide(items)
+                if len(pages) > 1:
+                    # One section per sheet, with the colors as sub-headings under it.
+                    section = "\n".join("#" + line if line.startswith("## ") else line for line in section.splitlines())
+                    parts += ["", "## Page {}".format(n)]
+                parts += ["", section]
         else:
             parts += ["", "No highlights were captured this session."]
         defs = self.session.events_of("define")
@@ -566,7 +614,7 @@ class Engine:
 
     # ---- pictures for the web page ---------------------------------------------
 
-    def _publish(self, frame, page, fresh_box, now, text, stable) -> None:
+    def _publish(self, frame, page, fresh_box, now, text, stable, show_quad=True) -> None:
         view = page.copy()
         clean_page = page
         for r in self.store.on_this_page():
@@ -586,7 +634,7 @@ class Engine:
         h, w = frame.shape[:2]
         scale = 960.0 / w
         raw = cv2.resize(frame, (960, max(1, int(round(h * scale)))), interpolation=cv2.INTER_AREA)
-        if self.quad is not None:
+        if self.quad is not None and show_quad:
             pts = (self.quad * scale).astype(np.int32).reshape(-1, 1, 2)
             cv2.polylines(raw, [pts], True, (52, 226, 255), 3, cv2.LINE_AA)  # highlighter yellow
 

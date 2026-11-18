@@ -152,6 +152,8 @@
   #guideText h1 + p { color: var(--soft); margin: 0 0 6px; }
   #guideText h2 { display: flex; align-items: center; gap: 10px; font-size: 17px; margin: 28px 0 8px; padding-bottom: 7px; border-bottom: 1px solid var(--line); }
   #guideText h2 i { width: 12px; height: 20px; border-radius: 3px; flex: none; }
+  #guideText h3 { display: flex; align-items: center; gap: 10px; font-size: 15px; margin: 16px 0 4px; }
+  #guideText h3 i { width: 10px; height: 17px; border-radius: 3px; flex: none; }
   #guideText ul { margin: 0; padding: 0; list-style: none; }
   #guideText li { position: relative; padding: 5px 0 5px 18px; font-size: 16px; line-height: 1.5; max-width: 36em; }
   #guideText li::before { content: ""; position: absolute; left: 2px; top: .95em; width: 6px; height: 1.5px; background: var(--faint); }
@@ -221,7 +223,6 @@
       <div class="stat"><b id="sLast">–</b><span>last answer took</span></div>
       <div class="stat"><b id="sHl">0</b><span>highlights saved</span></div>
       <div class="tools">
-        <button id="rotate" title="Turn the page if the text is sideways">Rotate</button>
         <button id="look" title="Read the whole page now">Read page now</button>
         <a href="/tune" title="Adjust what counts as ink and highlighter">Tune</a>
       </div>
@@ -422,7 +423,8 @@ function renderGuide(md) {
   md.split('\n').forEach(line => {
     const t = line.trim();
     if (!t) { list = null; return; }
-    if (t.startsWith('## ')) { list = null; const h = el('h2'), name = t.slice(3); if (colorOf[name]) h.append(el('i', 'c-' + colorOf[name])); h.append(name); out.append(h); }
+    if (t.startsWith('### ')) { list = null; const h = el('h3'), name = t.slice(4); if (colorOf[name]) h.append(el('i', 'c-' + colorOf[name])); h.append(name); out.append(h); }
+    else if (t.startsWith('## ')) { list = null; const h = el('h2'), name = t.slice(3); if (colorOf[name]) h.append(el('i', 'c-' + colorOf[name])); h.append(name); out.append(h); }
     else if (t.startsWith('# ')) { list = null; out.append(el('h1', '', t.slice(2))); }
     else if (/^[-*] /.test(t)) { if (!list) { list = el('ul'); out.append(list); } const li = el('li'); inline(li, t.slice(2)); list.append(li); }
     else { list = null; const p = el('p'); inline(p, t); out.append(p); }
@@ -459,7 +461,6 @@ $('vPage').onclick = () => view('page');
 $('vRaw').onclick = () => view('raw');
 $('pip').onclick = () => view(big === 'page' ? 'raw' : 'page');
 $('look').onclick = () => fetch('/api/look', {method: 'POST'});
-$('rotate').onclick = () => fetch('/api/rotate', {method: 'POST'});
 $('make').onclick = build; $('make2').onclick = build;
 $('print').onclick = () => window.print();
 $('copy').onclick = async () => {

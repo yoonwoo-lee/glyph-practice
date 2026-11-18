@@ -82,12 +82,14 @@ HIGHLIGHT_HSV = {c: _hsv_override(c, r) for c, r in HIGHLIGHT_HSV.items()}
 HIGHLIGHT_MIN_FRAC = 0.0009
 
 # --- Vision model ------------------------------------------------------------
-LLM_MODEL = os.getenv("GLYPH_MODEL", "gemini-flash-latest")
+# Flash-Lite first: on the real camera it answered in about 1 s with good hints, while Flash often
+# ran past the timeout (Nov 17 test).
+LLM_MODEL = os.getenv("GLYPH_MODEL", "gemini-flash-lite-latest")
 # Tried in order when the main model errors. The 2.5 models are closed to new keys (Nov 2026), so
 # they are not listed. A model the key cannot use (404) is dropped for the rest of the session.
-LLM_FALLBACKS = ["gemini-flash-lite-latest", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
+LLM_FALLBACKS = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
 # Give up on one model call after this long and move to the next model.
-LLM_TIMEOUT_SECONDS = _num("GLYPH_TIMEOUT_SECONDS", 15)
+LLM_TIMEOUT_SECONDS = _num("GLYPH_TIMEOUT_SECONDS", 8)
 
 DEFAULT_LEGEND = {
     "symbols": [

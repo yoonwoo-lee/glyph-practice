@@ -89,13 +89,32 @@ class HighlightStore:
         self.labels = labels
         self.regions: List[dict] = []
         self.page_no = 0
+        self._top_page = 0
+        self._signatures: Dict[int, np.ndarray] = {}
         self._next_id = 1
         self._last: List[Tuple[str, Box]] = []
         self._lock = threading.Lock()
 
     def new_page(self) -> None:
-        self.page_no += 1
+        self._top_page += 1
+        self.page_no = self._top_page
         self._last = []
+
+    def identify(self, signature) -> None:
+        """Call once the new page is steady. A sheet seen earlier gets its old page number back."""
+        from .page import same_page
+
+        best, best_score = None, 0.6
+        for no, sig in self._signatures.items():
+            score = same_page(signature, sig)
+            if no != self.page_no and score > best_score:
+                best, best_score = no, score
+        if best is not None:
+            self._signatures.pop(self.page_no, None)
+            if self.page_no == self._top_page and not any(r["page_no"] == self.page_no for r in self.regions):
+                self._top_page -= 1  # that number was never used
+            self.page_no = best
+        self._signatures[self.page_no] = signature
 
     def forget_this_page(self) -> None:
         """Drop what was captured on the current page (it is about to be re-read)."""

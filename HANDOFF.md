@@ -14,6 +14,36 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-17 (late night), Yoon Woo's Claude
+
+**Done** (on `main` and `camera-test`)
+- First real-camera test ran: sheet detection and spark-to-hint work. Fixes from what it showed:
+  - **Speed:** `gemini-flash-lite-latest` is now the first model (it answered in about 1 s; Flash kept
+    hitting the timeout, so answers took 15 to 30 s). Timeout is 8 s. A model that times out is
+    tried last for the rest of the session.
+  - **Junk looks:** ink only counts when it shows in three looks in a row, so flickering pencil
+    strokes stop being sent as "new ink" (`_ink_hist` in `glyph/engine.py`).
+  - **Sheet partly out of view:** Glyph holds the last good page and says so instead of reading a
+    skewed view (`find_page` in `glyph/page.py` now reports how many frame edges the sheet touches).
+  - **Study guide by page:** with more than one sheet, the guide has `## Page N` sections with the
+    colors as `###` sub-headings. A sheet that comes back keeps its page number (`page_signature`).
+  - **Rotate button removed** from the page. `--rotate 90` on the command line still works.
+- 32 checks pass (two new ones in `tests/test_tools.py`).
+
+**Found**
+- The flicker fix and the out-of-view hold are tested on simulated frames only, not the real camera yet.
+- Page numbers in `HighlightStore` start at 2, not 1 (two resets at startup). Harmless: the guide
+  renumbers pages 1, 2, 3 in order.
+
+**Need from the other side (Skylar)**
+- `[open]` `glyph/engine.py` changed again inside `_tick` and `_accept_page`. Merge `main` into
+  `stuck-nudge` before going further. For the nudge clock, "new ink" should mean the steady ink
+  (`ink`, after the three-look filter), and the out-of-view early return counts as "view blocked".
+- `[open]` Yoon Woo and Skylar want **writer mode / annotation mode**. Not designed yet; do not start
+  it until the two of them have agreed what each mark does in each mode.
+
+---
+
 ## 2026-11-17 (night), Yoon Woo's Claude
 
 **Done**

@@ -130,6 +130,11 @@ def _model_is_gone(err: Exception) -> bool:
     return code == 404 or "not_found" in text or "no longer available" in text or "is not found" in text
 
 
+def _model_is_slow(err: Exception) -> bool:
+    text = (type(err).__name__ + " " + str(err)).lower()
+    return "timeout" in text or "timed out" in text or "deadline" in text or "504" in text
+
+
 class Brain:
     """Gemini, through the google-genai SDK."""
 
@@ -190,6 +195,11 @@ class Brain:
                         # This key can never use this model: stop trying it for the rest of the session.
                         self.models.remove(model)
                         print(f"[glyph] {model} is not available for this key; skipping it from now on")
+                    elif _model_is_slow(e) and model in self.models and len(self.models) > 1:
+                        # Too slow right now: try it last from here on, so it stops holding up answers.
+                        self.models.remove(model)
+                        self.models.append(model)
+                        print(f"[glyph] {model} timed out; trying the other models first from now on")
             if not self.models:
                 break
             time.sleep(1.5)

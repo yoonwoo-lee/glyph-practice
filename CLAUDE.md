@@ -38,7 +38,7 @@ Walk Skylar through these in order, checking each one works before moving on.
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 12 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 30 checks in total.)
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 32 checks in total.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
    number, then `bash start.sh --camera <n>`. Steps and troubleshooting are in the README.
@@ -124,22 +124,27 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
 - Timing log: `sessions/<ts>/timings.jsonl`, plus "answered in N s" in the UI.
 - `bench.py`: times each Gemini model on the demo page. Not run yet: needs a machine with the key.
 - `normalize_light()` in `page.py`: white balance + brightness correction before color detection.
-- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (9). 30 checks pass in total.
+- `tests/test_rough.py` (9 worse-camera cases) and `tests/test_tools.py` (11). 32 checks pass in total.
 - Fixes from Skylar's first run: v1beta API, call timeout, current fallback models, covered highlights,
   `start.bat` for Windows. See `HANDOFF.md`.
 
+**First real-camera test (Nov 17, iPhone on the gooseneck, wood desk):** sheet found and flattened well,
+spark gave a good hint. Problems found and fixed the same night: Flash timed out (answers took 15 to
+30 s), flickering pencil ink was read as new ink, a sheet partly out of view gave a skewed page. See
+`HANDOFF.md`.
+
 **Not tested yet:**
-- Real camera (plan: iPhone via macOS Continuity Camera on a gooseneck clamp, pointing straight down)
-- Real lighting and handwriting, highlighter color ranges under a real lamp
-- Live Gemini calls end to end and how long each answer takes
+- Underline, highlights and the study guide on the real camera
+- Highlighter color ranges under a real lamp
+- The Nov 17 fixes on the real camera
 
 ## Stack
 
 - **Python 3.9** (matches the Mac), venv created by `start.sh`
 - **OpenCV** — finds the sheet, flattens it, finds ink, detects highlighter by HSV color (no model call)
-- **Gemini vision** via `google-genai` — `gemini-flash-latest`, falls back to
-  `gemini-flash-lite-latest`, `gemini-3.8-flash`, `gemini-3.5-flash-lite` on errors / 503s / timeouts
-  (15 s per call; v1beta API; the 2.5 models are closed to new keys and a 404 model is dropped for the session)
+- **Gemini vision** via `google-genai` — `gemini-flash-lite-latest` first (fast), falls back to
+  `gemini-flash-latest`, `gemini-3.8-flash`, `gemini-3.5-flash-lite` on errors / 503s / timeouts
+  (8 s per call; a model that times out is tried last from then on; v1beta API; the 2.5 models are closed to new keys and a 404 model is dropped for the session)
 - **FastAPI + uvicorn** — local server, MJPEG streams, JSON API
 - Vanilla HTML/JS front end (`glyph/static/index.html`)
 - Key: `GEMINI_API_KEY` in `.env` (never committed). Without a key it runs with fake answers.
@@ -168,6 +173,9 @@ Key design choices:
 - Highlights are detected locally, so they cost no API calls.
 
 ## Next up (not built yet, rough priority)
+
+0. **Writer mode / annotation mode** (asked for Nov 17, not designed yet): the same marks do different
+   jobs per mode. Writer = solving problems, annotation = readings and books.
 
 1. **Test with the real camera** and tune thresholds (biggest unknown).
 2. **Stuck nudge** — if the student stalls (or picks up their phone and scrolls), Glyph nudges them to keep going.

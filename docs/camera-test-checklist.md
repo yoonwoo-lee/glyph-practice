@@ -5,7 +5,8 @@ Put results in `HANDOFF.md` when done.
 
 ## Setup
 
-- [ ] Phone on the gooseneck, camera pointing straight down, about 35 to 45 cm above the desk.
+- [ ] Phone on the gooseneck, camera pointing straight down, high enough that all four corners of the sheet
+      show in the Camera view with some desk around them (about 45 to 50 cm for a letter sheet).
 - [ ] Phone unlocked, Wi-Fi and Bluetooth on, same Apple ID as the Mac (Continuity Camera needs all three).
       A cable between phone and Mac is steadier than wireless.
 - [ ] White sheet on a **darker** surface, lamp on, no hard shadow from the phone across the page.
@@ -15,7 +16,7 @@ Put results in `HANDOFF.md` when done.
 ## 1. Does it see the page? (2 min)
 
 - [ ] **Camera** view shows a green outline around the sheet.
-- [ ] **Page** view shows the sheet flat and upright. Sideways: click **Rotate**.
+- [ ] **Page** view shows the sheet flat and upright. Sideways: restart with `--rotate 90`.
 - [ ] Nudge the sheet a little. It should not trigger an answer.
 - [ ] Tap the gooseneck. Note how long the picture takes to settle: ____ s
 

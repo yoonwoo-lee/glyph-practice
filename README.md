@@ -37,7 +37,7 @@ with fake answers so everything else can still be tested.
    Open the photos in `camera_check/` to see which number shows your desk.
 3. Start Glyph with that number: `bash start.sh --camera 1`
 4. In the browser, click **Camera**. The sheet should have a green outline. Click **Page**: you should see
-   the sheet flat and upright. If the text is sideways, click **Rotate**.
+   the sheet flat and upright. If the text is sideways, restart with `--rotate 90` (or 180 / 270).
 5. Write a physics problem, then try each mark from the table above. **Lift your hand off the sheet** after
    drawing. A blue box shows what Glyph is reading; the answer appears in the feed a few seconds later.
 6. Highlight a few lines, then click **End session: build study guide**.
