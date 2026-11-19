@@ -3,187 +3,235 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Glyph</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2316224F'/%3E%3Cg stroke='%23FFE234' stroke-width='3.2' stroke-linecap='round'%3E%3Cpath d='M16 6v20M6 16h20M9 9l14 14M23 9L9 23'/%3E%3C/g%3E%3C/svg%3E">
-<link rel="preload" href="/static/fonts/InstrumentSans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/static/fonts/InstrumentSerif.woff2" as="font" type="font/woff2" crossorigin>
+<title>__NAME__</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%235BC2F5'/%3E%3Cg stroke='%23FF2D8E' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M16 6v20M6 16h20M9 9l14 14M23 9L9 23'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preload" href="/static/fonts/Archivo.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-  @font-face { font-family: "Instrument Sans"; src: url(/static/fonts/InstrumentSans.woff2) format("woff2"); font-weight: 400 700; font-display: swap; }
-  @font-face { font-family: "Instrument Serif"; src: url(/static/fonts/InstrumentSerif.woff2) format("woff2"); font-weight: 400; font-display: swap; }
-  @font-face { font-family: "Instrument Serif"; src: url(/static/fonts/InstrumentSerif-Italic.woff2) format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+  /* One family, three widths: wide for the name and the numbers, normal for reading, narrow for labels. */
+  @font-face { font-family: "Archivo"; src: url(/static/fonts/Archivo.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
 
-  /* Palette comes from the desk: ballpoint ink, white paper, one yellow highlighter. */
+  /* Sky blue is the instrument, white is the paper, hot pink is whatever is being read right now. */
   :root {
-    --ink: #16224F; --ink-deep: #0E1738; --ink-soft: #2A3975; --on-ink: #E9EDFB; --on-ink-soft: #9AA6D4;
-    --paper: #FFFFFF; --desk: #F1F3F9; --line: #DFE3EF; --line-strong: #C9CFE2; --text: #121935; --soft: #59638A; --faint: #8A93B4;
-    --mark: #FFE234;
-    --yellow: #FFE234; --green: #5ED67E; --blue: #62BEFF; --pink: #FF78BE; --bad: #C8322A;
-    --r: 6px; --r-lg: 14px;
-    --lift: 0 1px 0 rgba(22,34,79,.04), 0 18px 40px -18px rgba(22,34,79,.28);
-    --sans: "Instrument Sans", "Avenir Next", "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
-    --serif: "Instrument Serif", "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --sky: #5BC2F5; --sky-deep: #1280CC; --sky-pale: #E8F6FE; --sky-line: #BFE4F9;
+    --pink: #FF2D8E; --pink-deep: #D4126F; --pink-pale: #FFE6F2;
+    --white: #FFFFFF; --ink: #062A40; --soft: #45667A; --faint: #7D99AA; --line: #D5E6F0; --bad: #C4281C;
+    --yellow: #FFE234; --green: #5ED67E; --blue: #62BEFF; --hl-pink: #FF78BE;
+    --font: "Archivo", "Helvetica Neue", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; font: 15px/1.5 var(--sans); color: var(--text); background: var(--desk); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { margin: 0; font: 400 15px/1.5 var(--font); color: var(--ink); background: var(--white); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   button { font: inherit; cursor: pointer; color: inherit; }
-  :focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
+  :focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
   .hide { display: none !important; }
+  .num { font-variant-numeric: tabular-nums; }
   svg.g { width: 1em; height: 1em; flex: none; }
 
-  .app { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; min-height: 600px; }
+  .app { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 100vh; min-height: 620px; }
 
-  /* ================= left: what Glyph sees ================= */
-  .eye { background: var(--ink); color: var(--on-ink); display: flex; flex-direction: column; padding: 20px 24px 18px; min-width: 0; min-height: 0; }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .brand svg { width: 26px; height: 26px; flex: none; }
-  .brand .word { font-size: 25px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
-  .state { margin-left: auto; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
-  .state .lamp { width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
-  .state.wait .lamp { background: var(--on-ink-soft); }
-  .state.busy .lamp { background: var(--mark); animation: pulse 0.9s ease-in-out infinite; }
-  .state.bad .lamp { background: #FF6B61; }
-  @keyframes pulse { 50% { transform: scale(1.7); opacity: .55; } }
+  /* ================= left: the scan bed ================= */
+  .eye {
+    display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 20px 26px 18px; color: var(--ink);
+    background-color: var(--sky);
+    background-image: linear-gradient(rgba(255,255,255,.34) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.34) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.16) 1px, transparent 1px);
+    background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px; background-position: -1px -1px;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand svg { width: 30px; height: 30px; flex: none; }
+  .brand .word { font-size: 29px; font-weight: 800; font-stretch: 125%; letter-spacing: -0.035em; line-height: 1; text-transform: lowercase; }
+  .state { margin-left: auto; display: flex; align-items: center; gap: 9px; background: var(--white); border-radius: 999px; padding: 6px 14px 6px 11px; font-weight: 600; font-size: 14px; }
+  .state .lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--sky-deep); }
+  .state.wait .lamp { background: var(--faint); }
+  .state.busy { background: var(--pink); color: var(--white); }
+  .state.busy .lamp { background: var(--white); animation: pulse .8s ease-in-out infinite; }
+  .state.bad .lamp { background: var(--bad); }
+  @keyframes pulse { 50% { transform: scale(1.7); opacity: .5; } }
+
   .seeing { display: flex; align-items: center; gap: 12px; margin: 16px 0 10px; }
-  .seeing h2 { margin: 0; font-size: 14px; font-weight: 600; color: var(--on-ink-soft); }
-  .switch { margin-left: auto; display: flex; border: 1px solid var(--ink-soft); border-radius: var(--r); overflow: hidden; }
-  .switch button { border: 0; background: transparent; color: var(--on-ink-soft); padding: 5px 12px; font-size: 13px; font-weight: 600; }
-  .switch button.on { background: var(--on-ink); color: var(--ink); }
-  .stage { position: relative; flex: 1; min-height: 0; background: var(--ink-deep); border-radius: var(--r); overflow: hidden; display: flex; align-items: center; justify-content: center; }
-  .stage > img.main { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .scan { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--mark); transform: scaleX(0); opacity: 0; }
-  .stage.busy .scan { opacity: 1; animation: sweep 1.3s cubic-bezier(.6,0,.4,1) infinite; }
-  @keyframes sweep { 0% { transform: scaleX(0); transform-origin: left; } 50% { transform: scaleX(1); transform-origin: left; } 51% { transform-origin: right; } 100% { transform: scaleX(0); transform-origin: right; } }
-  .pip { position: absolute; right: 12px; bottom: 12px; width: 26%; max-width: 220px; padding: 0; border: 2px solid var(--on-ink); border-radius: var(--r); overflow: hidden; background: var(--ink-deep); line-height: 0; }
-  .pip img { width: 100%; display: block; }
-  .pip span { position: absolute; left: 0; bottom: 0; background: var(--on-ink); color: var(--ink); font-size: 11px; font-weight: 700; line-height: 1; padding: 4px 7px; border-top-right-radius: var(--r); }
-  .note { position: absolute; left: 12px; bottom: 12px; background: var(--mark); color: var(--ink-deep); font-weight: 600; font-size: 13px; padding: 7px 10px; border-radius: var(--r); width: fit-content; max-width: 62%; }
-  .under { display: flex; align-items: flex-end; gap: 22px; margin-top: 14px; flex-wrap: wrap; }
-  .stat b { display: block; font-size: 20px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; color: #fff; }
-  .stat span { font-size: 12px; color: var(--on-ink-soft); }
-  .tools { margin-left: auto; display: flex; gap: 8px; }
-  .tools button, .tools a { border: 1px solid var(--ink-soft); background: transparent; color: var(--on-ink); border-radius: var(--r); padding: 7px 13px; font-size: 13px; font-weight: 600; text-decoration: none; }
-  .tools button:hover, .tools a:hover { border-color: var(--on-ink); }
+  .seeing h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .switch { margin-left: auto; display: flex; background: rgba(255,255,255,.4); border-radius: 6px; padding: 2px; }
+  .switch button { border: 0; background: transparent; color: var(--ink); padding: 4px 13px; font-size: 13px; font-weight: 600; border-radius: 4px; }
+  .switch button.on { background: var(--white); }
 
-  /* ================= right: what Glyph says ================= */
-  .say { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--desk); }
+  /* The bed: rulers along two sides, the picture fitted inside. */
+  .stage { position: relative; flex: 1; min-height: 0; }
+  .fit { position: absolute; background: var(--white); box-shadow: 0 0 0 2px var(--white), 0 14px 34px -14px rgba(6,42,64,.55); }
+  .fit > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .fit > svg.hud { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .rule { position: absolute; pointer-events: none; opacity: .95; }
+  .rule.top { left: 0; right: 0; top: -15px; height: 9px;
+    background: repeating-linear-gradient(90deg, var(--white) 0 1.5px, transparent 1.5px 10%), repeating-linear-gradient(90deg, rgba(255,255,255,.75) 0 1px, transparent 1px 2%); background-size: 100% 9px, 100% 5px; background-repeat: no-repeat; background-position: 0 0, 0 100%; }
+  .rule.left { top: 0; bottom: 0; left: -15px; width: 9px;
+    background: repeating-linear-gradient(0deg, var(--white) 0 1.5px, transparent 1.5px 10%), repeating-linear-gradient(0deg, rgba(255,255,255,.75) 0 1px, transparent 1px 2%); background-size: 9px 100%, 5px 100%; background-repeat: no-repeat; background-position: 0 0, 100% 0; }
 
-  .bar { display: flex; align-items: center; padding: 18px 32px 0; }
-  .seg { display: inline-flex; padding: 3px; background: #E4E7F1; border-radius: 999px; }
-  .seg button { border: 0; background: none; border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 600; color: var(--soft); display: inline-flex; align-items: center; gap: 7px; }
-  .seg button.on { background: var(--paper); color: var(--text); box-shadow: 0 1px 2px rgba(22,34,79,.14); }
-  .seg .n { min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: var(--mark); color: var(--ink-deep); font-size: 12px; font-weight: 700; line-height: 19px; text-align: center; font-variant-numeric: tabular-nums; }
-  .clock { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
-  .clock i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
-  .clock span { color: var(--soft); font-weight: 500; }
+  /* While a mark is being read: a pink bar sweeps the picture, and the picture gets a pink edge. */
+  .sweep { position: absolute; left: 0; right: 0; top: 0; height: 22%; opacity: 0; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(255,45,142,0) 0%, rgba(255,45,142,.16) 70%, rgba(255,45,142,.34) 100%); border-bottom: 2px solid var(--pink); }
+  .stage.scanning .sweep { opacity: 1; animation: sweep 1.5s linear infinite; }
+  .stage.scanning .fit { box-shadow: 0 0 0 2px var(--pink), 0 0 0 6px rgba(255,45,142,.28), 0 14px 34px -14px rgba(6,42,64,.55); }
+  @keyframes sweep { from { transform: translateY(-100%); } to { transform: translateY(455%); } }
+  .fit .clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 
-  .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 32px 26px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
-  .label { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--soft); display: flex; align-items: center; gap: 10px; }
+  .hud .corner { fill: none; stroke: var(--sky-deep); stroke-width: 3; stroke-linecap: square; }
+  .hud .corner.loose { stroke-dasharray: 4 5; stroke-width: 2; }
+  .hud .sheet { fill: rgba(91,194,245,.10); stroke: var(--white); stroke-width: 2.5; stroke-linejoin: round; }
+  .hud .sheet-dot { fill: var(--pink); stroke: var(--white); stroke-width: 2; }
+  .hud .hl { fill: none; stroke-width: 2.5; }
+  .hud .cover { fill: rgba(6,42,64,.10); stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 5; }
+  .hud .mark { fill: none; stroke: var(--pink); stroke-width: 3; stroke-linecap: square; }
+  .hud .mark.new { stroke-width: 1.5; stroke-dasharray: 5 5; }
+  .hud .mark.read { stroke: var(--sky-deep); }
+  .hud g.lock { transform-box: fill-box; transform-origin: center; animation: lock .45s cubic-bezier(.2,.9,.2,1) both; }
+  @keyframes lock { from { transform: scale(1.5); opacity: 0; } }
+  .hud .tag rect { fill: var(--pink); } .hud .tag.read rect { fill: var(--sky-deep); }
+  .hud .tag text { fill: var(--white); font: 700 12px var(--font); font-stretch: 85%; }
+
+  .empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; pointer-events: none; }
+  .empty div { background: var(--white); border-radius: 10px; padding: 16px 22px; max-width: 320px; box-shadow: 0 10px 26px -12px rgba(6,42,64,.5); }
+  .empty b { display: block; font-size: 20px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.01em; }
+  .empty span { color: var(--soft); font-size: 14px; }
+
+  .pip { position: absolute; right: 12px; bottom: 12px; padding: 0; border: 2px solid var(--white); border-radius: 4px; overflow: hidden; background: var(--ink); line-height: 0; box-shadow: 0 8px 20px -8px rgba(6,42,64,.6); z-index: 3; }
+  .pip img { display: block; width: auto; height: auto; max-width: min(200px, 26vw); max-height: 170px; }
+  .pip span { position: absolute; left: 0; bottom: 0; background: var(--white); color: var(--ink); font-size: 11px; font-weight: 700; line-height: 1; padding: 4px 7px; border-top-right-radius: 4px; }
+  .note { position: absolute; left: 12px; bottom: 12px; background: var(--white); color: var(--ink); font-weight: 600; font-size: 13px; padding: 7px 11px; border-radius: 6px; max-width: 60%; z-index: 3; border-left: 4px solid var(--pink); }
+
+  /* Readouts: measured by the app on every pass, shown as they are. */
+  .read { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; margin-top: 22px; background: var(--white); border-radius: 8px; }
+  .read div { padding: 9px 12px 10px; border-left: 1px solid var(--line); min-width: 0; }
+  .read div:first-child { border-left: 0; }
+  .read span { display: block; font-size: 12px; font-stretch: 82%; font-weight: 600; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .read b { display: block; font-size: 18px; font-stretch: 112%; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .read b.live { color: var(--pink-deep); }
+  .tools { display: flex; gap: 8px; margin-top: 12px; }
+  .tools button, .tools a { border: 2px solid var(--ink); background: transparent; color: var(--ink); border-radius: 6px; padding: 6px 13px; font-size: 13px; font-weight: 700; text-decoration: none; }
+  .tools button:hover, .tools a:hover { background: var(--ink); color: var(--white); }
+  .tools .model { margin-left: auto; align-self: center; font-size: 12px; font-stretch: 85%; font-weight: 600; }
+
+  /* ================= right: what it says ================= */
+  .say { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--white); }
+  .bar { display: flex; align-items: center; gap: 16px; padding: 18px 32px 0; flex-wrap: wrap; }
+  .seg { display: inline-flex; border-bottom: 2px solid var(--line); }
+  .seg button { border: 0; background: none; padding: 6px 2px 9px; margin: 0 22px -2px 0; font-size: 16px; font-weight: 700; font-stretch: 105%; color: var(--faint); border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 8px; }
+  .seg button:last-child { margin-right: 0; }
+  .seg button.on { color: var(--ink); border-bottom-color: var(--pink); }
+  .seg .n { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--pink); color: var(--white); font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
+  .pages { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--soft); }
+  .pages button { min-width: 28px; height: 28px; padding: 0 7px; border: 2px solid var(--sky); background: var(--white); color: var(--sky-deep); border-radius: 6px; font-weight: 700; font-size: 14px; }
+  .pages button.on { background: var(--pink); border-color: var(--pink); color: var(--white); cursor: default; }
+  .ask { display: flex; align-items: center; gap: 8px; width: 100%; background: var(--sky-pale); border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
+  .ask button { border: 0; border-radius: 6px; padding: 5px 12px; font-weight: 700; font-size: 13px; background: var(--ink); color: var(--white); }
+  .ask button.no { background: transparent; color: var(--ink); }
+  .clock { margin-left: auto; display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 600; color: var(--soft); }
+  .clock b { color: var(--ink); font-size: 18px; font-stretch: 112%; font-weight: 700; }
+
+  .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 32px 26px; scrollbar-width: thin; scrollbar-color: var(--sky-line) transparent; }
+  .label { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: var(--soft); display: flex; align-items: center; gap: 10px; }
   .label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-  /* ---- first screen: the three marks ---- */
-  .intro h1 { font: 400 clamp(40px, 4.2vw, 62px)/1.02 var(--serif); letter-spacing: -0.015em; margin: 14px 0 14px; color: var(--ink); }
-  .intro h1 em { font-style: italic; }
-  .intro > p { margin: 0 0 30px; font-size: 17px; color: var(--soft); max-width: 30em; }
-  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  .how3 { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
-  .how3 svg { display: block; width: 100%; height: auto; background: #FBFBFD; border-bottom: 1px solid var(--line); }
-  .how3 div { padding: 14px 16px 16px; }
-  .how3 b { display: block; font-size: 16px; }
-  .how3 span { color: var(--soft); font-size: 14px; line-height: 1.4; display: block; margin-top: 2px; }
+  /* ---- first screen: the marks ---- */
+  .intro h1 { font-size: clamp(38px, 4.3vw, 64px); font-weight: 800; font-stretch: 118%; line-height: .98; letter-spacing: -0.04em; margin: 10px 0 16px; }
+  .intro > p { margin: 0 0 26px; font-size: 17px; color: var(--soft); max-width: 31em; }
+  .marks { border-top: 2px solid var(--ink); }
+  .markrow { display: grid; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .markrow svg { width: 92px; height: 54px; display: block; background: var(--sky-pale); border-radius: 6px; }
+  .markrow b { font-size: 18px; font-stretch: 108%; font-weight: 700; letter-spacing: -0.01em; }
+  .markrow span { color: var(--soft); font-size: 15px; line-height: 1.4; }
 
-  /* ---- Glyph is reading ---- */
-  .reading { display: flex; align-items: center; gap: 12px; padding: 13px 16px; margin-bottom: 14px; background: var(--ink); color: #fff; border-radius: var(--r-lg); font-weight: 600; position: relative; overflow: hidden; }
-  .reading svg { font-size: 20px; color: var(--mark); animation: turn 2.4s linear infinite; }
-  .reading::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--mark); animation: sweep 1.3s cubic-bezier(.6,0,.4,1) infinite; }
+  /* ---- reading right now ---- */
+  .reading { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 16px; background: var(--pink); color: var(--white); border-radius: 8px; font-weight: 700; position: relative; overflow: hidden; }
+  .reading svg { font-size: 20px; animation: turn 2.2s linear infinite; }
+  .reading::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: translateX(-100%); animation: pass 1.5s linear infinite; }
+  @keyframes pass { to { transform: translateX(100%); } }
   @keyframes turn { to { transform: rotate(360deg); } }
 
   /* ---- the newest answer ---- */
-  .now { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--lift); padding: 22px 26px 24px; margin-bottom: 26px; }
+  .now { border: 2px solid var(--ink); border-radius: 12px; padding: 22px 26px 24px; margin-bottom: 28px; position: relative; background: var(--white); }
+  .now::before { content: ""; position: absolute; left: -2px; right: -2px; top: -2px; height: 8px; background: var(--pink); border-radius: 12px 12px 0 0; }
   .now::after { content: ""; display: block; clear: both; }
-  .now.fresh { animation: arrive .45s cubic-bezier(.2,.8,.2,1) both; }
-  @keyframes arrive { from { opacity: 0; transform: translateY(10px); } }
-  .meta { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-  .tag { display: inline-flex; align-items: center; gap: 7px; background: var(--ink); color: #fff; border-radius: 999px; padding: 5px 13px 5px 10px; font-size: 13px; font-weight: 600; }
-  .tag svg { color: var(--mark); font-size: 15px; }
-  .tag.error { background: var(--bad); } .tag.error svg { color: #fff; }
-  .took { font-size: 13px; color: var(--soft); font-variant-numeric: tabular-nums; }
-  .took b { color: var(--text); font-weight: 600; }
-  .snip { float: right; width: 36%; min-width: 160px; max-width: 250px; margin: -4px -6px 12px 22px; transform: rotate(2.2deg); }
-  .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: #fff; border: 5px solid #fff; border-radius: 3px; box-shadow: 0 0 0 1px var(--line-strong), 0 10px 22px -10px rgba(22,34,79,.45); }
-  .snip figcaption { margin-top: 7px; text-align: center; font-size: 12px; color: var(--faint); transform: rotate(-2.2deg); }
-  .words { font: 400 clamp(27px, 2.5vw, 38px)/1.16 var(--serif); letter-spacing: -0.005em; color: var(--ink-deep); margin: 0; text-wrap: pretty; }
-  .words mark { color: inherit; background: linear-gradient(var(--mark), var(--mark)) no-repeat 0 88% / 100% 46%; padding: 0 .06em; margin: 0 -.06em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-  .now.fresh .words mark { animation: swipe .8s .25s cubic-bezier(.3,.7,.2,1) both; }
-  @keyframes swipe { from { background-size: 0% 46%; } }
-  .words .term { display: block; font-style: italic; font-size: 1.28em; line-height: 1.05; margin-bottom: .22em; width: fit-content; }
+  .now.fresh { animation: arrive .4s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(12px); } }
+  .meta { display: flex; align-items: center; gap: 12px; margin: 6px 0 16px; flex-wrap: wrap; }
+  .tag { display: inline-flex; align-items: center; gap: 7px; background: var(--ink); color: var(--white); border-radius: 6px; padding: 5px 12px 5px 9px; font-size: 14px; font-weight: 700; }
+  .tag svg { color: var(--pink); font-size: 15px; }
+  .tag.error { background: var(--bad); } .tag.error svg { color: var(--white); }
+  .took { font-size: 13px; font-stretch: 90%; font-weight: 600; color: var(--soft); }
+  .took b { color: var(--ink); }
+  .snip { float: right; width: 36%; min-width: 160px; max-width: 250px; margin: 0 0 12px 22px; }
+  .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--white); border: 2px solid var(--sky); border-radius: 4px; }
+  .snip figcaption { margin-top: 5px; font-size: 12px; font-stretch: 85%; font-weight: 600; color: var(--sky-deep); }
+  .words { font-size: clamp(23px, 2.15vw, 33px); font-weight: 500; line-height: 1.22; letter-spacing: -0.012em; margin: 0; text-wrap: pretty; }
+  .words mark { color: inherit; background: linear-gradient(var(--pink-pale), var(--pink-pale)) no-repeat 0 92% / 100% 42%; padding: 0 .05em; margin: 0 -.05em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .now.fresh .words mark { animation: swipe .7s .2s cubic-bezier(.3,.7,.2,1) both; }
+  @keyframes swipe { from { background-size: 0% 42%; } }
+  .words .term { display: block; font-size: 1.2em; font-weight: 800; font-stretch: 112%; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: .3em; width: fit-content; color: var(--pink-deep); }
+  .words .term mark { background: none; }
   .about { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--soft); display: flex; gap: 8px; clear: both; }
-  .about b { color: var(--text); font-weight: 600; }
-  .now.error .words { font: 500 17px/1.5 var(--sans); color: var(--text); }
+  .about b { color: var(--ink); font-weight: 700; flex: none; }
+  .now.error .words { font-size: 17px; line-height: 1.5; font-weight: 500; }
 
   /* ---- highlights waiting for the study guide ---- */
   .shelf { margin-bottom: 26px; }
-  .group { display: grid; grid-template-columns: 5px minmax(96px, auto) 1fr; gap: 0 12px; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px 9px 9px; margin-bottom: 8px; }
+  .group { display: grid; grid-template-columns: 6px minmax(96px, auto) 1fr; gap: 0 12px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px 9px 9px; margin-bottom: 8px; }
   .group i { align-self: stretch; border-radius: 3px; min-height: 34px; }
-  .group .name { font-weight: 600; font-size: 14px; line-height: 1.25; }
+  .group .name { font-weight: 700; font-size: 14px; line-height: 1.25; }
   .group .name small { display: block; font-weight: 500; font-size: 12px; color: var(--soft); }
   .group .crops { display: flex; gap: 6px; overflow: hidden; justify-content: flex-end; }
   .group .crops img { height: 32px; max-width: 100%; border-radius: 3px; display: block; }
 
-  /* ---- earlier answers, oldest at the bottom ---- */
+  /* ---- earlier answers, newest first ---- */
   .past { list-style: none; margin: 0; padding: 0; }
   .past li { position: relative; display: grid; grid-template-columns: 30px 1fr auto; gap: 0 12px; padding: 0 0 20px; }
-  .past li::before { content: ""; position: absolute; left: 14.5px; top: 30px; bottom: 0; width: 1px; background: var(--line-strong); }
+  .past li::before { content: ""; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: var(--sky-line); }
   .past li:last-child { padding-bottom: 0; } .past li:last-child::before { display: none; }
-  .past .dot { width: 30px; height: 30px; border-radius: 50%; background: var(--paper); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 15px; color: var(--ink); }
+  .past .dot { width: 30px; height: 30px; border-radius: 6px; background: var(--sky-pale); display: grid; place-items: center; font-size: 15px; color: var(--sky-deep); }
   .past .head { display: flex; align-items: baseline; gap: 10px; padding-top: 4px; }
   .past .head b { font-size: 15px; }
-  .past .head span { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
-  .past p { margin: 3px 0 0; color: #333B5E; line-height: 1.5; max-width: 34em; }
-  .past .thumb { width: 78px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 4px; border: 1px solid var(--line-strong); background: #fff; margin-top: 4px; }
-  .past li.error .dot { color: var(--bad); border-color: var(--bad); }
+  .past .head span { font-size: 12px; color: var(--faint); font-weight: 600; }
+  .past p { margin: 3px 0 0; color: var(--soft); line-height: 1.5; max-width: 34em; }
+  .past .thumb { width: 78px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 4px; border: 1px solid var(--sky-line); background: var(--white); margin-top: 4px; }
+  .past li.error .dot { color: var(--bad); background: #FBE9E7; }
 
   /* ---- study guide ---- */
-  .sheet { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--lift); padding: 34px 40px 38px; position: relative; }
+  .sheet { border: 2px solid var(--ink); border-radius: 12px; padding: 34px 40px 38px; position: relative; }
   .sheet .acts { position: absolute; right: 22px; top: 22px; display: flex; gap: 6px; }
-  .sheet .acts button { border: 1px solid var(--line-strong); background: var(--paper); border-radius: var(--r); padding: 5px 11px; font-size: 13px; font-weight: 600; }
-  .sheet .acts button:hover { border-color: var(--ink); }
-  #guideText h1 { font: 400 46px/1 var(--serif); letter-spacing: -0.015em; margin: 0 0 6px; color: var(--ink); }
+  .sheet .acts button { border: 2px solid var(--ink); background: var(--white); border-radius: 6px; padding: 4px 11px; font-size: 13px; font-weight: 700; }
+  .sheet .acts button:hover { background: var(--ink); color: var(--white); }
+  #guideText h1 { font-size: 44px; font-weight: 800; font-stretch: 118%; letter-spacing: -0.04em; line-height: 1; margin: 0 0 8px; }
   #guideText h1 + p { color: var(--soft); margin: 0 0 6px; }
-  #guideText h2 { display: flex; align-items: center; gap: 10px; font-size: 17px; margin: 28px 0 8px; padding-bottom: 7px; border-bottom: 1px solid var(--line); }
+  #guideText h2 { display: flex; align-items: center; gap: 10px; font-size: 19px; font-stretch: 108%; margin: 30px 0 8px; padding-bottom: 7px; border-bottom: 2px solid var(--ink); }
   #guideText h2 i { width: 12px; height: 20px; border-radius: 3px; flex: none; }
   #guideText h3 { display: flex; align-items: center; gap: 10px; font-size: 15px; margin: 16px 0 4px; }
   #guideText h3 i { width: 10px; height: 17px; border-radius: 3px; flex: none; }
   #guideText ul { margin: 0; padding: 0; list-style: none; }
   #guideText li { position: relative; padding: 5px 0 5px 18px; font-size: 16px; line-height: 1.5; max-width: 36em; }
-  #guideText li::before { content: ""; position: absolute; left: 2px; top: .95em; width: 6px; height: 1.5px; background: var(--faint); }
+  #guideText li::before { content: ""; position: absolute; left: 2px; top: .95em; width: 7px; height: 2px; background: var(--pink); }
   #guideText p { margin: 4px 0; color: var(--soft); }
-  .blank { text-align: left; padding: 6px 0 0; }
-  .blank h3 { font: 400 clamp(34px, 3.4vw, 48px)/1.05 var(--serif); letter-spacing: -0.01em; margin: 12px 0 12px; color: var(--ink); }
+  .blank h3 { font-size: clamp(32px, 3.4vw, 48px); font-weight: 800; font-stretch: 118%; letter-spacing: -0.04em; line-height: 1; margin: 12px 0 14px; }
   .blank p { margin: 0 0 22px; font-size: 16px; color: var(--soft); max-width: 30em; }
 
   /* ---- bottom bar ---- */
-  .foot { display: flex; align-items: center; gap: 14px; padding: 12px 32px 16px; border-top: 1px solid var(--line); background: var(--desk); }
-  .keys { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
-  .key { display: inline-flex; align-items: center; gap: 7px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 13px; color: var(--soft); white-space: nowrap; }
-  .key .ic { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--mark); display: grid; place-items: center; font-size: 12px; }
-  .key b { color: var(--text); font-weight: 600; }
-  .key .sws { display: inline-flex; gap: 2px; padding-left: 4px; }
+  .foot { display: flex; align-items: center; gap: 14px; padding: 12px 32px 16px; border-top: 1px solid var(--line); }
+  .keys { display: flex; flex-wrap: wrap; gap: 6px 16px; min-width: 0; }
+  .key { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--soft); white-space: nowrap; }
+  .key .ic { width: 24px; height: 24px; border-radius: 5px; background: var(--sky-pale); color: var(--sky-deep); display: grid; place-items: center; font-size: 13px; }
+  .key b { color: var(--ink); font-weight: 700; }
+  .key .sws { display: inline-flex; gap: 2px; padding-left: 2px; }
   .key .sws i { width: 8px; height: 16px; border-radius: 2px; }
-  .btn { flex: none; background: var(--ink); color: #fff; border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 600; font-size: 14px; }
-  .btn:hover { background: var(--ink-deep); }
+  .btn { flex: none; background: var(--pink); color: var(--white); border: 0; border-radius: 8px; padding: 10px 18px; font-weight: 700; font-size: 15px; }
+  .btn:hover { background: var(--pink-deep); }
   .btn:disabled { opacity: .6; cursor: default; }
   .foot .btn { margin-left: auto; }
-  .c-yellow { background: var(--yellow); } .c-green { background: var(--green); } .c-blue { background: var(--blue); } .c-pink { background: var(--pink); }
+  .c-yellow { background: var(--yellow); } .c-green { background: var(--green); } .c-blue { background: var(--blue); } .c-pink { background: var(--hl-pink); }
 
-  @media (max-width: 1320px) { .key .d { display: none; } }
-  @media (max-width: 1180px) { .trio { grid-template-columns: 1fr; } .how3 { display: grid; grid-template-columns: 150px 1fr; align-items: center; } .how3 svg { border-bottom: 0; border-right: 1px solid var(--line); height: 100%; } }
+  @media (max-width: 1360px) { .key .d { display: none; } .read { grid-template-columns: repeat(3, minmax(0, 1fr)); } .read div:nth-child(4) { border-left: 0; } .read div:nth-child(n+4) { border-top: 1px solid var(--line); } }
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; height: auto; }
-    .eye { height: 72vh; } .say { min-height: 80vh; } .bar, .pane, .foot { padding-left: 18px; padding-right: 18px; }
+    .eye { height: 78vh; } .say { min-height: 80vh; } .bar, .pane, .foot { padding-left: 18px; padding-right: 18px; }
+    .markrow { grid-template-columns: 92px 1fr; } .markrow span { grid-column: 2; }
   }
-  @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; } }
-  @media print { .eye, .bar, .foot, .acts { display: none !important; } .app { display: block; height: auto; } .sheet { border: 0; box-shadow: none; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } .stage.scanning .sweep { opacity: 0; } }
+  @media print { .eye, .bar, .foot, .acts { display: none !important; } .app { display: block; height: auto; } .sheet { border: 0; } }
 </style>
 </head>
 <body>
@@ -200,62 +248,77 @@
 
 <div class="app">
   <!-- ============ left ============ -->
-  <section class="eye" aria-label="What Glyph sees">
+  <section class="eye" aria-label="What __NAME__ sees">
     <div class="brand">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="#FFE234" stroke-width="3.6" stroke-linecap="round"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8L6.8 25.2"/></g></svg>
-      <span class="word">glyph</span>
+      <svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="#FF2D8E" stroke-width="4" stroke-linecap="round"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8L6.8 25.2"/></g></svg>
+      <span class="word">__NAME__</span>
       <div class="state wait" id="state"><span class="lamp"></span><span id="stateText">Connecting</span></div>
     </div>
     <div class="seeing">
-      <h2 id="seeingLabel">What Glyph sees: your page, flattened</h2>
+      <h2 id="seeingLabel">Your page, flattened</h2>
       <div class="switch" role="group" aria-label="Which picture is large">
         <button id="vPage" class="on">Page</button><button id="vRaw">Camera</button>
       </div>
     </div>
     <div class="stage" id="stage">
-      <img class="main" id="view" alt="Live view of the paper">
-      <div class="scan"></div>
+      <div class="fit" id="fit">
+        <span class="rule top"></span><span class="rule left"></span>
+        <img id="view" alt="Live view of the paper">
+        <div class="clip"><div class="sweep"></div></div>
+        <svg class="hud" id="hud" aria-hidden="true"></svg>
+      </div>
+      <div class="empty hide" id="empty"><div><b>No sheet in view</b><span>Put your page under the camera. Keep all four corners in the picture.</span></div></div>
       <div class="note hide" id="note"></div>
       <button class="pip" id="pip" title="Swap the two pictures"><img id="pipImg" alt=""><span id="pipLabel">Camera</span></button>
     </div>
-    <div class="under">
-      <div class="stat"><b id="sAnswers">0</b><span>answers</span></div>
-      <div class="stat"><b id="sLast">–</b><span>last answer took</span></div>
-      <div class="stat"><b id="sHl">0</b><span>highlights saved</span></div>
-      <div class="tools">
-        <button id="rotate" title="Turn the page if the text is sideways">Rotate</button>
-        <button id="look" title="Read the whole page now">Read page now</button>
-        <a href="/tune" title="Adjust what counts as ink and highlighter">Tune</a>
-      </div>
+    <div class="read" aria-label="Live measurements">
+      <div><span>Sheet</span><b id="rSheet">–</b></div>
+      <div><span>Page</span><b id="rPage" class="num">–</b></div>
+      <div><span>Ink on page</span><b id="rInk" class="num">–</b></div>
+      <div><span>New ink</span><b id="rNew" class="num">–</b></div>
+      <div><span>Frame rate</span><b id="rRate" class="num">–</b></div>
+      <div><span>Last answer</span><b id="rLast" class="num">–</b></div>
+    </div>
+    <div class="tools">
+      <button id="rotate" title="Turn the page if the text is sideways">Rotate</button>
+      <button id="look" title="Read the whole page now">Read page now</button>
+      <a href="/tune" title="Adjust what counts as ink and highlighter">Tune</a>
+      <span class="model" id="model"></span>
     </div>
   </section>
 
   <!-- ============ right ============ -->
-  <section class="say" aria-label="What Glyph says">
+  <section class="say" aria-label="What __NAME__ says">
     <header class="bar">
       <div class="seg" role="tablist">
-        <button class="on" id="tFeed" role="tab">Answers</button>
+        <button class="on" id="tFeed" role="tab">Answers <span class="n hide" id="aCount">0</span></button>
         <button id="tGuide" role="tab">Study guide <span class="n hide" id="tCount">0</span></button>
       </div>
-      <div class="clock" title="Session length"><i></i><span>Session</span><b id="clock">0:00</b></div>
+      <div class="pages hide" id="pages" aria-label="Pages seen this session"></div>
+      <div class="clock" title="Session length"><span>Session</span><b id="clock" class="num">0:00</b></div>
+      <div class="ask hide" id="ask"></div>
     </header>
 
     <div class="pane" id="feed">
       <div class="intro" id="intro">
-        <h1>Mark the page.<br><em>Glyph answers.</em></h1>
-        <p>Keep working on paper. No typing, nothing to switch to. Three marks are all you need.</p>
-        <div class="trio">
-          <div class="how3">
-            <svg viewBox="0 0 200 104" aria-hidden="true"><g fill="#D5DAE8"><rect x="18" y="24" width="96" height="7" rx="3.5"/><rect x="18" y="42" width="118" height="7" rx="3.5"/><rect x="18" y="60" width="74" height="7" rx="3.5"/><rect x="18" y="78" width="102" height="7" rx="3.5"/></g><g stroke="#16224F" stroke-width="3.2" stroke-linecap="round" transform="translate(164 46)"><path d="M0-15V15M-15 0H15M-10.6-10.6L10.6 10.6M10.6-10.6L-10.6 10.6"/></g></svg>
-            <div><b>Draw a spark</b><span>One hint for that problem. Never the answer.</span></div>
+        <h1>Mark the page.<br>__NAME__ reads it.</h1>
+        <p>Keep working on paper. No typing, nothing to switch to. Draw one of these and lift your hand.</p>
+        <div class="marks">
+          <div class="markrow">
+            <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BFE4F9"><rect x="8" y="14" width="42" height="5" rx="2.5"/><rect x="8" y="25" width="50" height="5" rx="2.5"/><rect x="8" y="36" width="34" height="5" rx="2.5"/></g><g stroke="#FF2D8E" stroke-width="2.6" stroke-linecap="round" transform="translate(73 27)"><path d="M0-10V10M-10 0H10M-7-7L7 7M7-7L-7 7"/></g></svg>
+            <b>A spark</b><span>One hint for the problem next to it. Never the answer.</span>
           </div>
-          <div class="how3">
-            <svg viewBox="0 0 200 104" aria-hidden="true"><g fill="#D5DAE8"><rect x="18" y="24" width="150" height="7" rx="3.5"/><rect x="18" y="46" width="52" height="7" rx="3.5"/><rect x="134" y="46" width="44" height="7" rx="3.5"/><rect x="18" y="74" width="118" height="7" rx="3.5"/></g><rect x="78" y="46" width="48" height="7" rx="3.5" fill="#16224F"/><path d="M76 61c12-3 34 2 52-1" fill="none" stroke="#16224F" stroke-width="3" stroke-linecap="round"/></svg>
-            <div><b>Underline a word</b><span>Its meaning, in the context of your page.</span></div>
+          <div class="markrow">
+            <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BFE4F9"><rect x="8" y="14" width="70" height="5" rx="2.5"/><rect x="8" y="26" width="20" height="5" rx="2.5"/><rect x="62" y="26" width="20" height="5" rx="2.5"/><rect x="8" y="40" width="52" height="5" rx="2.5"/></g><rect x="32" y="26" width="26" height="5" rx="2.5" fill="#062A40"/><path d="M31 35c8-2 18 1 28-1" fill="none" stroke="#FF2D8E" stroke-width="2.6" stroke-linecap="round"/></svg>
+            <b>An underline</b><span>What the word means on this page.</span>
           </div>
-          <div class="how3">
-            <svg viewBox="0 0 200 104" aria-hidden="true"><rect x="12" y="38" width="160" height="19" rx="3" fill="#FFE234"/><rect x="12" y="70" width="112" height="19" rx="3" fill="#5ED67E"/><g fill="#9AA3C2"><rect x="18" y="24" width="124" height="7" rx="3.5" fill="#D5DAE8"/><rect x="18" y="44" width="146" height="7" rx="3.5"/><rect x="18" y="76" width="98" height="7" rx="3.5"/></g></svg>
-            <div><b>Highlight a line</b><span>Saved by color for your study guide.</span></div>
+          <div class="markrow">
+            <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BFE4F9"><rect x="8" y="14" width="40" height="5" rx="2.5"/><rect x="8" y="25" width="46" height="5" rx="2.5"/><rect x="8" y="36" width="30" height="5" rx="2.5"/></g><g fill="none" stroke="#FF2D8E" stroke-width="2.4" stroke-linecap="round"><circle cx="72" cy="27" r="12"/><path d="M68.5 23.5a3.6 3.6 0 1 1 5.4 3.1c-1.2.8-1.9 1.4-1.9 2.8M72 33.6v.1"/></g></svg>
+            <b>A circled question mark</b><span>The passage next to it, in plain words.</span>
+          </div>
+          <div class="markrow">
+            <svg viewBox="0 0 92 54" aria-hidden="true"><rect x="6" y="11" width="80" height="12" rx="2" fill="#FFE234"/><rect x="6" y="31" width="56" height="12" rx="2" fill="#5ED67E"/><g fill="#062A40" opacity=".55"><rect x="10" y="14.5" width="70" height="5" rx="2.5"/><rect x="10" y="34.5" width="46" height="5" rx="2.5"/></g></svg>
+            <b>A highlight</b><span>Saved by color for your study guide. Costs no request.</span>
           </div>
         </div>
       </div>
@@ -268,8 +331,8 @@
 
     <div class="pane hide" id="guide">
       <div class="blank" id="guideEmpty">
-        <h3>Your study guide<br><em>writes itself.</em></h3>
-        <p id="guideHint">Highlight as you read. When you finish, Glyph sorts every highlight by color and adds the words you looked up.</p>
+        <h3>Your study guide writes itself.</h3>
+        <p id="guideHint">Highlight as you read. When you finish, every highlight is sorted by color and page, with the words you looked up.</p>
         <button class="btn" id="make2">Build it now</button>
       </div>
       <div class="sheet hide" id="sheet">
@@ -287,37 +350,127 @@
 
 <script>
 const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
 const ANSWERS = ['hint', 'explain', 'define', 'nudge', 'error'];
 const ICON = { hint: 'spark', define: 'underline', explain: 'ask', nudge: 'nudge', error: 'error' };
 const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', nudge: 'Keep going', error: 'Problem' };
-let lastId = 0, legend = null, current = null, answers = 0, big = 'page', guideMd = '';
+const HL = { yellow: '#E0B800', green: '#2FA857', blue: '#1280CC', pink: '#E0489A' };
+let lastId = 0, legend = null, current = null, answers = 0, big = 'page', guideMd = '', last = null, shown = '', locked = false;
 const hl = {};   // color -> {label, ids: []}
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
-function icon(name) {
-  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  u.setAttribute('href', '#g-' + name); s.append(u); s.setAttribute('class', 'g'); s.setAttribute('aria-hidden', 'true'); return s;
-}
+function svg(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+function icon(name) { const s = svg('svg', { class: 'g', 'aria-hidden': 'true' }); s.append(svg('use', { href: '#g-' + name })); return s; }
 const secs = n => (n == null ? '' : (n < 10 ? n.toFixed(1) : Math.round(n)) + ' s');
 const clock = t => Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
 const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 
+/* ---------- the picture, fitted, with what is drawn over it ---------- */
+function layout() {
+  const stage = $('stage'), img = $('view'), fit = $('fit');
+  const iw = img.naturalWidth, ih = img.naturalHeight; if (!iw || !ih) return;
+  const pad = 16, sw = stage.clientWidth - pad, sh = stage.clientHeight - pad;
+  const k = Math.min(sw / iw, sh / ih), w = Math.round(iw * k), h = Math.round(ih * k);
+  fit.style.width = w + 'px'; fit.style.height = h + 'px';
+  fit.style.left = Math.round(pad + (sw - w) / 2) + 'px'; fit.style.top = Math.round(pad + (sh - h) / 2) + 'px';
+  $('hud').setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  if (last) draw(last);
+}
+function brackets(g, x0, y0, x1, y1, len, cls) {
+  const l = Math.max(6, Math.min(len, (x1 - x0) / 2.4, (y1 - y0) / 2.4));
+  [[x0, y0, 1, 1], [x1, y0, -1, 1], [x1, y1, -1, -1], [x0, y1, 1, -1]].forEach(([x, y, dx, dy]) =>
+    g.append(svg('path', { class: cls, d: `M${x + dx * l} ${y}H${x}V${y + dy * l}` })));
+}
+function draw(s) {
+  const hud = $('hud'), v = s.view || {}, fit = $('fit'), W = fit.clientWidth, H = fit.clientHeight;
+  const key = JSON.stringify([big, W, H, v.phase, v.box, v.box_state, v.highlights, v.covers, v.quad]);
+  if (key === shown) return; shown = key;      // nothing moved: leave the drawing (and its animation) alone
+  hud.textContent = '';
+  if (!W || !H) return;
+  if (big === 'raw') {
+    if (v.quad) {
+      const pts = v.quad.map(([x, y]) => [x * W, y * H]);
+      hud.append(svg('polygon', { class: 'sheet', points: pts.map(p => p.join(',')).join(' ') }));
+      pts.forEach(([x, y]) => hud.append(svg('circle', { class: 'sheet-dot', cx: x, cy: y, r: 6 })));
+    }
+    return;
+  }
+  if (v.phase === 'none') { locked = false; return; }
+  const px = b => [b[0] * W, b[1] * H, b[2] * W, b[3] * H];
+  const has = v.phase !== 'settling' && v.phase !== 'moving';   // the sheet is locked on
+  const frame = svg('g', has && !locked ? { class: 'lock' } : {});
+  locked = has;
+  brackets(frame, 9, 9, W - 9, H - 9, 26, 'corner' + (has ? '' : ' loose')); hud.append(frame);
+  (v.highlights || []).forEach(h => { const [x0, y0, x1, y1] = px(h.box);
+    hud.append(svg('rect', { class: 'hl', x: x0 - 3, y: y0 - 3, width: x1 - x0 + 6, height: y1 - y0 + 6, rx: 3, stroke: HL[h.color] || '#45667A' })); });
+  (v.covers || []).forEach(b => { const [x0, y0, x1, y1] = px(b);
+    hud.append(svg('rect', { class: 'cover', x: x0, y: y0, width: x1 - x0, height: y1 - y0 })); });
+  if (v.box) {
+    let [x0, y0, x1, y1] = px(v.box); const m = 7; x0 -= m; y0 -= m; x1 += m; y1 += m;
+    const state = v.box_state || 'new';
+    if (state === 'new') hud.append(svg('rect', { class: 'mark new', x: x0, y: y0, width: x1 - x0, height: y1 - y0 }));
+    else {
+      const g = svg('g', { class: 'lock' }); brackets(g, x0, y0, x1, y1, 16, 'mark ' + state); hud.append(g);
+      const word = state === 'reading' ? 'Reading' : 'Answered', tw = word.length * 7.2 + 14;
+      const tx = Math.max(2, Math.min(x0 - 2, W - tw - 2)), ty = y0 > 30 ? y0 - 26 : y1 + 6;
+      const tag = svg('g', { class: 'tag ' + state });
+      tag.append(svg('rect', { x: tx, y: ty, width: tw, height: 20, rx: 3 }));
+      const t = svg('text', { x: tx + 7, y: ty + 14.5 }); t.textContent = word; tag.append(t); hud.append(tag);
+    }
+  }
+}
+
 /* ---------- status ---------- */
+const SHEET = { none: 'None', settling: 'Locking', watching: 'Locked', reading: 'Locked', covered: 'Covered', moving: 'Moving', held: 'Off edge' };
 function showStatus(s) {
+  last = s; const v = s.view || {};
   const watching = s.text.startsWith('Watching');
   $('state').className = 'state ' + (s.busy ? 'busy' : watching ? '' : 'wait');
   $('stateText').textContent = s.busy ? 'Reading your mark' : s.text;
-  $('stage').classList.toggle('busy', !!s.busy);
+  $('stage').classList.toggle('scanning', !!s.busy && big === 'page');
   $('reading').classList.toggle('hide', !s.busy);
-  $('sLast').textContent = s.last_seconds == null ? '–' : secs(s.last_seconds);
-  $('sHl').textContent = s.highlights;
+  $('empty').classList.toggle('hide', !(v.phase === 'none' && big === 'page'));
   $('clock').textContent = clock(s.session_seconds || 0);
+  $('rSheet').textContent = SHEET[v.phase] || '–';
+  const pages = s.pages || [];
+  $('rPage').textContent = s.page_no ? s.page_no + ' of ' + Math.max(pages.length, 1) : '–';
+  $('rInk').textContent = v.phase && v.phase !== 'none' ? (v.ink_pct || 0).toFixed(1) + '%' : '–';
+  $('rNew').textContent = v.phase && v.phase !== 'none' ? (v.new_px || 0) + ' px' : '–';
+  $('rNew').classList.toggle('live', (v.new_px || 0) > 0);
+  $('rRate').textContent = v.rate ? v.rate.toFixed(1) + '/s' : '–';
+  $('rLast').textContent = s.last_seconds == null ? '–' : secs(s.last_seconds);
+  $('model').textContent = s.mode === 'mock' ? 'Practice answers' : (s.model || '');
   const notes = [];
-  if (!s.page_found) notes.push('No sheet outline found, so Glyph is reading the whole picture. A darker desk helps.');
+  if (v.phase && v.phase !== 'none' && !s.page_found) notes.push('No sheet outline found, so the whole picture is being read. A darker desk helps.');
   if (s.mode === 'mock') notes.push('Practice answers: no Gemini key in .env yet.');
   $('note').textContent = notes.join(' ');
   $('note').classList.toggle('hide', !notes.length);
+  showPages(pages, s.page_no);
+  draw(s);
+}
+
+/* ---------- pages seen so far ---------- */
+let pagesKey = '';
+function showPages(pages, cur) {
+  const key = pages.join(',') + '|' + cur; if (key === pagesKey) return; pagesKey = key;
+  const box = $('pages'); box.textContent = ''; box.classList.toggle('hide', !pages.length);
+  $('ask').classList.add('hide');
+  if (!pages.length) return;
+  box.append('Page');
+  pages.forEach(n => {
+    const b = el('button', n === cur ? 'on' : '', String(n));
+    b.title = n === cur ? 'The sheet under the camera' : 'Is the sheet under the camera really page ' + n + '?';
+    if (n !== cur) b.onclick = () => askSame(n, cur);
+    box.append(b);
+  });
+}
+function askSame(n, cur) {
+  const a = $('ask'); a.textContent = ''; a.classList.remove('hide');
+  if (!cur) { a.append('Put a sheet under the camera first.'); return; }
+  const yes = el('button', '', 'Yes, same sheet'), no = el('button', 'no', 'No');
+  yes.onclick = async () => { a.classList.add('hide'); await fetch('/api/page', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ same_as: n }) }); };
+  no.onclick = () => a.classList.add('hide');
+  a.append('Is the sheet under the camera page ' + n + '? Its answers and highlights move there.', yes, no);
 }
 
 /* ---------- the marks, along the bottom ---------- */
@@ -342,29 +495,29 @@ function showNow(e, fresh) {
   const m = e.meta || {};
   const meta = el('div', 'meta'), tag = el('span', 'tag ' + e.kind);
   tag.append(icon(ICON[e.kind] || 'spark'), KIND[e.kind] || e.title); meta.append(tag);
-  if (m.seconds != null) { const t = el('span', 'took'); t.append('answered in ', el('b', '', secs(m.seconds))); meta.append(t); }
+  if (m.seconds != null) { const t = el('span', 'took num'); t.append('answered in ', el('b', '', secs(m.seconds))); if (m.page) t.append(' on page ', el('b', '', String(m.page))); meta.append(t); }
   n.append(meta);
   if (m.snip) {
-    const f = el('figure', 'snip'), img = el('img'); img.alt = 'The part of your page Glyph read';
+    const f = el('figure', 'snip'), img = el('img'); img.alt = 'The part of your page that was read';
     img.onerror = () => f.remove(); img.src = '/api/snip/' + m.snip + '.jpg';
-    f.append(img, el('figcaption', '', 'your mark')); n.append(f);
+    f.append(img, el('figcaption', '', 'Your mark')); n.append(f);
   }
   const w = el('p', 'words');
   if (e.kind === 'error') w.textContent = e.body;
   else if (e.kind === 'define' && m.target) { const t = el('span', 'term'); t.append(el('mark', '', m.target)); w.append(t, e.body); }
-  else { // the highlighter runs under the first sentence
+  else { // a pink stripe runs under the first sentence
     const s = e.body.match(/^(.+?[.?!])(\s+[\s\S]*)?$/);
     if (s && s[2]) w.append(el('mark', '', s[1]), s[2]); else w.append(el('mark', '', e.body));
   }
   n.append(w);
-  if (e.kind === 'error') { const a = el('div', 'about'); a.append('Glyph will try again by itself. If this keeps happening, check the key in .env and your connection.'); n.append(a); }
+  if (e.kind === 'error') { const a = el('div', 'about'); a.append('It will try again by itself. If this keeps happening, check the key in .env and your connection.'); n.append(a); }
   else if (m.target && e.kind !== 'define') { const a = el('div', 'about'); a.append(el('b', '', 'About'), m.target); n.append(a); }
 }
 
 function pastRow(e) {
   const m = e.meta || {}, li = el('li', e.kind), dot = el('span', 'dot'); dot.append(icon(ICON[e.kind] || 'spark'));
   const body = el('div'), head = el('div', 'head');
-  head.append(el('b', '', e.kind === 'define' && m.target ? m.target : (KIND[e.kind] || e.title)), el('span', '', clock(e.at || 0)));
+  head.append(el('b', '', e.kind === 'define' && m.target ? m.target : (KIND[e.kind] || e.title)), el('span', 'num', clock(e.at || 0) + (m.page ? ', page ' + m.page : '')));
   body.append(head, el('p', '', e.body)); li.append(dot, body);
   if (m.snip) { const img = el('img', 'thumb'); img.alt = ''; img.onerror = () => img.remove(); img.src = '/api/snip/' + m.snip + '.jpg'; li.append(img); }
   return li;
@@ -390,7 +543,7 @@ function addEvent(e, fresh) {
   if (ANSWERS.includes(e.kind)) {
     if (current) { $('rows').prepend(pastRow(current)); $('earlier').classList.remove('hide'); }
     current = e; $('now').classList.remove('hide'); showNow(e, fresh);
-    if (e.kind !== 'error') { answers++; $('sAnswers').textContent = answers; }
+    if (e.kind !== 'error') { answers++; $('aCount').textContent = answers; $('aCount').classList.remove('hide'); }
     if (fresh) $('feed').scrollTo({ top: 0, behavior: 'smooth' });
   } else if (e.kind === 'highlight') {
     const c = e.meta.color || 'yellow';
@@ -409,9 +562,9 @@ async function poll() {
     lastId = d.last_id;
     if (first && location.search === '?guide') build();  // /?guide opens straight on the study guide
   } catch (err) {
-    $('state').className = 'state bad'; $('stateText').textContent = 'Glyph is not running';
+    $('state').className = 'state bad'; $('stateText').textContent = 'Not running';
   }
-  setTimeout(poll, 600);
+  setTimeout(poll, 300);
 }
 
 /* ---------- study guide ---------- */
@@ -454,6 +607,9 @@ async function pump(id) {
     } catch (e) { await sleep(600); }
   }
 }
+let shape = '';
+$('view').addEventListener('load', () => { const k = $('view').naturalWidth + 'x' + $('view').naturalHeight; if (k !== shape) { shape = k; layout(); } });
+window.addEventListener('resize', layout);
 pump('view'); pump('pipImg');
 
 function view(which) {
@@ -461,7 +617,8 @@ function view(which) {
   $('vPage').classList.toggle('on', which === 'page'); $('vRaw').classList.toggle('on', which === 'raw');
   feeds.view = which; feeds.pipImg = other;
   $('pipLabel').textContent = other === 'raw' ? 'Camera' : 'Page';
-  $('seeingLabel').textContent = which === 'page' ? 'What Glyph sees: your page, flattened' : 'What Glyph sees: the camera, with your sheet outlined';
+  $('seeingLabel').textContent = which === 'page' ? 'Your page, flattened' : 'The camera, with your sheet outlined';
+  shown = ''; if (last) showStatus(last);
 }
 async function build() {
   const b = $('make'), b2 = $('make2'); b.disabled = b2.disabled = true; b.textContent = b2.textContent = 'Building your study guide';
@@ -471,7 +628,7 @@ async function build() {
     const d = await (await fetch('/api/study-guide', {method: 'POST'})).json();
     if (d.ok) { guideMd = d.markdown; renderGuide(guideMd); $('guideEmpty').classList.add('hide'); $('sheet').classList.remove('hide'); }
     else problem = 'The study guide could not be built: ' + d.error;
-  } catch (err) { problem = 'Glyph is not running, so the study guide could not be built.'; }
+  } catch (err) { problem = 'The app is not running, so the study guide could not be built.'; }
   if (problem) { $('sheet').classList.add('hide'); $('guideEmpty').classList.remove('hide'); $('guideHint').textContent = problem; }
   b.disabled = b2.disabled = false; b.textContent = guideMd ? 'Rebuild study guide' : 'End session'; b2.textContent = 'Build it now';
 }

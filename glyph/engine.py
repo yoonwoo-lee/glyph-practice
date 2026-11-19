@@ -693,7 +693,8 @@ class Engine:
         self._last_call = now
         self._call_times.append(now)
         self._looks += 1
-        self._trigger_box, self._trigger_time = box, now
+        # What the web page marks as "being read": the new ink itself, not the wider close-up.
+        self._trigger_box, self._trigger_time = (None if full else mask_bbox(fresh)), now
         job = {
             "n": self._looks,
             "full": full,

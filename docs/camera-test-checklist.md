@@ -19,13 +19,34 @@ Put results in `HANDOFF.md` when done.
 
 ## 1. Does it see the page? (2 min)
 
-- [ ] **Camera** view shows a yellow outline around the sheet, and it holds still.
-- [ ] **Page** view shows the sheet flat. Sideways or upside down: click **Rotate** until upright.
+- [ ] **Camera** view shows a white outline around the sheet with a pink dot on each corner, and it
+      holds still.
+- [ ] **Page** view shows the sheet flat with blue corner brackets, and the readout says Sheet:
+      Locked. Sideways or upside down: click **Rotate** until upright.
 - [ ] The sheet is read once in full within a couple of seconds of settling. Seconds it took: ____
 - [ ] Nudge the sheet a little. It should not trigger an answer, and the outline should follow it.
-- [ ] Wave a hand above the sheet so its shadow crosses the page. No red outline, no "Thinking".
+- [ ] Wave a hand above the sheet so its shadow crosses the page. No dashed box, no "Reading".
 - [ ] Slide the sheet half out of view. The page holds and asks you to slide it back.
 - [ ] Tap the gooseneck. Note how long the picture takes to settle: ____ s
+- [ ] Take the sheet away. Within about 2 s it should say "No sheet in view", read nothing and save
+      no highlights. Rest a sleeve or a hoodie next to the sheet: the outline should stay on the paper.
+
+## 1b. The Nov 19 problems (4 min)
+
+These four went wrong on Nov 19 and were fixed without a camera. Check each one first.
+
+| Try | What should happen | What happened |
+|---|---|---|
+| Draw one spark, then leave the sheet alone for a minute | One hint, and no more answers | |
+| Write a few more lines under it, no marks | Still no new answer | |
+| Printed page (the speech): underline one word | A definition of that word | |
+| Same page: underline a second word on another line | A definition of the second word only | |
+| Take the sheet out, wait, put it back (also try upside down) | Same page number, not read again | |
+| Bring in a second sheet, then the first again | Page 2, then back to Page 1 | |
+
+- [ ] If a sheet does get a new number: click the number it should have had, then **Yes, same sheet**.
+- [ ] After any wrong answer, keep `sessions/<latest>/looks/`. The close-up there should show the new
+      stroke in pink and the rest of the page readable.
 
 ## 2. Marks (6 min)
 

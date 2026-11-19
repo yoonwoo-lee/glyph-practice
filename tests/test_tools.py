@@ -396,6 +396,161 @@ def test_shadow_falling_on_the_page_is_not_a_cover_and_not_ink():
     assert len(brain.calls) == 1 and kinds(session) == ["hint"], (brain.calls, kinds(session))
 
 
+# ---- from the Nov 19 camera session ------------------------------------------------------------
+
+WOOD = (60, 130, 190)  # orange-brown desk, as (B, G, R)
+
+
+def _on_wood(scene):
+    out = scene.copy()
+    paper = cv2.inRange(scene, (150, 150, 150), (255, 255, 255))
+    out[paper == 0] = WOOD
+    return out
+
+
+def test_gray_clothing_next_to_the_sheet_is_not_taken_for_paper():
+    """A gray sleeve touching the sheet used to be flattened as part of the page, hands and all."""
+    scene = _on_wood(demo.build_steps()["blank"])
+    want, clean = find_page_quad(scene)
+    assert want is not None and clean
+    right = int(want[:, 0].max())
+    cv2.rectangle(scene, (right - 4, 60), (1919, 1079), (128, 130, 134), -1)  # sweatshirt beside the sheet
+    quad, clean = find_page_quad(scene)
+    assert quad is not None and clean, "sheet not found next to gray cloth"
+    assert float(np.abs(quad - want).max()) < 14, np.abs(quad - want).max()
+
+
+def test_bare_desk_is_not_read_as_a_page():
+    """Take the sheet away: nothing is sent, nothing is saved as a highlight, and the outline is dropped."""
+    sheet = _on_wood(demo.build_steps()["blank"])
+    desk = np.full(sheet.shape, WOOD, np.uint8)
+    engine, brain, session = run([sheet, desk], hold=2.6, read_first_page=True)
+    assert [c["full"] for c in brain.calls] == [True], brain.calls  # the sheet once; the desk never
+    assert engine.quad is None and engine.baseline is None
+    assert engine.status()["text"] == engine_mod.NO_SHEET_TEXT, engine.status()
+    assert engine.store.all() == [], "wood must not be saved as a highlight"
+    assert engine.status()["view"]["phase"] == "none", engine.status()["view"]
+
+
+def test_close_up_shows_the_new_ink_in_pink_and_nothing_else():
+    from glyph import page as P
+
+    before, after = _page("spark"), _page("underline")
+    old, now = P.ink_strength(before), P.ink_strength(after)
+    fresh = P.marks_only(P.remove_small(P.new_ink(now, old), 8))
+    crop, box = P.make_focus_crop(after, fresh, ink=P.strength_to_mask(now), old=P.strength_to_mask(old))
+    assert crop is not None and max(crop.shape[:2]) >= 400, crop.shape  # small marks are enlarged
+    pink = cv2.inRange(crop, np.array(P.NEW_INK_COLOR) - 30, np.array(P.NEW_INK_COLOR) + 30)
+    share = cv2.countNonZero(pink) / float(pink.size)
+    assert 0.001 < share < 0.1, "the underline should be pink and the rest of the close-up untouched: %.4f" % share
+    # the word above the underline is still there at full contrast: not faded, not pink
+    assert (cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) < 90).sum() > 500, "the writing above the underline was faded out"
+
+
+def test_marks_only_drops_specks_and_what_comes_in_from_the_edge():
+    from glyph import page as P
+
+    mask = np.zeros((1100, 850), np.uint8)
+    cv2.rectangle(mask, (400, 500), (403, 503), 255, -1)  # a speck
+    cv2.line(mask, (300, 700), (360, 702), 255, 3)  # an underline
+    cv2.line(mask, (12, 900), (60, 930), 255, 5)  # a fingertip's outline at the edge of the sheet
+    kept = P.marks_only(mask)
+    assert kept[701, 330] and not kept[501, 401] and not kept[915, 36], "kept the wrong bits"
+
+
+def test_remembered_page_is_lined_up_with_a_page_that_turned_a_little():
+    """Print that lands two pixels off must not count as new ink; a different page must be noticed."""
+    from glyph import page as P
+
+    page = _page("underline")
+    h, w = page.shape[:2]
+    src = np.float32([[0, 0], [w, 0], [w, h], [0, h]])
+    dst = src + np.float32([[12, -6], [4, 10], [-14, 8], [6, -12]])  # corners measured a little differently
+    turned = cv2.warpPerspective(page, cv2.getPerspectiveTransform(src, dst), (w, h), borderValue=(244, 244, 244))
+    old, now = P.ink_strength(page), P.ink_strength(turned)
+    off = cv2.countNonZero(P.marks_only(P.remove_small(P.new_ink(now, old), 8)))
+    m, sure = P.register(old, now)
+    assert sure and m is not None, (sure, m)
+    left = cv2.countNonZero(P.marks_only(P.remove_small(P.new_ink(now, P.move(old, m)), 8)))
+    assert off > 1500 and left < 0.02 * off, "lining up should explain nearly all of it: %d -> %d" % (off, left)
+    quad, _ = find_page_quad(demo.build_steps()["blank"])
+    other = P.ink_strength(warp_page(demo.desk_scene(_second_sheet()), quad))
+    assert P.register(old, other)[1] is False, "a different page cannot be lined up"
+    assert P.register(old, old) == (None, True)
+
+
+def test_an_answer_is_not_repeated_for_the_same_mark():
+    """Whatever the model says, the same definition for the same word on the same sheet is shown once."""
+    page = demo.base_page()
+    blank = demo.desk_scene(page)
+    demo.draw_underline(page)
+    underlined = demo.desk_scene(page)
+    demo.draw_handwriting(page)  # something else is written: the model is asked again
+    more = demo.desk_scene(page)
+
+    def script(n, crop, shape):  # a model that answers the old underline every time it is asked
+        return {"occluded": False, "triggers": [{"kind": "underline", "symbol": None, "action": "define", "target": "inertia", "response": "resistance to change in motion"}]}
+
+    engine, brain, session = run([blank, underlined, more], hold=1.8, script=script)
+    assert len(brain.calls) == 2, brain.calls
+    assert kinds(session) == ["define"], kinds(session)
+
+
+def test_a_second_spark_by_the_same_problem_gets_a_second_hint():
+    page = demo.base_page()
+    blank = demo.desk_scene(page)
+    demo.draw_spark(page)
+    one = demo.desk_scene(page)
+    demo.draw_spark(page, center=(700, 440), radius=26)
+    two = demo.desk_scene(page)
+
+    def script(n, crop, shape):
+        return {"occluded": False, "triggers": [{"kind": "symbol", "symbol": "spark", "action": "hint", "target": "Problem 1", "response": "hint number %d" % n}]}
+
+    engine, brain, session = run([blank, one, two], hold=1.8, script=script)
+    assert kinds(session) == ["hint", "hint"], kinds(session)
+
+
+def test_pages_are_numbered_in_order_and_keep_their_number():
+    from glyph import page as P
+    from glyph.highlights import HighlightStore
+
+    quad, _ = find_page_quad(demo.build_steps()["blank"])
+    first = P.page_signature(_page("blank"))
+    second = P.page_signature(warp_page(demo.desk_scene(_second_sheet()), quad))
+    empty = P.page_signature(np.full((demo.PAGE_H, demo.PAGE_W, 3), 244, np.uint8))
+    store = HighlightStore(Path(tempfile.mkdtemp(prefix="glyph_pg_")), {})
+    seen = []
+    for sig in (first, second, first, np.ascontiguousarray(first[::-1, ::-1]), empty, empty):
+        store.new_page()
+        assert store.page_no == 0, "no number until the sheet has been looked at"
+        known = store.identify(sig)
+        seen.append((store.page_no, known))
+    # sheet 1, sheet 2, sheet 1 again, sheet 1 the other way up, a blank sheet, a blank sheet again
+    assert seen == [(1, False), (2, False), (1, True), (1, True), (3, False), (3, False)], seen
+    assert store.pages() == [1, 2, 3]
+    assert store.merge(2) == 3 and store.page_no == 2 and store.pages() == [1, 2]  # "this is page 2"
+    store.turn()  # the view was turned a quarter turn: sheets are still recognised
+    store.new_page()
+    assert store.identify(np.ascontiguousarray(np.rot90(first))) and store.page_no == 1
+
+
+def test_web_page_carries_the_name_and_the_page_numbers():
+    from fastapi.testclient import TestClient
+    from glyph.app import create_app
+
+    s = demo.build_steps()
+    engine, brain, session = run([s["blank"]], hold=1.2)
+    client = TestClient(create_app(engine))
+    html = client.get("/").text
+    assert "__NAME__" not in html and "<title>%s</title>" % config.APP_NAME in html
+    status = client.get("/api/state").json()["status"]
+    assert status["page_no"] == 1 and status["pages"] == [1], status
+    view = status["view"]
+    assert view["phase"] in ("watching", "settling") and len(view["quad"]) == 4 and view["page_size"] == [850, 1100], view
+    assert client.post("/api/page", json={"same_as": 1}).status_code == 200
+    assert client.post("/api/page", json={"same_as": "x"}).status_code == 400
+
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
 

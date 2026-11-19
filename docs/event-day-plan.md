@@ -38,16 +38,18 @@ Stop wherever the clock says stop. Each step ends with something you can demo.
 Cut first if behind: study guide, then underline. Never cut the 15:00 freeze.
 Stretch only if ahead at 14:30: stuck nudge (no model call, quick to add).
 
-## Who does what (proposal)
+## Who does what (agreed Nov 18)
 
-- **Yoon Woo:** camera, sheet detection, new-ink detection, highlights. He has the phone and the mount.
-- **Skylar:** the model call (prompt, JSON reply, fallbacks, timeout), then the web page.
-- Agree in the first 10 minutes on one thing: the data passed between the halves
-  (page image, close-up of new ink, and the reply `{action, target, response}`).
+- **Yoon Woo:** all the code. He has the phone and the mount.
+- **Skylar:** the business side: logo, colors, what each mark means, who it is for, the demo story,
+  the slides and the submission text. During the build he is the test student at the desk and keeps
+  the clock.
+- With one person coding, the order in the table above matters more: get spark → hint working on the
+  real camera before anything else, and keep the model call simple.
 
 ## Lessons from the practice build
 
-Everything here cost real time on Nov 17 and 18. Read it before writing the first line on the day.
+Everything here cost real time between Nov 17 and 19. Read it before writing the first line on the day.
 
 Model
 - Ask for the `v1beta` API explicitly. Newer `google-genai` versions default to `v1`, where the
@@ -84,19 +86,32 @@ Seeing the page
   big area that is **not colorful and not dark**: threshold on saturation first.
 - Corners found frame by frame wobble by 3 to 6 pixels. Fit a line to each side of the outline, keep
   the outline fixed once a page is accepted, and move it only when several frames agree.
-- The sheet slides a few pixels every time someone writes on it. After the outline moves, line the
-  remembered page up with the new one (phase correlation gives the shift) or all the old ink looks new.
+- The sheet slides a few pixels every time someone writes on it. Line the remembered page up with the
+  page now before comparing, or all the old ink looks new. Matching small blocks of the page and
+  fitting one transform to them held up on dense print; one shift for the whole page did not.
+  **Send nothing until the two line up.** On Nov 19 shifted print was sent as "new ink" again and again.
 - Judge new ink by **how much darker** a spot is than the remembered page nearby, not by a yes/no ink
   mask. Faint pencil crosses a yes/no line at random and gets sent as "new ink".
 - Use the middle of the last three frames, so one noisy frame cannot create or erase ink.
 - A shadow is not an object. A shadow darkens the paper and keeps its color; a hand changes the
   color. Shadows pass over the page constantly while someone writes.
-- Send only the **new** ink at full contrast and fade the rest, or old marks get answered again.
+- Show the model which strokes are new by **recoloring them** (hot pink) and say "answer only the
+  pink strokes". Fading the old ink instead left it little to read around an underline on print.
+- **One answer per mark.** Remember (action, target) for each page and drop a repeat before it
+  reaches the screen. The model will happily answer the same spark on every read.
+- Drop specks and anything hugging the sheet's edge before calling it new ink: fingertips and the
+  desk showing at the edge were being sent to the model.
+- Decide "is there paper here at all?" before anything else. With no sheet in view the wooden desk
+  was read as a page and pieces of it were saved as highlights.
+- Clothing beside the sheet (a gray hoodie sleeve) is as pale and colorless as paper. Check that each
+  side of the outline is a real paper edge and that the corners are roughly square.
 - Wait for the picture to hold still (about 1 s) before reading. Ignore ink next to a hand.
 - A sheet partly outside the picture flattens into a skewed close-up. Hold the last good view and
   say so.
 - To tell one sheet from another, compare the shapes of the words piece by piece. Two pages of the
-  same reading have their lines in the same places.
+  same reading have their lines in the same places. Compare upside down too. Give sheets plain
+  numbers (1, 2, 3), keep the number when a sheet comes back, and let the user say "same sheet" with
+  one click for the times it gets it wrong.
 - Correct white balance and brightness before judging highlighter color. Detect highlights locally:
   it costs no model calls. Glare on a highlight still breaks it: angle the lamp.
 - Save a camera picture whenever the sheet is not found. Those pictures are what made every fix
@@ -105,6 +120,10 @@ Seeing the page
 Demo
 - Have a mode that runs with no camera and no network, in case the venue Wi-Fi or the camera fails.
 - Show the cut-out of the mark next to its answer. It makes the cause and effect obvious.
+- Draw frames and labels in the browser on top of a clean picture, from numbers the engine sends.
+  Painted into the picture they could not be animated or restyled.
+- Show live numbers (sheet locked, ink on page, new ink, frame rate, seconds per answer). They make
+  it look like the instrument it is, and they are the first thing to check when something is off.
 - The sheet lies sideways to the camera more often than not: keep a Rotate button.
 
 ## Bring

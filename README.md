@@ -9,7 +9,12 @@ A study tutor that watches your paper through a camera. You never type: you draw
 | **Highlight** in yellow, green, pink or blue | Saves it. "End session" turns all highlights into a study guide |
 | Draw a **circled question mark** next to a passage | Explains it in plain language |
 
+You write with any pen or pencil. Glyph works out which strokes are new by itself.
+
 This is the practice version for learning what is hard. Rebuild from scratch, in a new repo, at the hackathon.
+
+The name shown in the app and used in the answers is one setting: put `GLYPH_NAME=Gliff` (or any
+name) in `.env` and start again.
 
 ## Start it
 
@@ -42,13 +47,28 @@ with fake answers so everything else can still be tested.
 3. Get the whole sheet in the picture. If the mount is not tall enough, use the phone's **0.5x lens**:
    click the Video (camera) icon in the Mac's menu bar while Glyph runs, turn Center Stage off, and
    pick 0.5x. All four corners should show, with some desk around them, and the text should be sharp.
-4. In the browser, click **Camera**. The sheet should have a yellow outline. Click **Page**: you should
-   see the sheet flat. If the text is sideways or upside down, click **Rotate** until it is upright.
+4. In the browser, click **Camera**. The sheet should have a white outline with a pink dot on each
+   corner. Click **Page**: you should see the sheet flat, with blue corner brackets once it is locked
+   on. If the text is sideways or upside down, click **Rotate** until it is upright.
 5. A new sheet is read once in full as soon as it is steady, so marks already on it get answered.
-   Then try each mark from the table above. **Lift your hand off the sheet** after drawing. A blue
-   box shows what Glyph is reading; the answer appears a few seconds later.
-6. Highlight a few lines, then click **End session: build study guide**. With more than one sheet, the
-   guide has a section per page.
+   Then try each mark from the table above. **Lift your hand off the sheet** after drawing. A pink
+   frame labelled "Reading" closes on the mark and a pink bar sweeps the page; the frame turns blue
+   and says "Answered" when the answer arrives. Each mark is answered once.
+6. Highlight a few lines, then click **End session**. With more than one sheet, the guide has a
+   section per page.
+
+The row under the page shows what Glyph measures: whether the sheet is locked on, which page this is,
+how much of the page is ink, how much new ink it sees right now, pictures analysed per second, and
+how long the last answer took.
+
+## Pages
+
+Sheets are numbered 1, 2, 3 in the order Glyph first sees them, and the numbers are shown at the top
+right. Take a sheet away and bring it back, even upside down, and it keeps its number and is not
+read again. A sheet with almost nothing on it cannot be told from another blank one.
+
+If Glyph gives a sheet a new number by mistake, click the number it should have had and choose
+**Yes, same sheet**. The answers and highlights move over to that number.
 
 Things worth writing down while you test: how long each answer takes, which symbols get missed, and how the
 highlight colors behave under your lamp. `docs/camera-test-checklist.md` has a full list.
@@ -87,15 +107,19 @@ To tune from a photo instead of the live camera: `bash start.sh --source photo.j
 
 | What you see | What to try |
 |---|---|
-| The page is not flattened (no yellow outline in the Camera view) | All four corners must be in the picture: raise the phone or use its 0.5x lens. Keep things that are white or cream (a pencil case, another sheet) from touching the sheet's edge. Pictures from moments when no sheet was found are saved in `sessions/<latest>/camera/`. |
+| The page is not flattened (no white outline in the Camera view) | All four corners must be in the picture: raise the phone or use its 0.5x lens. Keep things that are white or cream (a pencil case, another sheet) from touching the sheet's edge. Pictures from moments when no sheet was found are saved in `sessions/<latest>/camera/`. |
 | "Part of the sheet is outside the camera's view" | Slide the sheet back. Glyph holds the last good view until it is whole again. |
 | "Gemini's usage limit for this key is used up for now" | Free keys get a small allowance per minute and per day. Glyph waits and tries again by itself. Turning on billing for the key in Google AI Studio lifts the limit. |
 | The launcher finds only one camera | The iPhone is not connected as a camera: lock it, keep it still, Wi-Fi and Bluetooth on, or plug it in. Check that it appears in Photo Booth's Camera menu. |
-| A symbol gets no answer | Draw it bigger and with a thicker pen. Look in `sessions/<latest>/looks/` to see exactly what was sent to the model. Click **Look now** to force a full read. |
+| A symbol gets no answer | Draw it bigger and with a thicker pen. Look in `sessions/<latest>/looks/` to see exactly what was sent to the model. Click **Read page now** to force a full read. |
 | Highlights are not picked up | Open **Tune**, press "Pick from page" for that color and click the stroke. Glare (a lamp reflecting straight off the paper) washes color out: move the lamp. |
 | Glyph reacts to nothing, or to everything | Open **Tune** and move "Ink sensitivity": lower catches fainter ink, higher ignores more. |
 | "Paused: reached the calls-per-minute limit" | Raise `GLYPH_MAX_CALLS_PER_MIN` in `.env` if your key allows it. |
-| A red outline on the page view | Glyph thinks something is lying on the sheet there (a hand, a pen) and ignores ink next to it. A shadow alone does not count. |
+| A dashed dark box on the page view | Glyph thinks something is lying on the sheet there (a hand, a pen) and ignores ink next to it. A shadow alone does not count. |
+| "No sheet in view" | Glyph sees the desk and no paper. It reads nothing and saves no highlights until a sheet is back. |
+| The same mark is answered again | It should not be. Note which mark and what was on the page, and keep `sessions/<latest>/looks/`: it shows exactly what was sent. |
+| An underline gets the wrong word | Draw the line right under the word, about as wide as the word, in one stroke. On small print, underline one word at a time. |
+| A sheet you already showed gets a new number | Click the number it should have had, then **Yes, same sheet**. |
 
 ## Change what the symbols do
 
@@ -108,13 +132,16 @@ Edit `symbols.json`. Each symbol has a name, a description of what it looks like
 2. `glyph/page.py` finds the sheet (by color, then by brightness), flattens it, and measures how dark
    the ink is at every spot.
 3. `glyph/engine.py` compares the ink with what it remembers of the page. Ink that is clearly darker
-   than anything that was there before, in a still picture, means "look". Only the new ink is sent
-   at full contrast, so old symbols are not answered twice. The sheet may slide while you write:
-   the remembered page is lined up with it again.
+   than anything that was there before, in a still picture, means "look". In the close-up sent to
+   the model the new strokes are recolored bright pink and the model is told to answer only those,
+   so old symbols are not answered twice. (That pink is inside the picture the model gets. It has
+   nothing to do with the pen you use.) The sheet may slide while you write: the remembered page is
+   lined up with it again, and nothing is sent until the two match.
 4. `glyph/highlights.py` finds highlighter by color on the Mac, with no model call.
 5. `glyph/brain.py` sends the page to the vision model with the symbol legend and gets back a hint,
    definition or explanation. Swapping to another model means changing one method there.
-6. `glyph/app.py` and `glyph/static/index.html` are the web page.
+6. `glyph/app.py` and `glyph/static/index.html` are the web page. The frames, brackets and readouts
+   are drawn in the browser from numbers the engine reports; the pictures themselves are left clean.
 
 Every session saves its feed, highlight photos, study guide and model inputs under `sessions/`.
 
@@ -131,8 +158,10 @@ python -m tests.test_tools
   sheet, model errors.
 - `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
   a tilted camera, sensor grain and flicker.
-- `test_tools` (23): model fallbacks and usage limits, choosing the camera, a wooden desk with a
-  shadow, a sliding sheet, shadows, blank or dark views, study guide by page, timing log, the tuning page.
+- `test_tools` (32): model fallbacks and usage limits, choosing the camera, a wooden desk with a
+  shadow, gray clothing beside the sheet, a bare desk, a sliding or turned sheet, shadows, blank or
+  dark views, a mark answered once and a second mark answered again, page numbers, study guide by
+  page, timing log, the tuning page, the name setting.
 
 Run them one after another, not at the same time: they are timed like a live camera, and a busy
 computer makes them miss their cues.

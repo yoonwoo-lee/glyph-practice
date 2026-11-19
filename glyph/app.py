@@ -2,21 +2,28 @@
 
 from __future__ import annotations
 
+import html
 import time
 from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 
-from . import tune
+from . import config, tune
 from .engine import Engine
 
 STATIC = Path(__file__).resolve().parent / "static"
 
 
+def _page(name: str) -> HTMLResponse:
+    """A web page with the app's name filled in (the name is set in one place: config.APP_NAME)."""
+    text = (STATIC / name).read_text(encoding="utf-8").replace("__NAME__", html.escape(config.APP_NAME))
+    return HTMLResponse(text, headers={"Cache-Control": "no-store"})
+
+
 def create_app(engine: Engine) -> FastAPI:
-    app = FastAPI(title="Glyph", docs_url=None, redoc_url=None)
+    app = FastAPI(title=config.APP_NAME, docs_url=None, redoc_url=None)
 
     @app.on_event("shutdown")
     def _shutdown() -> None:
@@ -24,7 +31,7 @@ def create_app(engine: Engine) -> FastAPI:
 
     @app.get("/")
     def index():
-        return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-store"})
+        return _page("index.html")
 
     def _stream(which: str):
         last = b""
@@ -75,6 +82,15 @@ def create_app(engine: Engine) -> FastAPI:
     def rotate():
         return {"ok": True, "degrees": engine.rotate()}
 
+    @app.post("/api/page")
+    def page(body: dict = Body(...)):
+        """The sheet under the camera is an earlier page after all: file its answers there."""
+        try:
+            engine.same_sheet_as(int(body.get("same_as", 0)))
+        except (TypeError, ValueError):
+            raise HTTPException(400, "same_as must be a page number")
+        return {"ok": True}
+
     @app.post("/api/study-guide")
     def study_guide():
         try:
@@ -105,7 +121,7 @@ def create_app(engine: Engine) -> FastAPI:
 
     @app.get("/tune")
     def tune_page():
-        return FileResponse(STATIC / "tune.html", headers={"Cache-Control": "no-store"})
+        return _page("tune.html")
 
     @app.get("/api/tune")
     def tune_get():

@@ -15,6 +15,13 @@ The README covers how to run it; this file covers the why and the plan.
 ## The team and the goal
 
 - **Yoon Woo** and **Skylar**, UCLA. Building Glyph for **HackwithBay 4.0** (San Francisco, Tue Nov 24, 2026).
+- **Who does what (agreed Nov 18):** Yoon Woo writes all the code, the stuck nudge included. Skylar does
+  the business side: logo, colors, what each mark means, the demo story and who it is for. The setup
+  steps and the stuck-nudge task below are kept as written; whoever builds the nudge follows the task.
+- **The name may change** (Glyf, Glyff and Gliff were floated Nov 19: there are already several
+  "glyph" AI products). It is one setting, `GLYPH_NAME` in `.env`. Don't hard-code the name anywhere.
+- **Look:** sky blue, white and hot pink (chosen Nov 19). Sky blue is the scanning side, white is the
+  reading side, hot pink marks whatever is being read right now.
 - This repo is the **practice build**. We use it to learn what's hard (camera, lighting, symbol
   detection, model latency) before the event.
 - **Rule: at the hackathon we rebuild from scratch in a new repo.** Don't copy code over. Use this
@@ -38,7 +45,7 @@ Walk Skylar through these in order, checking each one works before moving on.
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 12 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 44 checks in total.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 53 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -103,26 +110,38 @@ Hint-first is the core idea: it should push the student to solve it themselves, 
 
 Symbol → action mapping lives in `symbols.json`, so new symbols are a config change, not a code change.
 
-## Current status (Nov 18)
+## Current status (Nov 19)
 
-**Works, checked on the real camera (Nov 17, iPhone on a gooseneck, 0.5x lens, wooden desk):**
+**Works, checked on the real camera (Nov 17 and Nov 19, iPhone on a gooseneck, 0.5x lens, wooden desk):**
 - Sheet found and flattened; Rotate turns it upright; the first full read of a sheet; spark → hint and
-  underline → definition with good answers; yellow highlights saved.
+  underline → definition on handwriting; yellow highlights saved; marks are picked up quickly.
 
-**Built and covered by the checks (44 pass: 12 + 9 + 23), but not yet run on the real camera:**
-- Everything changed in the early hours of Nov 18 (see `HANDOFF.md`): steadier sheet outline, new ink
-  judged by darkness against the remembered page, the page following a sliding sheet, shadows not
-  counted as covers, usage-limit handling, automatic camera choice, faster passes.
-- Those changes were developed against camera pictures saved during the Nov 17 tests, replayed with
-  camera noise added. That is close to the real thing but is not the real thing.
+**What the Nov 19 camera session got wrong (all fixed the same day, see `HANDOFF.md`):**
+- The same mark answered several times; underlines on a printed speech got the wrong word or none;
+  one sheet taken away and brought back counted as a new page (numbers ran up to 18); a gray hoodie
+  merged into the sheet's outline; the bare desk was read as a page and saved as highlights.
+
+**Built and covered by the checks (53 pass: 12 + 9 + 32), but not yet run on the real camera or
+against live Gemini:**
+- The Nov 19 fixes: new strokes recolored pink in the close-up and the model told to answer only
+  those; nothing sent until the remembered page lines up with the page now; specks and edge slivers
+  dropped; one answer per mark; page numbers 1, 2, 3 that survive a sheet leaving and returning;
+  "No sheet in view" on a bare desk; the redesigned page.
+- They were developed by replaying the pictures saved during the Nov 19 session. The replay now gives
+  one full read per sheet, no repeats and no false highlights. No Gemini call was made in that replay
+  (the sandbox cannot reach Gemini), so how the model takes the pink close-up is untested.
 - Study guide sections per page; highlights in green, pink and blue; the circled question mark.
 
 **What is in the app:**
 - Spark → hint, underline → definition, circled question mark → explanation, highlights → study guide
   (one section per sheet when more than one was used).
-- Web page at http://127.0.0.1:8765: left half is what Glyph sees (flattened page with the camera as
-  an inset, swappable), right half is the newest answer as a large card with a cut-out of the mark,
-  highlights by color, a timeline, and a typeset study guide (Copy / Print). `/?guide` opens on the guide.
+- Web page at http://127.0.0.1:8765: left half (sky blue) is what Glyph sees: the flattened page with
+  corner brackets, a pink frame and sweep while a mark is read, the camera as an inset (swappable),
+  and a row of readouts (sheet, page, ink, new ink, frame rate, last answer). Right half (white) is
+  the newest answer as a large card with a cut-out of the mark, highlights by color, a timeline, page
+  numbers, and a typeset study guide (Copy / Print). `/?guide` opens on the guide.
+- Page numbers: 1, 2, 3 in the order sheets are first seen. A returning sheet keeps its number (also
+  when turned 180°). Clicking an earlier number and "Yes, same sheet" merges by hand (`POST /api/page`).
 - `--demo` plays a simulated worksheet with no camera; without a key it shows practice answers.
 - `/tune` page: live views of ink / highlighter / hand detection, sliders, click-to-pick highlighter
   colors, saves to `.env`.
@@ -164,7 +183,7 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
 | `glyph/highlights.py` | Highlighter detection by color, saves crops, tracks per page |
 | `glyph/brain.py` | Prompt + Gemini call with model fallbacks and usage-limit handling, returns strict JSON (hint / define / explain); `MockBrain` for testing |
 | `glyph/session.py` | Saves each session to `sessions/<timestamp>/` (events, model inputs, study guide) |
-| `glyph/app.py` | FastAPI routes: `/`, `/api/frame/page.jpg`, `/api/frame/raw.jpg` (the page asks for these in a loop), `/api/state`, `/api/look`, `/api/rotate`, `/api/study-guide` |
+| `glyph/app.py` | FastAPI routes: `/`, `/api/frame/page.jpg`, `/api/frame/raw.jpg` (the page asks for these in a loop), `/api/state`, `/api/look`, `/api/rotate`, `/api/page` (same sheet as an earlier number), `/api/study-guide`. Puts the name from `GLYPH_NAME` into the pages |
 | `glyph/tune.py` | Tuning page backend: detection overlays, color picking, save to `.env` |
 | `bench.py` | Model timing on the demo page (spends real requests) |
 | `HANDOFF.md` | Notes between the two Claudes (see the handoff rule at the top) |
@@ -172,7 +191,15 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
-- Only **new** ink is sent at full contrast (old ink faded), so old symbols aren't answered twice.
+- In the close-up sent to the model, the **new** strokes are recolored hot pink and nothing is faded;
+  the prompt says to answer only the pink strokes. Fading the old ink left the model little to read
+  around an underline on print (the likely cause of the Nov 19 misses; not yet confirmed against live
+  Gemini). The student writes with any pen: the pink is ours.
+- One answer per mark: a full read never repeats an (action, target) already answered; a new-ink look
+  repeats one only for a second symbol-sized spark or question mark with a different answer.
+- No look until the remembered page and the page now line up ("same"); "moved" waits, "lost" means a
+  different or changed sheet. This stopped shifted print from being sent as new ink.
+- The overlays are drawn in the browser from `status.view`; the page and camera pictures are sent clean.
 - "New" means clearly darker than anything the remembered page had within a few pixels, in the middle
   of the last three frames. A yes/no ink mask made faint pencil flicker in and out as "new ink".
 - The sheet's outline is held fixed once a page is accepted and moves only when four frames agree.
@@ -188,7 +215,7 @@ Key design choices:
    features): the same marks do different
    jobs per mode. Writer = solving problems, annotation = readings and books.
 
-1. **Run `docs/camera-test-checklist.md` on the real camera** with the Nov 18 changes, on a key with
+1. **Run `docs/camera-test-checklist.md` on the real camera** with the Nov 19 changes, on a key with
    billing turned on.
 2. **Stuck nudge** — if the student stalls (or picks up their phone and scrolls), Glyph nudges them to keep going.
 3. **Mistake catcher + mistake log/calendar** — spot errors in written work, keep a running log over time.

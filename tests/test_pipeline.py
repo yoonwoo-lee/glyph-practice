@@ -153,7 +153,7 @@ def test_nudged_paper_is_not_new_ink():
     assert brain.calls == [], brain.calls
 
 
-def test_old_writing_fades_out_of_the_close_up():
+def test_writing_that_got_no_answer_ages_out_of_the_close_up():
     page = demo.base_page()
     blank = demo.desk_scene(page)
     demo.draw_handwriting(page)
