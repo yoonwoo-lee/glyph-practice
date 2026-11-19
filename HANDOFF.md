@@ -14,6 +14,64 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-19 (afternoon), Yoon Woo's Claude
+
+Yoon Woo ran the camera at his desk on Nov 19 and reported: marks are picked up quickly now, but the
+same mark is answered several times; underlines on a printed speech are not read; one sheet moved out
+and back in counted as two pages. He also asked for a more technical look while scanning, a sky blue,
+white and hot pink color scheme, and room to rename the app. On `main` and `camera-test`:
+`ec55146` (the fixes) and `203e678` (the look, checks, docs). 53 checks pass (12 + 9 + 32).
+
+**Done**
+- **One answer per mark.** `Engine._handled` remembers (action, target, page). A full read never
+  repeats one; a new-ink look repeats one only for a second symbol-sized spark or question mark whose
+  answer is different.
+- **Close-up for the model:** the new strokes are recolored hot pink and nothing is faded
+  (`make_focus_crop`, `whole_strokes`). The prompt says to answer only the pink strokes. This is
+  internal: the student writes with any pen.
+- **No look until the page lines up.** `register()` matches small blocks of the remembered page to the
+  page now and fits one transform; `_line_up` returns same / moved / lost. Specks and anything within
+  16 px of the sheet's edge are dropped (`marks_only`).
+- **Sheet detection:** several brightness levels, square-corner and real-paper-edge checks (a gray
+  hoodie beside the sheet no longer joins the outline); `paper_share` decides "No sheet in view", and
+  then nothing is read or saved.
+- **Page numbers:** 1, 2, 3 in order first seen; a returning sheet keeps its number, also turned 180°;
+  blank sheets reuse numbers; `POST /api/page {"same_as": n}` merges by hand.
+- **Look:** `glyph/static/index.html` rewritten. Overlays are drawn in the browser from
+  `status.view`; the JPEGs are clean. Rotate, Read page now and Tune are still there.
+- **Name:** `GLYPH_NAME` in `.env` → `config.APP_NAME` → pages (`__NAME__`) and prompt.
+- **ECC** (github.com/affaan-m/ECC) is installed for this folder only on Yoon Woo's Mac, as a Claude
+  Code plugin, hooks off. Its settings are in `.claude/settings.local.json`, which is not committed.
+
+**Found** (from `sessions/2026-11-19_*/looks`, `camera` and `timings.jsonl` on Yoon Woo's Mac)
+- Most of the repeated reads were not the student's marks: fingertips, the desk at the sheet's edge
+  and print that had shifted a pixel or two were sent as "new ink", and the model answered whatever
+  old mark it could see.
+- With no sheet in view the wooden desk was accepted as a page; pieces of it were saved as highlights.
+- Page numbers reached 18 in one session with two real sheets.
+- Replaying that session's pictures through the new code: one full read per sheet, two pages, no
+  repeats, no false highlights. Real camera pictures stay out of the repo (it is public).
+- Yoon Woo's `.env` now has `GLYPH_MAX_CALLS_PER_MIN=4` and `GLYPH_COOLDOWN_SECONDS=6`.
+- A Google AI Pro subscription does not add Gemini API allowance; a key stays on the free tier until
+  billing is linked to its project. A monthly spend cap can be set per project in AI Studio.
+
+**Not verified**
+- Live Gemini with the pink close-up and the new instructions. No call could be made from the
+  sandbox. Make one live run before trusting any of it.
+- The real camera with these changes. `docs/camera-test-checklist.md` has a new section 1b for it.
+- Windows.
+
+**Changed plans**
+- Skylar now does the business side (logo, colors, mark meanings, story). Yoon Woo writes all the
+  code, the stuck nudge included. The Nov 18 note below about `stuck-nudge` applies to whoever builds it.
+- On hold until Yoon Woo asks: writer / annotation mode, a checkmark that checks answers.
+- The name is undecided (Glyf, Glyff, Gliff floated).
+
+**Need from the other side**
+- Nothing open for Skylar's Claude.
+
+---
+
 ## 2026-11-18 (early morning), Yoon Woo's Claude
 
 Yoon Woo asked for everything that was shaky in the Nov 17 camera tests to be fixed or reinforced
@@ -53,7 +111,7 @@ added. All of it is on `main` and `camera-test`. 44 checks pass (12 + 9 + 23).
 - Not verified on a real camera or a live model: everything in this entry.
 
 **Need from the other side (Skylar)**
-- `[open]` `glyph/engine.py` changed a lot inside `_tick`. Merge `main` into `stuck-nudge` before
+- `[done, Nov 19: Yoon Woo builds the nudge now; the pointers still hold]` `glyph/engine.py` changed a lot inside `_tick`. Merge `main` into `stuck-nudge` before
   going further and expect conflicts there. For the nudge: "new ink" is `fresh_px > 0` after the
   `steady_ink` / `outline_unsure` check; "view blocked" is `covered`, the early return for a sheet
   partly out of view, or `self.baseline is None`. Tests that fake time can still call
