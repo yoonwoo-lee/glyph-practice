@@ -47,6 +47,8 @@ def detect_highlights(page: np.ndarray):
             x, y, w, h, area = (int(v) for v in stats[i])
             if area < min_area or min(w, h) < 12:
                 continue
+            if area > 0.3 * page.shape[0] * page.shape[1]:
+                continue  # that is not a highlighter stroke: a colored desk, or tinted light
             regions.append({"color": color, "bbox": (x, y, w, h), "area": area})
             union[y : y + h, x : x + w][labels[y : y + h, x : x + w] == i] = 255
     return regions, union
@@ -96,29 +98,61 @@ class HighlightStore:
         self._lock = threading.Lock()
 
     def new_page(self) -> None:
-        self._top_page += 1
-        self.page_no = self._top_page
+        """The sheet on view changed or has to be looked at afresh. It has no number (0) until
+        `identify` has compared it with the sheets seen so far."""
+        self.page_no = 0
         self._last = []
 
-    def identify(self, signature) -> bool:
-        """Call once the new page is steady. A sheet seen earlier gets its old page number back.
+    def identify(self, signature, used=()) -> bool:
+        """Call once the new page is steady. Gives the sheet on view its page number.
 
+        A sheet seen earlier gets its old number back. A nearly blank sheet cannot be recognised
+        when it comes back, so a number that was given to one, and has nothing saved under it
+        (`used` lists the numbers that have answers), is handed out again: a blank sheet moved
+        about the desk does not use up a new number each time.
         Returns True when this sheet was seen earlier in the session.
         """
-        from .page import same_page
+        from .page import can_be_told_apart, same_page
 
         best, best_score = None, 0.6
         for no, sig in self._signatures.items():
             score = same_page(signature, sig)
-            if no != self.page_no and score > best_score:
+            if score > best_score:
                 best, best_score = no, score
-        if best is not None:
-            self._signatures.pop(self.page_no, None)
-            if self.page_no == self._top_page and not any(r["page_no"] == self.page_no for r in self.regions):
-                self._top_page -= 1  # that number was never used
-            self.page_no = best
-        self._signatures[self.page_no] = signature
-        return best is not None
+        known = best is not None
+        if best is None:
+            taken = set(used) | {r["page_no"] for r in self.regions}
+            free = sorted(no for no, sig in self._signatures.items() if no not in taken and not can_be_told_apart(sig))
+            if free:
+                best = free[0]
+            else:
+                self._top_page += 1
+                best = self._top_page
+        self.page_no = best
+        self._signatures[best] = signature
+        return known
+
+    def pages(self) -> List[int]:
+        """Every page number given out so far, in order."""
+        return sorted(set(self._signatures) | {r["page_no"] for r in self.regions if r["page_no"]})
+
+    def turn(self) -> None:
+        """The page view was turned a quarter turn: turn the remembered sheets with it, so a
+        sheet is still recognised afterwards."""
+        self._signatures = {no: np.ascontiguousarray(np.rot90(sig)) for no, sig in self._signatures.items()}
+
+    def merge(self, into: int) -> int:
+        """The sheet on view is really page `into`. Returns the number it had."""
+        was = self.page_no
+        if not was or was == into or into not in self._signatures:
+            return 0
+        with self._lock:
+            for r in self.regions:
+                if r["page_no"] == was:
+                    r["page_no"] = into
+        self._signatures[into] = self._signatures.pop(was)
+        self.page_no = into
+        return was
 
     def forget_this_page(self) -> None:
         """Drop what was captured on the current page (it is about to be re-read)."""

@@ -47,6 +47,18 @@ class Session:
         with self._lock:
             return [e for e in self._events if e["kind"] in kinds]
 
+    def relabel_page(self, was: int, now: int) -> None:
+        """Answers filed under page `was` belong to page `now` (the same sheet, told apart twice)."""
+        with self._lock:
+            for e in self._events:
+                if e["meta"].get("page") == was:
+                    e["meta"]["page"] = now
+            snapshot = list(self._events)
+        try:
+            (self.dir / "events.json").write_text(json.dumps(snapshot, indent=2, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
+
     def add_timing(self, row: dict) -> None:
         """One line per look in timings.jsonl: how long each step took."""
         with self._lock:

@@ -19,6 +19,10 @@ def _num(name: str, default: float) -> float:
         return float(default)
 
 
+# What the app calls itself: on the web page, in the browser tab and to the vision model. The name
+# is still being decided, so it lives here and nowhere else. GLYPH_NAME in .env changes it.
+APP_NAME = (os.getenv("GLYPH_NAME") or "Glyph").strip() or "Glyph"
+
 # The flattened page is always this size (portrait or landscape).
 PAGE_LONG = 1100
 PAGE_SHORT = 850

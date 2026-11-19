@@ -41,10 +41,27 @@ def same_page(a: np.ndarray, b: np.ndarray) -> float:
     """How alike two page signatures are: high for the same sheet, near 0 for different ones.
 
     The page is compared piece by piece, and each piece may sit a few pixels off. A sheet that
-    was put back slightly turned or shifted therefore still counts as the same sheet.
+    was put back slightly turned or shifted therefore still counts as the same sheet, and so does
+    one that was put back the other way up.
     """
     if a.shape != b.shape:
         return 0.0
+    return max(_alike(a, b), _alike(a, np.ascontiguousarray(b[::-1, ::-1])))
+
+
+def can_be_told_apart(signature: np.ndarray) -> bool:
+    """False for a sheet with so little on it (blank, or a word or two) that it could not be
+    recognised if it came back."""
+    h, w = signature.shape[:2]
+    written = 0
+    for row in range(5):
+        for col in range(4):
+            if float(signature[row * h // 5 : (row + 1) * h // 5, col * w // 4 : (col + 1) * w // 4].std()) >= 0.6:
+                written += 1
+    return written >= 3
+
+
+def _alike(a: np.ndarray, b: np.ndarray) -> float:
     h, w = a.shape[:2]
     m = 6
     scores = []
@@ -68,40 +85,161 @@ def find_page(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int]:
 
 
 def find_page_fill(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int, float]:
+    """Find the paper in the camera picture: (corners, clean, touches, fill). See find_sheet."""
+    return find_sheet(frame)[:4]
+
+
+# How bright, compared with the brightest things in view, something gray has to be to count as
+# paper. Tried from the most forgiving up. The low levels keep a sheet whole when a deep shadow
+# lies across it; the high ones separate it from gray things next to it (a sweatshirt, a laptop).
+PAPER_LEVELS = (0.38, 0.5, 0.62, 0.74)
+PAPER_SAT = 75  # paper is less colorful than this (0-255); wood and skin are well above
+
+
+def find_sheet(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int, float, bool]:
     """Find the paper in the camera picture.
 
-    Returns (corners, clean, touches, fill). `clean` is False when something (a hand, a pen)
+    Returns (corners, clean, touches, fill, cut_off). `clean` is False when something (a hand, a pen)
     breaks the outline, so the caller can keep using the last good corners. `touches` is how
     many edges of the camera picture the sheet reaches: 1 or 2 means part of it may be out of
     view. `fill` is how much of the four-cornered outline is visibly paper: it drops when a hand
     or an object reaches onto the sheet. Corners are None when no sheet stands out, for example
-    when the paper fills the whole frame or sits on a white desk.
+    when the paper fills the whole frame or sits on a white desk. `cut_off` is True when the
+    paper itself runs off the edge of the picture.
 
     Two ways of looking are tried. By color: paper is the big area that is neither colorful nor
     dark, which holds up on a wooden desk with glare and with shadows lying across the sheet.
+    Several brightness levels are tried, and an outline only counts when every side of it is a
+    real edge of the paper: gray clothing or a gray laptop touching the sheet is otherwise taken
+    for more paper (Nov 19: the page view included a sweatshirt and the hands in front of it).
     By brightness: the largest bright shape, which works on a dark desk in any light.
     """
     h, w = frame.shape[:2]
     scale = 640.0 / w
     small = cv2.resize(frame, (640, max(1, int(round(h * scale)))), interpolation=cv2.INTER_AREA)
     small = cv2.GaussianBlur(small, (5, 5), 0)
-    by_color = _outline(_paper_by_color(small), strict=False)
-    if by_color[0] is not None and by_color[1]:
-        return order_quad(by_color[0] / scale), True, by_color[2], by_color[3]
-    by_light = _outline(_paper_by_brightness(small), strict=True)
-    if by_light[0] is not None and by_light[1]:
-        return order_quad(by_light[0] / scale), True, by_light[2], by_light[3]
-    quad, _, touches, fill = by_light if by_light[0] is not None else by_color
-    return (None if quad is None else order_quad(quad / scale)), False, touches, fill
-
-
-def _paper_by_color(small: np.ndarray) -> np.ndarray:
     hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
     sat, val = hsv[..., 1], hsv[..., 2]
     bright = float(np.percentile(val, 95))
-    mask = ((sat < 75) & (val > 0.38 * bright)).astype(np.uint8) * 255
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-    return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
+    best, rough = None, None
+    cut_off = False
+    for level in PAPER_LEVELS:
+        mask = ((sat < PAPER_SAT) & (val > level * bright)).astype(np.uint8) * 255
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
+        if level == PAPER_LEVELS[-1]:
+            cut_off = _runs_off_the_picture(mask)  # judged on paper alone, not on gray things beside it
+        quad, clean, touches, fill = _outline(mask, strict=False)
+        if quad is None:
+            continue
+        if rough is None:
+            rough = (quad, touches, fill)
+        if not clean or not _square_corners(quad):
+            continue
+        sides = _paper_edges(order_quad(quad), sat, val, bright, mask)
+        real = sum(1 for side in sides if side is True)
+        if real < 2 or any(side is False for side in sides):
+            continue
+        key = (real, cv2.contourArea(order_quad(quad)))  # most real edges, then the biggest
+        if best is None or key > best[0]:
+            best = (key, quad, touches, fill)
+    if best is not None:
+        return order_quad(best[1] / scale), True, best[2], best[3], False
+    by_light = _outline(_paper_by_brightness(small), strict=True)
+    if by_light[0] is not None and by_light[1] and _square_corners(by_light[0]):
+        return order_quad(by_light[0] / scale), True, by_light[2], by_light[3], False
+    if by_light[0] is not None:
+        quad, touches, fill = by_light[0], by_light[2], by_light[3]
+    elif rough is not None:
+        quad, touches, fill = rough
+    else:
+        return None, False, 0, 0.0, cut_off
+    return order_quad(quad / scale), False, touches, fill, cut_off
+
+
+def _runs_off_the_picture(mask: np.ndarray) -> bool:
+    """True when the biggest piece of paper in a mask lies along one or two edges of the picture
+    for a good stretch: part of the sheet is out of the camera's view. (Along three or four
+    edges it is not a sheet at all: a white desk, or paper filling the whole picture.)"""
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if n <= 1:
+        return False
+    i = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    h, w = mask.shape[:2]
+    if stats[i, cv2.CC_STAT_AREA] < 0.08 * h * w:
+        return False
+    runs = [
+        int((labels[0, :] == i).sum()) / float(w),
+        int((labels[h - 1, :] == i).sum()) / float(w),
+        int((labels[:, 0] == i).sum()) / float(h),
+        int((labels[:, w - 1] == i).sum()) / float(h),
+    ]
+    along = sum(1 for r in runs if r >= 0.12)
+    return 1 <= along <= 2
+
+
+def _square_corners(quad: np.ndarray, low: float = 62.0, high: float = 118.0) -> bool:
+    """A sheet seen from above has four corners near 90 degrees. A shape with a slanted side is
+    paper plus something else, or a piece of paper cut off by a shadow."""
+    o = order_quad(quad)
+    for i in range(4):
+        u, v = o[i - 1] - o[i], o[(i + 1) % 4] - o[i]
+        cos = float(u @ v) / max(1e-6, float(np.linalg.norm(u) * np.linalg.norm(v)))
+        if not (low <= float(np.degrees(np.arccos(np.clip(cos, -1.0, 1.0)))) <= high):
+            return False
+    return True
+
+
+def _paper_edges(o: np.ndarray, sat: np.ndarray, val: np.ndarray, bright: float, mask: np.ndarray) -> list:
+    """For each side of an outline: True (a real edge of the paper), False, or "frame" when the
+    side runs along the edge of the camera picture.
+
+    A real edge has paper just inside it and, just outside, something that is not paper: either
+    colorful (a wooden desk, a hand) or much darker. A side that runs through the middle of
+    something gray has the same gray on both sides.
+    """
+    h, w = val.shape[:2]
+    center = o.mean(axis=0)
+    out = []
+    for i in range(4):
+        a, b = o[i], o[(i + 1) % 4]
+        d = b - a
+        length = float(np.linalg.norm(d))
+        if length < 8:
+            out.append(False)
+            continue
+        n = np.array([-d[1], d[0]], np.float32) / length
+        if float((center - a) @ n) < 0:
+            n = -n  # n now points into the sheet
+        good = total = off = 0
+        for t in np.linspace(0.15, 0.85, 15):
+            p = a + t * d
+            xi, yi = int(round(p[0] + 4 * n[0])), int(round(p[1] + 4 * n[1]))
+            xo, yo = int(round(p[0] - 4 * n[0])), int(round(p[1] - 4 * n[1]))
+            if not (0 <= xi < w and 0 <= yi < h):
+                continue
+            if not (1 <= xo < w - 1 and 1 <= yo < h - 1):
+                off += 1
+                continue
+            total += 1
+            gray_outside = sat[yo, xo] < PAPER_SAT and val[yo, xo] > PAPER_LEVELS[0] * bright
+            if mask[yi, xi] and (not gray_outside or float(val[yo, xo]) < 0.72 * float(val[yi, xi])):
+                good += 1
+        if off >= 8:
+            out.append("frame")
+        else:
+            out.append(total > 0 and good >= 0.7 * total)
+    return out
+
+
+def paper_share(page: np.ndarray, sat_limit: float = PAPER_SAT) -> float:
+    """How much of a picture looks like paper: bright and not colorful. A flattened sheet scores
+    near 1 even with a hand on it; a bare wooden desk scores near 0."""
+    small = cv2.resize(page, None, fx=0.125, fy=0.125, interpolation=cv2.INTER_AREA)
+    hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
+    sat, val = hsv[..., 1], hsv[..., 2]
+    floor = max(90.0, 0.5 * float(np.percentile(val, 95)))
+    return float(((sat < sat_limit) & (val > floor)).mean())
 
 
 def _paper_by_brightness(small: np.ndarray) -> np.ndarray:
@@ -252,6 +390,115 @@ def slide(picture: np.ndarray, dx: float, dy: float) -> np.ndarray:
     """Shift a page picture by (dx, dy) pixels."""
     h, w = picture.shape[:2]
     return cv2.warpAffine(picture, np.float32([[1, 0, dx], [0, 1, dy]]), (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+
+
+def register(old_strength: np.ndarray, new_strength: np.ndarray) -> Tuple[Optional[np.ndarray], bool]:
+    """How the remembered ink picture has to be moved to sit exactly on the page as it is now.
+
+    Returns (matrix, sure). The 3x3 matrix is for `move`; it is None when nothing needs moving.
+    `sure` is False when the two pictures could not be matched up: a different page, a page that
+    has moved too far, or one mostly hidden. Whether ink is new cannot be judged then.
+
+    A loose sheet never comes back to quite the same place: it slides, turns a little, and the
+    measured corners shift when a hand hides one of them. A plain shift is not enough then, and
+    on a page of print every line that lands two pixels off looks like new ink (Nov 19: half the
+    words of a printed speech were sent to the model as "newly drawn"). So the page is compared
+    in blocks, each block says where it went, and one perspective change is fitted to all of them.
+    """
+    if old_strength.shape != new_strength.shape:
+        return None, False
+    total = np.eye(3)
+    moved = old_strength
+    sure = False
+    where = None
+    for _ in range(3):  # each pass picks up blocks the one before could not reach
+        step, written, agreed, at = _register_once(moved, new_strength)
+        if written == 0:
+            return None, True  # nothing written on the remembered page: nothing can be out of place
+        if step is None:
+            return None, False
+        where = at if where is None else where
+        sure = agreed >= max(1.0, 0.6 * written)
+        total = step @ total
+        if _shift_at(step, at) < 0.3:
+            break
+        moved = move(old_strength, total)
+    # How far the writing itself moves. (Measured at the corners of the page, a change fitted to
+    # writing in the middle of the sheet looks bigger than it is.)
+    shift = _shift_at(total, where)
+    if shift > 0.1 * max(old_strength.shape[:2]):
+        return None, False  # so far off that the match is not to be trusted
+    return (total if shift >= 0.75 else None), sure
+
+
+def _register_once(old_strength: np.ndarray, new_strength: np.ndarray, rows: int = 8, cols: int = 6, reach: int = 14):
+    """One pass of `register`: (matrix or None, blocks with writing, blocks that agree on it,
+    where the matched blocks are)."""
+    a = cv2.resize(old_strength, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA).astype(np.float32)
+    b = cv2.resize(new_strength, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA).astype(np.float32)
+    h, w = a.shape[:2]
+    src, dst = [], []
+    written = 0
+    for r in range(rows):
+        for c in range(cols):
+            y0, y1 = r * h // rows, (r + 1) * h // rows
+            x0, x1 = c * w // cols, (c + 1) * w // cols
+            piece = np.ascontiguousarray(a[y0:y1, x0:x1])
+            if float(piece.std()) < 2.0:
+                continue  # nothing written in this block
+            written += 1
+            sy0, sx0 = max(0, y0 - reach), max(0, x0 - reach)
+            area = np.ascontiguousarray(b[sy0 : min(h, y1 + reach), sx0 : min(w, x1 + reach)])
+            if float(area.std()) < 2.0:
+                continue
+            res = cv2.matchTemplate(area, piece, cv2.TM_CCOEFF_NORMED)
+            _, peak, _, (px, py) = cv2.minMaxLoc(res)
+            if peak < 0.5:
+                continue  # covered by a hand, or too little here to be sure
+            fx, fy = float(px), float(py)
+            if 0 < px < res.shape[1] - 1:  # finer than a pixel: the top of a curve through the peak
+                left, mid, right = float(res[py, px - 1]), float(res[py, px]), float(res[py, px + 1])
+                bend = left - 2 * mid + right
+                if bend < 0:
+                    fx += 0.5 * (left - right) / bend
+            if 0 < py < res.shape[0] - 1:
+                up, mid, down = float(res[py - 1, px]), float(res[py, px]), float(res[py + 1, px])
+                bend = up - 2 * mid + down
+                if bend < 0:
+                    fy += 0.5 * (up - down) / bend
+            cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+            src.append((2 * cx, 2 * cy))
+            dst.append((2 * (cx + sx0 + fx - x0), 2 * (cy + sy0 + fy - y0)))
+    n = len(src)
+    if n == 0:
+        return None, written, 0, None
+    src, dst = np.array(src, np.float32), np.array(dst, np.float32)
+    m = np.eye(3)
+    if n >= 10:
+        found, inliers = cv2.findHomography(src, dst, cv2.RANSAC, 2.0)
+        if found is not None and int(inliers.sum()) >= max(8, int(0.6 * n)) and 0.8 < float(np.linalg.det(found[:2, :2])) < 1.25:
+            return found, written, int(inliers.sum()), src
+    if n >= 4:
+        found, inliers = cv2.estimateAffine2D(src, dst, method=cv2.RANSAC, ransacReprojThreshold=2.0)
+        if found is not None and int(inliers.sum()) >= max(3, n // 2) and 0.8 < float(np.linalg.det(found[:, :2])) < 1.25:
+            m[:2] = found
+            return m, written, int(inliers.sum()), src
+    shift = np.median(dst - src, axis=0)
+    m[0, 2], m[1, 2] = float(shift[0]), float(shift[1])
+    agreed = int((np.abs(dst - src - shift).max(axis=1) <= 2.0).sum())
+    return m, written, agreed, src
+
+
+def _shift_at(m: np.ndarray, points: np.ndarray) -> float:
+    """The furthest any of the given points moves under a matrix, in pixels."""
+    pts = np.asarray(points, np.float32).reshape(-1, 1, 2)
+    return float(np.abs(cv2.perspectiveTransform(pts, m) - pts).max())
+
+
+def move(picture: np.ndarray, m: np.ndarray) -> np.ndarray:
+    """Apply a matrix from `register` to a page picture."""
+    h, w = picture.shape[:2]
+    return cv2.warpPerspective(picture, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
 
 
 def full_frame_page(frame: np.ndarray, quarter_turns: int = 0) -> np.ndarray:
@@ -405,6 +652,63 @@ def remove_small(mask: np.ndarray, min_area: int) -> np.ndarray:
     return (keep[labels].astype(np.uint8)) * 255
 
 
+def ink_groups(mask: np.ndarray, gap: int = 25) -> list:
+    """Boxes (x, y, w, h) around the separate bits of ink in a mask. Strokes closer together
+    than `gap` pixels count as one bit: the rays of a spark, the letters of a word."""
+    if cv2.countNonZero(mask) == 0:
+        return []
+    joined = cv2.dilate(mask, np.ones((gap, gap), np.uint8))
+    n, _, stats, _ = cv2.connectedComponentsWithStats(joined, connectivity=8)
+    half = gap // 2
+    return [(int(x) + half, int(y) + half, max(1, int(w) - 2 * half), max(1, int(h) - 2 * half)) for x, y, w, h, _ in stats[1:n]]
+
+
+def marks_only(mask: np.ndarray, gap: int = 25, min_side: int = 14, min_px: int = 30, edge: int = 16) -> np.ndarray:
+    """Keep the new ink that could be a mark drawn on the sheet.
+
+    Dropped: bits too small to be a mark (a speck of camera noise, a dot, the tip of a stroke
+    caught mid-flicker; the smallest real marks are over 14 pixels long on the flattened page),
+    and anything that reaches the very edge of the sheet. Fingers holding the paper and pens
+    lying half on it come in from the edge, and their outlines look like dark strokes (Nov 19:
+    fingertips were sent to the model as new ink). Nobody draws a mark on the last couple of
+    millimetres of the paper.
+    """
+    if cv2.countNonZero(mask) == 0:
+        return mask
+    joined = cv2.dilate(mask, np.ones((gap, gap), np.uint8))
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(joined, connectivity=8)
+    half = gap // 2
+    ph, pw = mask.shape[:2]
+    keep = np.zeros(n, bool)
+    for i in range(1, n):
+        x, y, w, h = (int(v) for v in stats[i][:4])
+        x0, y0, x1, y1 = x + half, y + half, x + w - half, y + h - half  # the ink itself
+        if min(x0, y0) <= edge or x1 >= pw - edge or y1 >= ph - edge:
+            continue
+        px = cv2.countNonZero(mask[y : y + h, x : x + w][labels[y : y + h, x : x + w] == i])
+        keep[i] = max(x1 - x0, y1 - y0) >= min_side and px >= min_px
+    return cv2.bitwise_and(mask, keep[labels].astype(np.uint8) * 255)
+
+
+def whole_strokes(fresh: np.ndarray, ink: Optional[np.ndarray] = None, old: Optional[np.ndarray] = None) -> np.ndarray:
+    """The new ink, filled out to the whole of each stroke.
+
+    "New" is judged strictly: a line drawn right under a row of print only counts where it stays
+    clear of the letters. This follows each new stroke along the ink that is on the page now, so
+    an underline comes out in one piece.
+    """
+    if ink is None:
+        return fresh
+    grown = ink if old is None else cv2.bitwise_and(ink, cv2.bitwise_not(cv2.dilate(old, np.ones((5, 5), np.uint8))))
+    grown = cv2.bitwise_or(grown, fresh)
+    grown = cv2.bitwise_and(grown, cv2.dilate(fresh, np.ones((31, 31), np.uint8)))  # ...but not far
+    n, labels = cv2.connectedComponents(grown, connectivity=8)
+    keep = np.zeros(n, bool)
+    keep[np.unique(labels[fresh > 0])] = True
+    keep[0] = False
+    return keep[labels].astype(np.uint8) * 255
+
+
 def mask_bbox(mask: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
     """Bounding box (x0, y0, x1, y1) of the white pixels, or None."""
     pts = cv2.findNonZero(mask)
@@ -414,11 +718,15 @@ def mask_bbox(mask: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
     return int(x), int(y), int(x + w), int(y + h)
 
 
-def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70):
-    """Close-up of the new ink, with everything older faded out.
+NEW_INK_COLOR = (147, 20, 255)  # hot pink (B, G, R): how new strokes are shown to the model
 
-    The vision model is told that only the full-contrast marks in this image
-    are new, which keeps it from answering an old symbol a second time.
+
+def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70, ink: Optional[np.ndarray] = None, old: Optional[np.ndarray] = None):
+    """Close-up of the new ink, with the new strokes colored pink and everything else as it is.
+
+    The vision model is told that only the pink strokes are new. Fading the older writing, as
+    this used to do, did not stop the model answering an old symbol again, and it made the words
+    above a new underline hard to read. A stroke in a color no pen has is hard to mistake.
     Returns (image, (x0, y0, x1, y1)) or (None, None) if there is no new ink.
     """
     box = mask_bbox(fresh)
@@ -428,17 +736,12 @@ def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70):
     tx0, ty0, tx1, ty1 = box
     x0, y0 = max(0, tx0 - pad), max(0, ty0 - pad)
     x1, y1 = min(w, tx1 + pad), min(h, ty1 + pad)
-    crop = page[y0:y1, x0:x1]
-    near = cv2.dilate(fresh[y0:y1, x0:x1], np.ones((13, 13), np.uint8))
-    if tx1 - tx0 <= 220 and ty1 - ty0 <= 220:
-        # One small mark: show all of it at full contrast, including any thin stroke of it that
-        # was too faint to be picked out as new ink.
-        cv2.rectangle(near, (tx0 - x0 - 8, ty0 - y0 - 8), (tx1 - x0 + 8, ty1 - y0 + 8), 255, -1)
-    faded = cv2.addWeighted(crop, 0.3, np.full_like(crop, 255), 0.7, 0)
-    out = np.where(near[..., None] > 0, crop, faded)
+    out = page[y0:y1, x0:x1].copy()
+    strokes = cv2.dilate(whole_strokes(fresh, ink, old)[y0:y1, x0:x1], np.ones((3, 3), np.uint8))
+    out[strokes > 0] = NEW_INK_COLOR
     longest = max(out.shape[:2])
-    if longest < 500:
-        f = 500.0 / longest
+    if longest < 900:
+        f = min(2.5, 900.0 / longest)
         out = cv2.resize(out, None, fx=f, fy=f, interpolation=cv2.INTER_CUBIC)
     return np.ascontiguousarray(out), (x0, y0, x1, y1)
 

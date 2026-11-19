@@ -32,7 +32,7 @@ def build_system_prompt(legend: dict) -> str:
             f'- "underline": a pen line drawn under a word or short phrase -> action "{underline}". '
             "Fraction bars, equals signs, answer boxes and printed rules are not underlines."
         )
-    return f"""You are Glyph, a study tutor that watches a student's sheet of paper through a camera above the desk.
+    return f"""You are {config.APP_NAME}, a study tutor that watches a student's sheet of paper through a camera above the desk.
 The student never types. They ask for help by drawing small marks on the paper.
 
 SYMBOLS (hand-drawn, so they may be rough):
@@ -42,15 +42,23 @@ MARKS:
 {mark_lines or "(none)"}
 
 WHAT YOU SEE
-Image 1 is the whole page, for context.
-If there is an image 2, it is a close-up of the part of the page that just changed. In it, only the
-newly drawn ink is at full contrast; everything older is faded. Report only symbols and marks that are
-part of that new, full-contrast ink. Faded content was handled earlier and must not be reported.
-If there is no image 2, report every symbol or mark you can see on the page.
+Image 1 is the whole page, for context only.
+If there is an image 2, it is a close-up of the place where the student has just drawn something. The
+strokes they just drew are colored BRIGHT PINK. Everything black, gray or blue was on the page before and
+has already been dealt with.
+- Respond only when the pink strokes themselves form one of the symbols or marks above.
+- Never respond to a symbol or mark that is not pink, even if it is clear and sits right next to the pink.
+- Pink strokes that are ordinary writing, working, a stray line, a dot, a smudge, a shadow, or part of a
+  hand or pen are not a trigger. Most close-ups contain no trigger: return an empty list for those.
+- For a pink underline, the target is exactly the word or words sitting directly above the pink line, read
+  from the close-up, and nothing else. A pink line under two rows of text means both rows' underlined words.
+If there is no image 2, the sheet is being seen for the first time. Report only hand-drawn symbols and
+hand-drawn underlines that you can see clearly. Printed text, printed rules and ordinary handwriting are
+not marks. A page of print with nothing drawn on it has no triggers. When unsure, report nothing.
 
 WHAT IS NOT A TRIGGER
-Ordinary handwriting, math working, doodles, crossed-out text and printed text. Most looks at the page
-contain no trigger at all. Only report a symbol that clearly matches the legend and looks finished.
+Ordinary handwriting, math working, doodles, crossed-out text and printed text. Only report a symbol that
+clearly matches the legend and looks finished.
 If a hand, arm or pen covers the area so you cannot read it, set "occluded" to true.
 
 HOW TO RESPOND
@@ -297,7 +305,7 @@ class Brain:
         images = [page_jpg] + ([crop_jpg] if crop_jpg else [])
         text = "Image 1: the whole page."
         if crop_jpg:
-            text += " Image 2: close-up of the newly drawn ink."
+            text += " Image 2: close-up. The bright pink strokes are what the student just drew; nothing else is new."
         if context:
             text += "\n\n" + context
         raw = self._generate(images, text, self.system, want_json=True)

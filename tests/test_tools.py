@@ -310,8 +310,8 @@ def test_camera_picture_endpoint():
 def test_study_guide_puts_hints_and_words_under_their_page():
     s = demo.build_steps()
     engine, brain, session = run([s["blank"]], hold=1.0)
-    session.add_event("hint", "Hint", "try the power rule", target="problem 1", page=2)
-    session.add_event("define", "Definition: panzootic", "a very wide outbreak", target="panzootic", page=3)
+    session.add_event("hint", "Hint", "try the power rule", target="problem 1", page=1)
+    session.add_event("define", "Definition: panzootic", "a very wide outbreak", target="panzootic", page=2)
     guide = engine.study_guide()
     one, two = guide.index("## Page 1"), guide.index("## Page 2")
     assert one < guide.index("problem 1") < two < guide.index("panzootic"), guide

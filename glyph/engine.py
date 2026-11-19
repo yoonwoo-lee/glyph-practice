@@ -24,12 +24,16 @@ import cv2
 import numpy as np
 
 from . import config
-from .highlights import DRAW_COLORS, HighlightStore, detect_highlights
+from .highlights import HighlightStore, detect_highlights
 from .page import (
+    PAPER_SAT,
     Stability,
-    find_page_fill,
-    slide,
-    slip_between,
+    find_sheet,
+    ink_groups,
+    marks_only,
+    move,
+    paper_share,
+    register,
     page_signature,
     full_frame_page,
     cover_mask,
@@ -50,9 +54,12 @@ log = logging.getLogger("glyph")
 
 _K3 = np.ones((3, 3), np.uint8)
 _K9 = np.ones((9, 9), np.uint8)
+_K13 = np.ones((13, 13), np.uint8)
+_K15 = np.ones((15, 15), np.uint8)
 _K31 = np.ones((31, 31), np.uint8)
 _K61 = np.ones((61, 61), np.uint8)
 CUT_OFF_TEXT = "Part of the sheet is outside the camera's view. Slide it back, or raise the phone."
+NO_SHEET_TEXT = "No sheet in view. Put your page under the camera."
 
 TITLES = {"hint": "Hint", "explain": "Explanation", "define": "Definition"}
 
@@ -70,7 +77,9 @@ class Settings:
     cover_hold: float = config.COVER_HOLD
     tick: float = 0.125
     read_first_page: bool = True  # read a sheet in full as soon as it is first seen
-    min_page_ink: float = 0.01  # ...but only if at least this share of it is writing or print
+    # ...but only if at least this share of it is writing or print. A sheet with one line of
+    # handwriting has about 0.15% (Nov 19); specks of camera noise are not counted.
+    min_page_ink: float = 0.0004
 
 
 def _jpg(img: np.ndarray, quality: int = 80) -> bytes:
@@ -130,7 +139,7 @@ class Engine:
         self._errors_in_a_row = 0
         self._last_error = ""
         self._looks = 0
-        self._handled: List[Tuple[str, str]] = []
+        self._handled: List[Tuple[str, str, int]] = []  # (action, what it was about, page number)
         self._prev_fresh_px = 0
         self._fresh_since: Optional[float] = None  # when the ink now waiting to be read first showed up
         self._last_page: Optional[np.ndarray] = None  # clean flattened page, for the tuner
@@ -151,6 +160,14 @@ class Engine:
         self._hl_age = 0
         self._show_quad = True
         self._live_raw: Tuple[Optional[int], bytes] = (None, b"")
+        self._no_sheet_since: Optional[float] = None  # since when the view has not looked like paper
+        self._paper_sat = float(PAPER_SAT)  # how colorful the sheet on view may be and still be paper
+        self._aligned_at = 0.0  # when the remembered page was last checked against the page on view
+        self._in_place = "same"  # what that check found: "same", "moved" (put right) or "lost"
+        self._merge_requested = 0
+        self._turned = 0  # quarter turns asked for since the last pass
+        self._ticks: deque = deque(maxlen=24)  # times of recent passes, for the rate shown on screen
+        self._overlay: dict = {}  # what the web page draws over the pictures
 
     # ---- controls used by the web server ----------------------------------
 
@@ -171,7 +188,13 @@ class Engine:
         with self._lock:
             self._rotate = (self._rotate + 1) % 4
             self._reset_requested = True
+            self._turned += 1
             return self._rotate * 90
+
+    def same_sheet_as(self, page_no: int) -> None:
+        """The user says the sheet on view is page `page_no` (Glyph gave it a new number)."""
+        with self._lock:
+            self._merge_requested = int(page_no)
 
     def look_now(self) -> None:
         with self._lock:
@@ -185,9 +208,12 @@ class Engine:
         with self._lock:
             s = dict(self._status)
         s["mode"] = getattr(self.brain, "name", "?")
+        s["model"] = getattr(self.brain, "last_model", "") or ""
         s["camera"] = getattr(self.source, "label", "")
         s["highlights"] = len(self.store.all())
         s["looks"] = self._looks
+        s["page_no"] = self.store.page_no
+        s["pages"] = self.store.pages()
         times = list(self._answer_times)
         s["last_seconds"] = round(times[-1], 1) if times else None
         s["avg_seconds"] = round(sum(times) / len(times), 1) if times else None
@@ -195,15 +221,10 @@ class Engine:
         return s
 
     def _outlined(self, frame: np.ndarray) -> np.ndarray:
-        """The camera picture, smaller, with the sheet outlined."""
+        """The camera picture, smaller. (The web page draws the sheet's outline over it.)"""
         h, w = frame.shape[:2]
         scale = 960.0 / w
-        raw = cv2.resize(frame, (960, max(1, int(round(h * scale)))), interpolation=cv2.INTER_AREA)
-        quad = self.quad
-        if quad is not None and self._show_quad:
-            pts = (quad * scale).astype(np.int32).reshape(-1, 1, 2)
-            cv2.polylines(raw, [pts], True, (52, 226, 255), 3, cv2.LINE_AA)  # highlighter yellow
-        return raw
+        return cv2.resize(frame, (960, max(1, int(round(h * scale)))), interpolation=cv2.INTER_AREA)
 
     def live_raw_jpg(self) -> bytes:
         """The newest camera frame, straight from the camera.
@@ -255,17 +276,32 @@ class Engine:
         self._wait_for_motion = False
         self._ink_hist.clear()
         self._page_unnamed = True
+        self._in_place = "same"
         self.store.new_page()
+
+    def _forget_sheet(self) -> None:
+        """Nothing under the camera looks like a sheet of paper any more."""
+        if self.quad is None and self.baseline is None:
+            return
+        self.quad = None
+        self._quads.clear()
+        self._fills.clear()
+        self._outline_held_since = None
+        self._shape = None
+        self._hl = None
+        self._paper_sat = float(PAPER_SAT)
+        self._reset_page()
 
     def _tick(self, frame: np.ndarray, now: float) -> None:
         s = self.settings
         self._apply_results(now)
+        self._ticks.append(now)
 
         stable_for = self._stability.update(frame, now)
         stable = stable_for >= s.settle
         self._recent_frames.append(frame)
 
-        quad, clean, touches, fill = find_page_fill(frame)
+        quad, clean, touches, fill, cut_off = find_sheet(frame)
         outline_unsure = False
         if stable_for == 0.0:
             self._quads.clear()  # the picture moved: corners seen before no longer apply
@@ -292,6 +328,9 @@ class Engine:
                 # (Whether something "covers" the page cannot be used here: a sheet that has slid
                 # looks covered until the outline has followed it.)
                 clear = min(list(self._fills)[-4:]) >= self._quad_fill - 0.015
+                # A sheet put down somewhere else (far more than a hand could bend the outline) is
+                # followed at once: holding on to the old outline would flatten desk, not paper.
+                clear = clear or float(np.abs(middle - self.quad).max()) > 12 * tolerance
                 if moved and not clear:
                     # ...but not for ever: something may have been put down on the sheet to stay.
                     if self._outline_held_since is None:
@@ -315,28 +354,62 @@ class Engine:
                 cv2.imwrite(str(folder / "no_sheet_{:02d}.jpg".format(self._debug_saved)), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             except OSError:
                 pass
-        if self._seen_whole and quad is not None and not clean and touches in (1, 2) and 0.93 <= fill <= 1.08:
-            # A clean four-sided piece of paper that reaches the edge of the picture but no longer
-            # has a sheet's proportions: the sheet slid partly out of view. Flattening it now would
-            # give a skewed, zoomed-in page and junk "new ink", so hold the last good view until
-            # it is back. (An outline broken by a hand has a low fill and is not this case.)
+        if self._seen_whole and not clean and cut_off:
+            # The paper runs off the edge of the picture: the sheet slid partly out of view.
+            # Flattening it now would give a skewed, zoomed-in page and junk "new ink", so hold the
+            # last good view until it is back. (This is judged on the paper alone. Judged on the
+            # rough outline, a hand on a corner next to a gray sleeve looked like this too.)
             with self._lock:
                 held = self._last_page
             self._big_since = None
             self._ink_hist.clear()
-            if held is not None:
+            if held is not None and self.baseline is not None:
                 text = "Thinking" if self._busy else CUT_OFF_TEXT
-                self._publish(frame, held, None, now, text, stable, show_quad=False)
+                self._publish(frame, held, None, now, text, stable, show_quad=False, phase="held")
                 return
 
         with self._lock:
             turns = self._rotate
             reset, self._reset_requested = self._reset_requested, False
             look, self._look_requested = self._look_requested, False
+            turned, self._turned = self._turned, 0
+            merge, self._merge_requested = self._merge_requested, 0
         if look:
             self._want_full = "you asked"
+        for _ in range(turned % 4):
+            self.store.turn()  # the sheets seen so far are remembered the way the view is turned
+        if merge:
+            self._merge_into(merge)
 
         page = warp_page(frame, self.quad, turns) if self.quad is not None else full_frame_page(frame, turns)
+
+        # Is there a sheet of paper here at all? Without this check the outline of a sheet that
+        # has been taken away stays in use, and the bare desk under it is read as a new page
+        # (Nov 19: wood grain was sent to the model, and the whole desk saved as a highlight).
+        # A flattened sheet is nearly all paper even with a hand on it. The whole camera picture
+        # only counts as "the page" when it is nearly all paper: a white desk, or a close-up.
+        if quad is not None and clean:
+            papery = True
+        else:
+            papery = paper_share(page, self._paper_sat) >= (0.45 if self.quad is not None else 0.8)
+        if papery:
+            self._no_sheet_since = None
+        elif self._no_sheet_since is None:
+            self._no_sheet_since = now
+        if not papery:
+            if self.baseline is None or (stable and now - self._no_sheet_since >= 1.5):
+                self._forget_sheet()
+                if self._want_full != "you asked":
+                    self._want_full = None
+                self._publish(frame, full_frame_page(frame, turns), None, now, "Thinking" if self._busy else NO_SHEET_TEXT, stable, show_quad=False, phase="none")
+                return
+            # Most of the sheet is hidden, or it is being lifted away. Nothing seen now is worth
+            # judging: no ink, no highlights (wood under a lamp passes for yellow highlighter).
+            self._big_since = None
+            self._ink_hist.clear()
+            self._publish(frame, page, None, now, "Thinking" if self._busy else "Page is covered or being moved", stable, phase="moving")
+            return
+
         if reset:
             # The view was turned: highlights from this page will be captured again the right way up.
             self.store.forget_this_page()
@@ -356,7 +429,7 @@ class Engine:
         if self._check_alignment:
             self._check_alignment = False
             if self.baseline is not None and self.base_strength.shape == strength_now.shape:
-                self._line_up(strength_now)
+                self._in_place, self._aligned_at = self._line_up(strength_now, strength_now), now
         # Faint pencil and camera noise make bits of ink blink on and off. Judge ink by the middle
         # of the last three pictures, and remember the darkest each spot has been as "old".
         strength, strength_any = strength_now, strength_now
@@ -372,10 +445,13 @@ class Engine:
             steady_ink = False
         ink = strength_to_mask(strength)
         text = "Watching"
+        phase = "watching"
         fresh_box = None
+        fresh_px = 0
 
         if self.baseline is None:
             text = "Getting a steady view of the page"
+            phase = "settling"
             if stable and steady_ink:
                 self._accept_page(strength_any, page, now)
                 self._add_highlights(self.store.update(regions, page))
@@ -384,7 +460,8 @@ class Engine:
         else:
             self._age_pending(now)
             # Anything wide lying on the sheet? Ignore the ink around it.
-            cover = cover_mask(page_gray(page), self.base_gray, hl_mask, page_saturation(page), self.base_sat)
+            sat_now = page_saturation(page)
+            cover = cover_mask(page_gray(page), self.base_gray, hl_mask, sat_now, self.base_sat)
             covered = cv2.countNonZero(cover) > 0
             # Ignore ink for a good finger's width around whatever lies on the sheet: the edge of a
             # hand and the shadow right under it are not writing.
@@ -404,16 +481,50 @@ class Engine:
             old_px = cv2.countNonZero(old)
             miss_frac = cv2.countNonZero(missing) / float(old_px) if old_px > 800 else 0.0
             big = fresh_px / float(ink.size) > s.big_frac or miss_frac > s.missing_frac
+            # Old ink that lands a few pixels off shows up as slivers of "new" ink beside nearly
+            # every word on the page. Real writing does not look like that: it sits in a few
+            # places, or out in the blank parts of the sheet.
+            sprawl = False
+            if fresh_px and not big:
+                groups = ink_groups(fresh)
+                if len(groups) >= 8:
+                    beside_old = cv2.countNonZero(cv2.bitwise_and(fresh, cv2.dilate(self.baseline, _K13)))
+                    sprawl = beside_old >= 0.8 * fresh_px
+            if fresh_px and not big and not sprawl:
+                # What is left has to be something drawn on the sheet: not a speck, and not the
+                # outline of a fingertip or a pen coming in over the edge of the paper.
+                fresh = marks_only(fresh)
+                fresh_px = cv2.countNonZero(fresh)
+            if (big or sprawl or self._in_place != "same" or fresh_px >= s.min_new_px) and stable and steady_ink and not outline_unsure:
+                # Before believing any of it, check that the remembered page still sits exactly on
+                # the page as it is now, and put it right if not. Nothing is sent to the model
+                # until a check has found the two in place. If they cannot be matched up at all,
+                # this is a page that moved too far or a different page: wait, then start afresh.
+                if now - self._aligned_at > 1.0:
+                    self._aligned_at = now
+                    self._in_place = self._line_up(strength, strength_any, cv2.dilate(cover, _K61) if covered else None)
+                    if self._in_place == "moved":
+                        big = sprawl = False
+                if self._in_place != "same":
+                    fresh_px = 0
+                    fresh = np.zeros_like(fresh)
+                if self._in_place == "lost":
+                    big = True
 
-            if big:
+            if big or sprawl:
                 # The visible part of the page no longer matches: moved or swapped.
                 text = "Page is moving or was changed"
+                phase = "moving"
                 self._cover_since = None
+                fresh_px = 0
                 if not stable:
                     self._big_since = None
                 elif self._big_since is None:
                     self._big_since = now
-                elif now - self._big_since >= s.big_hold:
+                elif now - self._big_since >= s.big_hold and not outline_unsure and ((quad is not None and clean) or self.quad is None or now - self._big_since >= s.cover_hold):
+                    # Accept it as the page now: but only once the outline has caught up with the
+                    # sheet and nothing is lying across it. Otherwise a sheet with an arm on it, or
+                    # one seen through the outline of where it used to lie, becomes a "new page".
                     self._reset_page()
                     self._accept_page(strength_any, page, now)
                     if not self._page_known:  # a sheet that was read before is not read in full again
@@ -429,6 +540,7 @@ class Engine:
                 self._prev_fresh_px = fresh_px
                 if covered:
                     text = "Watching (part of the page is covered)"
+                    phase = "covered"
                     if not stable:
                         self._cover_since = None
                     elif self._cover_since is None:
@@ -443,7 +555,7 @@ class Engine:
                     self._cover_since = None
                     if stable and now - self._base_gray_time > 2.0:
                         self.base_gray, self._base_gray_time = page_gray(page), now
-                        self.base_sat = page_saturation(page)
+                        self.base_sat = sat_now
                 if stable and self.baseline is not None and (not steady_ink or outline_unsure):
                     fresh_px = 0  # not sure yet which ink is really there
                 if stable and self.baseline is not None:
@@ -451,7 +563,7 @@ class Engine:
                         self._add_highlights(self.store.update(regions, page))
                         if len(regions) > len(self.store.on_this_page()):
                             self._hl_age = 3  # a highlight is waiting to be confirmed: look again next pass
-                    if self._want_full and self._want_full != "you asked" and cv2.countNonZero(ink) < s.min_page_ink * ink.size:
+                    if self._want_full and self._want_full != "you asked" and cv2.countNonZero(marks_only(ink, edge=-1)) < s.min_page_ink * ink.size:
                         # Nothing here worth a request: a blank sheet, a covered lens, or the phone
                         # off its mount looking at the desk.
                         self._want_full = None
@@ -471,29 +583,47 @@ class Engine:
             self._wait_for_motion = False
         if self._busy:
             text = "Thinking"
+            phase = "reading"
         err = getattr(self.source, "error", None)
         if err:
             text = err
 
-        self._publish(frame, page, fresh_box, now, text, stable)
+        self._publish(
+            frame, page, fresh_box, now, text, stable, phase=phase,
+            ink_share=cv2.countNonZero(ink) / float(ink.size), fresh_px=fresh_px, regions=self.store.on_this_page(),
+        )
 
-    def _line_up(self, strength_now: np.ndarray) -> None:
-        """The sheet's outline was just re-measured (the paper slides a little whenever someone
-        writes on it). Check that the remembered page still sits exactly on top of the page as it
-        is flattened now, and nudge the remembered one over if not. Otherwise all the old ink
-        would land a few pixels off and look new."""
-        slip = slip_between(self.base_strength, strength_now)
-        if slip is None or max(abs(slip[0]), abs(slip[1])) < 1.0:
-            return
-        dx, dy = slip
-        self.base_strength = slide(self.base_strength, dx, dy)
+    def _line_up(self, strength_now: np.ndarray, darkest: np.ndarray, keep: Optional[np.ndarray] = None) -> str:
+        """Check that the remembered page still sits exactly on top of the page as it is flattened
+        now, and bring it into line if not. (The paper slides and turns a little whenever someone
+        writes on it, and the measured corners shift with it.) Otherwise the old ink lands a few
+        pixels off and looks new.
+
+        Returns "same" (already in place), "moved" (put right just now) or "lost" (the two could
+        not be matched up, so nothing can be said about new ink).
+
+        The remembered page is not just shifted: once it is known where everything went, it is
+        taken afresh from the page as it is now, except where there is new ink (and under `keep`,
+        whatever is lying on the sheet). Shifting a picture blurs it a little, and a page shifted
+        many times in an hour would fade until all of its ink looked new.
+        """
+        # Compared with `darkest`, which is how the remembered page itself was taken.
+        m, sure = register(self.base_strength, darkest)
+        if not sure:
+            return "lost"
+        if m is None:
+            return "same"
+        moved = move(self.base_strength, m)
+        new = cv2.dilate(remove_small(new_ink(strength_now, moved), 8), _K15)
+        if keep is not None:
+            new = cv2.bitwise_or(new, keep)
+        self.base_strength = np.where(new > 0, moved, darkest)
         self.baseline = strength_to_mask(self.base_strength)
-        self.base_gray = slide(self.base_gray, dx, dy)
+        self.base_gray = move(self.base_gray, m)
         if self.base_sat is not None:
-            self.base_sat = slide(self.base_sat, dx, dy)
-        self.pending = [
-            (cv2.threshold(slide(m, dx, dy), 127, 255, cv2.THRESH_BINARY)[1], t, slide(st, dx, dy)) for m, t, st in self.pending
-        ]
+            self.base_sat = move(self.base_sat, m)
+        self.pending = [(cv2.threshold(move(mask, m), 127, 255, cv2.THRESH_BINARY)[1], t, move(st, m)) for mask, t, st in self.pending]
+        return "moved"
 
     def _accept_page(self, strength: np.ndarray, page: np.ndarray, now: float) -> None:
         """Remember the page as it is now; only later changes count as new."""
@@ -501,9 +631,23 @@ class Engine:
         self.baseline = strength_to_mask(strength)
         self.base_gray, self._base_gray_time = page_gray(page), now
         self.base_sat = page_saturation(page)
+        # Colored paper, or a warm lamp: how colorful "paper" is for this sheet.
+        self._paper_sat = max(float(PAPER_SAT), float(np.median(self.base_sat[::8, ::8])) + 40.0)
         if self._page_unnamed:
             self._page_unnamed = False
-            self._page_known = self.store.identify(page_signature(page))
+            used = {e["meta"].get("page") for e in self.session.events_of("hint", "explain", "define")}
+            self._page_known = self.store.identify(page_signature(page), used)
+
+    def _merge_into(self, page_no: int) -> None:
+        """The user says the sheet on view is an earlier page. File what was saved for it there."""
+        was = self.store.merge(page_no)
+        if not was:
+            return
+        self.session.relabel_page(was, page_no)
+        self._handled = [(a, t, page_no if n == was else n) for a, t, n in self._handled]
+        self._page_known = True
+        if self._want_full != "you asked":
+            self._want_full = None
 
     def _age_pending(self, now: float) -> None:
         """Ink that got no response a while ago becomes part of the old page."""
@@ -534,13 +678,15 @@ class Engine:
         if len(self._call_times) >= s.max_calls_per_min:
             return "Paused: reached the calls-per-minute limit"
 
-        crop, box, shape_hint = None, None, None
+        crop, box, shape_hint, symbol_sized = None, None, None, False
         if not full:
-            crop, box = make_focus_crop(page, fresh)
+            crop, box = make_focus_crop(page, fresh, ink=ink, old=self.baseline)
             if crop is None:
                 return None
             tight = mask_bbox(fresh)
             shape_hint = (tight[2] - tight[0], tight[3] - tight[1])
+            # Is any of the new ink the size and shape of a drawn symbol (not a long flat line)?
+            symbol_sized = any(14 <= max(w, h) <= 220 and min(w, h) >= 10 and max(w, h) <= 3 * min(w, h) for _, _, w, h in ink_groups(fresh))
         reason = self._want_full if full else "new ink"
         self._want_full = None if full else self._want_full
         self._busy = True
@@ -557,6 +703,7 @@ class Engine:
             "crop": crop,
             "box": box,
             "shape_hint": shape_hint,
+            "symbol_sized": symbol_sized,
             "fresh": None if fresh is None else fresh.copy(),
             "ink": ink.copy(),
             "strength": None if strength is None else strength.copy(),
@@ -676,9 +823,20 @@ class Engine:
             shown = 0
             for t in result.get("triggers", []):
                 key = (t["action"], _norm(t["target"]))
-                if job["full"] and self._already_answered(key):
-                    continue
-                self._handled.append(key)
+                page_no = job.get("page_no") or 0
+                if job["full"]:
+                    # Reading a whole sheet finds every mark on it, old ones too. One that was
+                    # answered before, on any sheet, is the same mark seen again.
+                    if self._already_answered(key):
+                        continue
+                elif self._already_answered(key, page_no):
+                    # The same thing about the same words on the same sheet. The only good reason
+                    # is a second spark next to the same problem, to ask for a stronger hint, and
+                    # then the new ink has the size of a symbol. Anything else is the model
+                    # answering an old mark because something else on the page changed.
+                    if t["action"] == "define" or not job.get("symbol_sized") or self._said_before(t["response"]):
+                        continue
+                self._handled.append(key + (page_no,))
                 title = TITLES.get(t["action"], t["action"].title())
                 if t["action"] == "define" and t["target"]:
                     title = "Definition: " + t["target"][:60]
@@ -735,12 +893,19 @@ class Engine:
             cut = cv2.resize(cut, (540, 360), interpolation=cv2.INTER_AREA)
         return self.session.save_snip(_jpg(cut, 86))
 
-    def _already_answered(self, key: Tuple[str, str]) -> bool:
+    def _already_answered(self, key: Tuple[str, str], page_no: Optional[int] = None) -> bool:
+        """Was this action already taken about these words (on this page, if one is given)?"""
         action, target = key
-        for a, t in self._handled:
+        for a, t, n in self._handled:
+            if page_no is not None and n != page_no:
+                continue
             if a == action and (t == target or SequenceMatcher(None, t, target).ratio() >= 0.8):
                 return True
         return False
+
+    def _said_before(self, response: str) -> bool:
+        said = _norm(response)
+        return any(_norm(e["body"]) == said for e in self.session.events_of("hint", "explain", "define"))
 
     # ---- highlights and study guide --------------------------------------------
 
@@ -801,10 +966,10 @@ class Engine:
 
         parts = ["# Study guide", "", time.strftime("%A, %B %d, %Y")]
         if split:
-            for n, page_no in enumerate(pages, 1):
+            for page_no in pages:
                 body = section(page_no)
                 if body:
-                    parts += ["", "## Page {}".format(n)] + body
+                    parts += ["", "## Page {}".format(page_no)] + body
         else:
             parts += section(None)
         text = "\n".join(parts).strip() + "\n"
@@ -813,31 +978,59 @@ class Engine:
 
     # ---- pictures for the web page ---------------------------------------------
 
-    def _publish(self, frame, page, fresh_box, now, text, stable, show_quad=True) -> None:
-        view = page.copy()
-        clean_page = page
-        for r in self.store.on_this_page():
-            x, y, w, h = r["bbox"]
-            color = DRAW_COLORS.get(r["color"], (120, 120, 120))
-            cv2.rectangle(view, (x - 4, y - 4), (x + w + 4, y + h + 4), color, 2)
-        if self._cover is not None:
-            outlines, _ = cv2.findContours(self._cover, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cv2.drawContours(view, outlines, -1, (60, 60, 200), 2)
-        if self._trigger_box is not None and (self._busy or now - self._trigger_time < 2.5):
-            x0, y0, x1, y1 = self._trigger_box
-            cv2.rectangle(view, (x0, y0), (x1, y1), (150, 60, 35), 3)  # ink blue: "reading this"
+    def _publish(self, frame, page, fresh_box, now, text, stable, show_quad=True, phase="watching", ink_share=0.0, fresh_px=0, regions=()) -> None:
+        """Hand the pictures and the state to the web page.
+
+        The pictures go out clean. Everything drawn over them (the sheet's outline, the box round
+        the mark being read, the highlights) is sent as numbers from 0 to 1 and drawn by the web
+        page, so it stays sharp at any size.
+        """
+        ph, pw = page.shape[:2]
+
+        def unit(x0, y0, x1, y1):
+            return [round(max(0.0, x0 / pw), 4), round(max(0.0, y0 / ph), 4), round(min(1.0, x1 / pw), 4), round(min(1.0, y1 / ph), 4)]
+
+        reading = self._trigger_box is not None and (self._busy or now - self._trigger_time < 2.5)
+        box = None
+        if reading:
+            box = unit(*self._trigger_box)
         elif fresh_box is not None:
             x0, y0, x1, y1 = fresh_box
-            cv2.rectangle(view, (x0 - 6, y0 - 6), (x1 + 6, y1 + 6), (170, 170, 170), 1)
+            box = unit(x0 - 6, y0 - 6, x1 + 6, y1 + 6)
+        covers = []
+        if self._cover is not None and phase != "none":
+            outlines, _ = cv2.findContours(self._cover, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            for c in outlines[:6]:
+                x, y, w, h = cv2.boundingRect(c)
+                covers.append(unit(x, y, x + w, y + h))
+        fh, fw = frame.shape[:2]
+        quad = None
+        if self.quad is not None and show_quad:
+            quad = [[round(float(x) / fw, 4), round(float(y) / fh, 4)] for x, y in self.quad]
+        ticks = list(self._ticks)
+        rate = (len(ticks) - 1) / (ticks[-1] - ticks[0]) if len(ticks) > 2 and ticks[-1] > ticks[0] else 0.0
+        overlay = {
+            "phase": phase,
+            "box": box,
+            "box_state": "reading" if (reading and self._busy) else ("read" if reading else "new"),
+            "highlights": [] if phase == "none" else [{"color": r["color"], "box": unit(r["bbox"][0], r["bbox"][1], r["bbox"][0] + r["bbox"][2], r["bbox"][1] + r["bbox"][3])} for r in regions],
+            "covers": covers,
+            "quad": quad,
+            "page_size": [pw, ph],
+            "ink_pct": round(100.0 * ink_share, 1),
+            "new_px": int(fresh_px),
+            "rate": round(rate, 1),
+        }
 
         self._show_quad = show_quad
-        page_jpg, raw_jpg = _jpg(view, 75), _jpg(self._outlined(frame), 70)
+        page_jpg, raw_jpg = _jpg(page, 80), _jpg(self._outlined(frame), 70)
         with self._lock:
             self._page_jpg, self._raw_jpg = page_jpg, raw_jpg
-            self._last_page = clean_page
+            self._last_page = page
             self._status = {
                 "text": text,
                 "page_found": self.quad is not None,
                 "stable": bool(stable),
                 "busy": self._busy,
+                "view": overlay,
             }
