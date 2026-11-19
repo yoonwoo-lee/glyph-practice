@@ -5,3 +5,6 @@ sessions/
 camera_check/
 .DS_Store
 bench_results.md
+
+# Claude Code settings for this computer only (ECC plugin choice)
+.claude/settings.local.json
