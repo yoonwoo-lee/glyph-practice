@@ -28,10 +28,12 @@ He wants it a little less minimal; Skylar likes it minimal.
 - While a mark is read the pink gathers behind the paper. Answer card and study guide have a
   sky-to-pink edge; the first-screen headline and the "Reading your mark" bar use the same blend.
 - Layout, wording, Rotate / Read page now / Tune, and every id the script uses are unchanged.
+- 16:15: Yoon Woo asked for a lighter blue. The field is now `#2CA5DE` to `#45B6EC` to `#8FD6F6`, the
+  left side's own text is dark ink, and the blends pass through lilac instead of purple.
 
 **Found**
-- White text on `#0593C6` is only 3.5:1, so small white text sits on the deeper end of the field or
-  on frosted tiles with dark text. Hot pink on white is 4.3:1: fine for large type, use
+- White text does not hold up on a sky this light (about 2:1), so text on the field is dark ink and
+  everything else sits on frosted tiles. Hot pink on white is 4.3:1: fine for large type, use
   `--pink-deep` for small.
 
 **Not verified:** Safari (the Mac's default browser) and the real camera view. Checked in Chrome at

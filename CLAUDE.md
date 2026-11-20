@@ -20,7 +20,8 @@ The README covers how to run it; this file covers the why and the plan.
   steps and the stuck-nudge task below are kept as written; whoever builds the nudge follows the task.
 - **The name may change** (Glyf, Glyff and Gliff were floated Nov 19: there are already several
   "glyph" AI products). It is one setting, `GLYPH_NAME` in `.env`. Don't hard-code the name anywhere.
-- **Look:** sky blue `#0593C6`, white `#FCFFFF` and hot pink `#D83995` (Yoon Woo's reference, Nov 19).
+- **Look:** a light sky blue `#45B6EC`, white `#FCFFFF` and hot pink `#D83995` (from Yoon Woo's reference,
+  Nov 19; he asked for the blue lighter than the reference's `#0593C6`, which now only adds depth in one corner).
   The colors must **blend**: one field of sky blue with a pink bloom runs behind the whole window, and
   the paper and a white answers sheet float on it. Hot pink marks whatever is being read right now
   (it gathers behind the paper while a mark is read). Skylar likes it minimal, Yoon Woo wants it a
