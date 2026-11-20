@@ -63,6 +63,15 @@ NO_SHEET_TEXT = "No sheet in view. Put your page under the camera."
 
 TITLES = {"hint": "Hint", "explain": "Explanation", "define": "Definition"}
 
+# Shown when the student has not written anything for a while. Never an answer, no model call.
+NUDGES = [
+    "Try writing down what you know so far.",
+    "Stuck? Draw a spark next to the problem for a hint.",
+    "Read the question once more and underline the word that trips you up.",
+    "Start with the smallest step you are sure of.",
+    "Sketch it: a quick drawing often shows the next move.",
+]
+
 
 @dataclass
 class Settings:
@@ -80,6 +89,8 @@ class Settings:
     # ...but only if at least this share of it is writing or print. A sheet with one line of
     # handwriting has about 0.15% (Nov 19); specks of camera noise are not counted.
     min_page_ink: float = 0.0004
+    # Seconds without new writing before one "keep going" card is shown. 0 turns it off.
+    stuck_seconds: float = config.STUCK_SECONDS
 
 
 def _jpg(img: np.ndarray, quality: int = 80) -> bytes:
@@ -168,6 +179,10 @@ class Engine:
         self._turned = 0  # quarter turns asked for since the last pass
         self._ticks: deque = deque(maxlen=24)  # times of recent passes, for the rate shown on screen
         self._overlay: dict = {}  # what the web page draws over the pictures
+        self._last_ink: Optional[float] = None  # when the student last wrote or highlighted (None: no sheet)
+        self._ink_seen = 0  # how much new ink there was on the last pass
+        self._nudged = False  # the "keep going" card for this pause has been shown
+        self._nudges = 0
 
     # ---- controls used by the web server ----------------------------------
 
@@ -290,6 +305,7 @@ class Engine:
         self._shape = None
         self._hl = None
         self._paper_sat = float(PAPER_SAT)
+        self._last_ink = None
         self._reset_page()
 
     def _tick(self, frame: np.ndarray, now: float) -> None:
@@ -558,6 +574,10 @@ class Engine:
                         self.base_sat = sat_now
                 if stable and self.baseline is not None and (not steady_ink or outline_unsure):
                     fresh_px = 0  # not sure yet which ink is really there
+                # The student is writing: the "stuck" clock starts again.
+                if fresh_px > self._ink_seen + s.min_new_px // 2:
+                    self._wrote(now)
+                self._ink_seen = fresh_px
                 if stable and self.baseline is not None:
                     if hl_new:
                         self._add_highlights(self.store.update(regions, page))
@@ -587,6 +607,15 @@ class Engine:
         err = getattr(self.source, "error", None)
         if err:
             text = err
+        # Stuck nudge: a sheet in plain view, nothing being read, and no writing for a while.
+        # One card per pause; the next one needs new writing first.
+        if (
+            s.stuck_seconds > 0 and phase == "watching" and not self._want_full and not err
+            and self._last_ink is not None and not self._nudged and now - self._last_ink >= s.stuck_seconds
+        ):
+            self._nudged = True
+            self.session.add_event("nudge", "Still with it?", NUDGES[self._nudges % len(NUDGES)], page=self.store.page_no)
+            self._nudges += 1
 
         self._publish(
             frame, page, fresh_box, now, text, stable, phase=phase,
@@ -631,6 +660,8 @@ class Engine:
         self.baseline = strength_to_mask(strength)
         self.base_gray, self._base_gray_time = page_gray(page), now
         self.base_sat = page_saturation(page)
+        self._wrote(now)  # a page just taken in (new sheet, turned view): the "stuck" clock starts here
+        self._ink_seen = 0
         # Colored paper, or a warm lamp: how colorful "paper" is for this sheet.
         self._paper_sat = max(float(PAPER_SAT), float(np.median(self.base_sat[::8, ::8])) + 40.0)
         if self._page_unnamed:
@@ -910,7 +941,12 @@ class Engine:
 
     # ---- highlights and study guide --------------------------------------------
 
+    def _wrote(self, now: float) -> None:
+        self._last_ink, self._nudged = now, False
+
     def _add_highlights(self, new_regions: List[dict]) -> None:
+        if new_regions:
+            self._wrote(self._ticks[-1] if self._ticks else time.time())  # highlighting is working too
         for r in new_regions:
             self.session.add_event(
                 "highlight",

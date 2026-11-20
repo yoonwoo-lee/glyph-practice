@@ -53,6 +53,8 @@ COVER_HOLD = _num("GLYPH_COVER_HOLD", 20.0)
 # Ink that got no response stays "new" this long, so a symbol that was read
 # while half-drawn is still shown whole on the next look.
 RECENT_SECONDS = _num("GLYPH_RECENT_SECONDS", 15.0)
+# No new writing for this long with a sheet in view: one "keep going" card (no model call). 0 = off.
+STUCK_SECONDS = _num("GLYPH_STUCK_SECONDS", 90.0)
 
 # --- Ink detection -----------------------------------------------------------
 INK_BLOCK = 31  # neighbourhood size for the adaptive threshold (odd number)

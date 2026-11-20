@@ -234,6 +234,71 @@ def test_no_sheet_falls_back_to_whole_frame():
     assert quad is None
 
 
+
+def _stepper(**overrides):
+    """An engine that is not running: the test feeds it pictures and says what time it is."""
+    legend = config.load_legend()
+    session = Session(Path(tempfile.mkdtemp(prefix="glyph_test_")))
+    engine = Engine(None, ScriptedBrain(legend), session, legend, settings=Settings(**dict(FAST, **overrides)))
+    clock = [1000.0]
+
+    def show(frame, seconds):
+        end = clock[0] + seconds
+        while clock[0] < end:
+            engine._tick(frame, clock[0])
+            clock[0] += 0.5
+            for _ in range(40):  # let a model call finish, as it would between two real pictures
+                if not engine._busy or not engine._results.empty():
+                    break
+                time.sleep(0.05)
+
+    return engine, session, show
+
+
+def test_stuck_nudge_once_per_pause():
+    s = demo.build_steps()
+    engine, session, show = _stepper(stuck_seconds=20)
+    show(s["blank"], 15)
+    assert kinds(session).count("nudge") == 0, kinds(session)  # not yet
+    show(s["blank"], 10)
+    assert kinds(session).count("nudge") == 1, kinds(session)
+    show(s["blank"], 60)
+    assert kinds(session).count("nudge") == 1, kinds(session)  # waiting longer: still one
+    nudge = [e for e in session.events_since(0) if e["kind"] == "nudge"][0]
+    assert nudge["title"] == "Still with it?" and nudge["body"]
+
+
+def test_stuck_nudge_again_after_new_writing():
+    s = demo.build_steps()
+    engine, session, show = _stepper(stuck_seconds=20)
+    show(s["blank"], 30)
+    assert kinds(session).count("nudge") == 1, kinds(session)
+    show(s["spark"], 15)  # the student writes: the clock starts again
+    assert "hint" in kinds(session), kinds(session)
+    assert kinds(session).count("nudge") == 1, kinds(session)
+    show(s["spark"], 30)
+    assert kinds(session).count("nudge") == 2, kinds(session)
+    bodies = [e["body"] for e in session.events_since(0) if e["kind"] == "nudge"]
+    assert bodies[0] != bodies[1], bodies
+
+
+def test_stuck_nudge_waits_while_the_page_is_covered():
+    s = demo.build_steps()
+    engine, session, show = _stepper(stuck_seconds=20, cover_hold=300)
+    show(s["blank"], 5)
+    show(demo.add_hand(s["blank"]), 40)
+    assert kinds(session).count("nudge") == 0, kinds(session)
+    show(s["blank"], 5)  # hand gone, and it has been long enough
+    assert kinds(session).count("nudge") == 1, kinds(session)
+
+
+def test_stuck_nudge_can_be_turned_off():
+    s = demo.build_steps()
+    engine, session, show = _stepper(stuck_seconds=0)
+    show(s["blank"], 120)
+    assert "nudge" not in kinds(session), kinds(session)
+
+
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
 
 if __name__ == "__main__":

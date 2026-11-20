@@ -11,6 +11,9 @@ A study tutor that watches your paper through a camera. You never type: you draw
 
 You write with any pen or pencil. Glyph works out which strokes are new by itself.
 
+If you stop writing for a while (90 seconds), Glyph shows one "keep going" card. It never gives an
+answer and uses no model call. `GLYPH_STUCK_SECONDS` in `.env` changes the wait; `0` turns it off.
+
 This is the practice version for learning what is hard. Rebuild from scratch, in a new repo, at the hackathon.
 
 The name shown in the app and used in the answers is one setting: put `GLYPH_NAME=Gliff` (or any
@@ -154,8 +157,8 @@ python -m tests.test_rough
 python -m tests.test_tools
 ```
 
-- `test_pipeline` (12): the full flow, a half-drawn symbol, a hand on the page, a nudged sheet, a new
-  sheet, model errors.
+- `test_pipeline` (16): the full flow, a half-drawn symbol, a hand on the page, a nudged sheet, a new
+  sheet, model errors, the "keep going" card.
 - `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
   a tilted camera, sensor grain and flicker.
 - `test_tools` (32): model fallbacks and usage limits, choosing the camera, a wooden desk with a
