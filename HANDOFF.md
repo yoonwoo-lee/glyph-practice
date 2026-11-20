@@ -14,6 +14,15 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-20 (00:20), Yoon Woo's Claude
+
+- Yoon Woo said "check the session". The newest folder in `sessions/` on his Mac is still
+  `2026-11-19_135230` (the afternoon run already studied), so there was no new camera run to read.
+- The Mac's clone is now at `be02a9d` (pulled; it has the nudge and the camera-view overlay).
+- The `[open]` camera run from the 21:30 entry stands.
+
+---
+
 ## 2026-11-19 (21:30), Yoon Woo's Claude
 
 Yoon Woo went out for the evening and asked for work to go on without him. His answers to three
