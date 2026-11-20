@@ -46,6 +46,7 @@ from .page import (
     page_gray,
     page_saturation,
     remove_small,
+    page_matrix,
     warp_page,
 )
 from .session import Session
@@ -183,6 +184,7 @@ class Engine:
         self._ink_seen = 0  # how much new ink there was on the last pass
         self._nudged = False  # the "keep going" card for this pause has been shown
         self._nudges = 0
+        self._publish_turns = self._rotate  # quarter turns of the page picture being published
 
     # ---- controls used by the web server ----------------------------------
 
@@ -397,6 +399,7 @@ class Engine:
         if merge:
             self._merge_into(merge)
 
+        self._publish_turns = turns
         page = warp_page(frame, self.quad, turns) if self.quad is not None else full_frame_page(frame, turns)
 
         # Is there a sheet of paper here at all? Without this check the outline of a sheet that
@@ -1040,19 +1043,43 @@ class Engine:
             for c in outlines[:6]:
                 x, y, w, h = cv2.boundingRect(c)
                 covers.append(unit(x, y, x + w, y + h))
+        highlights = [] if phase == "none" else [{"color": r["color"], "box": unit(r["bbox"][0], r["bbox"][1], r["bbox"][0] + r["bbox"][2], r["bbox"][1] + r["bbox"][3])} for r in regions]
         fh, fw = frame.shape[:2]
         quad = None
         if self.quad is not None and show_quad:
             quad = [[round(float(x) / fw, 4), round(float(y) / fh, 4)] for x, y in self.quad]
+        # The same boxes as they lie in the camera picture (four corners each), so the web page
+        # can draw them on the camera view too. Only while the outline in use is the one shown.
+        cam = None
+        if quad is not None and phase not in ("none", "held"):
+            try:
+                back = np.linalg.inv(page_matrix(self.quad)[0])
+            except np.linalg.LinAlgError:
+                back = None
+            if back is not None:
+                def on_camera(b):
+                    x0, y0, x1, y1 = b[0] * pw, b[1] * ph, b[2] * pw, b[3] * ph
+                    pts, w, h = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], pw, ph
+                    for _ in range(self._publish_turns % 4):  # undo each quarter turn of the view
+                        pts, w, h = [(h - 1 - y, x) for x, y in pts], h, w
+                    out = cv2.perspectiveTransform(np.array([pts], np.float32), back)[0]
+                    return [[round(float(x) / fw, 4), round(float(y) / fh, 4)] for x, y in out]
+
+                cam = {
+                    "box": on_camera(box) if box else None,
+                    "highlights": [{"color": h["color"], "pts": on_camera(h["box"])} for h in highlights],
+                    "covers": [on_camera(c) for c in covers],
+                }
         ticks = list(self._ticks)
         rate = (len(ticks) - 1) / (ticks[-1] - ticks[0]) if len(ticks) > 2 and ticks[-1] > ticks[0] else 0.0
         overlay = {
             "phase": phase,
             "box": box,
             "box_state": "reading" if (reading and self._busy) else ("read" if reading else "new"),
-            "highlights": [] if phase == "none" else [{"color": r["color"], "box": unit(r["bbox"][0], r["bbox"][1], r["bbox"][0] + r["bbox"][2], r["bbox"][1] + r["bbox"][3])} for r in regions],
+            "highlights": highlights,
             "covers": covers,
             "quad": quad,
+            "cam": cam,
             "page_size": [pw, ph],
             "ink_pct": round(100.0 * ink_share, 1),
             "new_px": int(fresh_px),

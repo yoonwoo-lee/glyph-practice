@@ -299,6 +299,30 @@ def test_stuck_nudge_can_be_turned_off():
     assert "nudge" not in kinds(session), kinds(session)
 
 
+def test_camera_view_gets_the_same_boxes_as_the_page_view():
+    """Highlights are also sent as they lie in the camera picture; mapped back they match the page."""
+    from glyph.page import page_matrix
+
+    s = demo.build_steps()
+    fh, fw = s["blank"].shape[:2]
+    for turns in (0, 1):
+        engine, session, show = _stepper()
+        engine._rotate = turns
+        show(s["blank"], 3)
+        show(s["highlights"], 6)
+        v = engine.status()["view"]
+        pw, ph = v["page_size"]
+        assert v["cam"] and len(v["cam"]["highlights"]) == len(v["highlights"]) >= 2, v["cam"]
+        m = page_matrix(engine.quad)[0]
+        for h, c in zip(v["highlights"], v["cam"]["highlights"]):
+            pts = cv2.perspectiveTransform(np.array([[[x * fw, y * fh] for x, y in c["pts"]]], np.float32), m)[0]
+            w = pw if turns % 2 == 0 else ph  # width of the page before it was turned
+            for _ in range(turns):
+                pts = np.array([[y, w - 1 - x] for x, y in pts])
+            got = [pts[:, 0].min() / pw, pts[:, 1].min() / ph, pts[:, 0].max() / pw, pts[:, 1].max() / ph]
+            assert max(abs(a - b) for a, b in zip(h["box"], got)) < 0.004, (turns, h["box"], got)
+
+
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
 
 if __name__ == "__main__":

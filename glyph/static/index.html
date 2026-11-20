@@ -98,7 +98,7 @@
   .hud .sheet-dot { fill: var(--pink); stroke: var(--white); stroke-width: 2; }
   .hud .hl { fill: none; stroke-width: 2.5; }
   .hud .cover { fill: rgba(6,42,64,.10); stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 5; }
-  .hud .mark { fill: none; stroke: var(--pink); stroke-width: 3; stroke-linecap: square; }
+  .hud .mark { fill: none; stroke: var(--pink); stroke-width: 3; stroke-linecap: square; stroke-linejoin: round; }
   .hud .mark.new { stroke-width: 1.5; stroke-dasharray: 5 5; }
   .hud .mark.read { stroke: var(--sky-deep); }
   .hud g.lock { transform-box: fill-box; transform-origin: center; animation: lock .45s cubic-bezier(.2,.9,.2,1) both; }
@@ -425,7 +425,7 @@ function brackets(g, x0, y0, x1, y1, len, cls) {
 }
 function draw(s) {
   const hud = $('hud'), v = s.view || {}, fit = $('fit'), W = fit.clientWidth, H = fit.clientHeight;
-  const key = JSON.stringify([big, W, H, v.phase, v.box, v.box_state, v.highlights, v.covers, v.quad]);
+  const key = JSON.stringify([big, W, H, v.phase, v.box, v.box_state, v.highlights, v.covers, v.quad, v.cam]);
   if (key === shown) return; shown = key;      // nothing moved: leave the drawing (and its animation) alone
   hud.textContent = '';
   if (!W || !H) return;
@@ -434,6 +434,24 @@ function draw(s) {
       const pts = v.quad.map(([x, y]) => [x * W, y * H]);
       hud.append(svg('polygon', { class: 'sheet', points: pts.map(p => p.join(',')).join(' ') }));
       pts.forEach(([x, y]) => hud.append(svg('circle', { class: 'sheet-dot', cx: x, cy: y, r: 6 })));
+    }
+    // What Glyph is tracking, where it lies on the desk: highlights, anything covering the sheet, the mark.
+    const c = v.cam; if (!c) return;
+    const at = q => q.map(([x, y]) => [x * W, y * H]), str = q => q.map(p => p.join(',')).join(' ');
+    (c.highlights || []).forEach(h => hud.append(svg('polygon', { class: 'hl', points: str(at(h.pts)), stroke: HL[h.color] || '#45667A' })));
+    (c.covers || []).forEach(q => hud.append(svg('polygon', { class: 'cover', points: str(at(q)) })));
+    if (c.box) {
+      const q = at(c.box), state = v.box_state || 'new';
+      const g = svg('g', state === 'new' ? {} : { class: 'lock' });
+      g.append(svg('polygon', { class: 'mark ' + state, points: str(q) })); hud.append(g);
+      if (state !== 'new') {
+        const xs = q.map(p => p[0]), ys = q.map(p => p[1]), x0 = Math.min(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+        const word = state === 'reading' ? 'Reading' : 'Answered', tw = word.length * 7.2 + 14;
+        const tx = Math.max(2, Math.min(x0 - 2, W - tw - 2)), ty = y0 > 30 ? y0 - 26 : y1 + 6;
+        const tag = svg('g', { class: 'tag ' + state });
+        tag.append(svg('rect', { x: tx, y: ty, width: tw, height: 20, rx: 3 }));
+        const t = svg('text', { x: tx + 7, y: ty + 14.5 }); t.textContent = word; tag.append(t); hud.append(tag);
+      }
     }
     return;
   }
@@ -705,7 +723,7 @@ function view(which) {
   $('vPage').classList.toggle('on', which === 'page'); $('vRaw').classList.toggle('on', which === 'raw');
   feeds.view = which; feeds.pipImg = other;
   $('pipLabel').textContent = other === 'raw' ? 'Camera' : 'Page';
-  $('seeingLabel').textContent = which === 'page' ? 'Your page, flattened' : 'The camera, with your sheet outlined';
+  $('seeingLabel').textContent = which === 'page' ? 'Your page, flattened' : 'The camera, with what Glyph is tracking';
   shown = ''; if (last) showStatus(last);
 }
 async function build() {
