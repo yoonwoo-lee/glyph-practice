@@ -26,11 +26,12 @@ The README covers how to run it; this file covers the why and the plan.
   the paper and a white answers sheet float on it. Hot pink marks whatever is being read right now
   (it gathers behind the paper while a mark is read). Skylar likes it minimal, Yoon Woo wants it a
   little richer: keep the layout plain and put the richness in that one background.
-  On the answers side the main color is that same sky blue, and the top block is **filled** with it:
-  the headline on the first screen, then the newest answer (dark text on sky). A white card with a
-  blue outline looked flat to Yoon Woo. Pink there is a contrast color only, used for the student's
-  own mark: the "Your mark" label on its cut-out, the line under the word they underlined, the spark.
-  He found more pink than that too much.
+  **The answers side is settled** (Yoon Woo, Nov 19 evening: "it was perfect"): a white sheet, the
+  newest answer in a white card with a sky-to-pink edge, the underlined word in pink, pink count
+  badges and page number, a pink End session button, a blue-to-pink headline on the first screen.
+  The one thing he rejected there is a thick, full-width hot pink "Reading your mark" bar: that is a
+  small sky-blue pill now. Two other tries were dropped the same evening (pink removed from that
+  side; the answer as a filled blue block). Don't restyle this side again unless he asks.
 - This repo is the **practice build**. We use it to learn what's hard (camera, lighting, symbol
   detection, model latency) before the event.
 - **Rule: at the hackathon we rebuild from scratch in a new repo.** Don't copy code over. Use this
