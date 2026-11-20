@@ -31,6 +31,9 @@ He wants it a little less minimal; Skylar likes it minimal.
 - 18:30: Yoon Woo found the answers side had far too much pink. Its main color is now the same sky
   blue; pink there is only for the student's own mark (cut-out, underlined word, spark while reading).
   The pink bloom in the background stays on the left.
+- 18:40: He then asked for the answers side to stand out more. The top block there (first-screen
+  headline, newest answer) is now filled with the sky gradient, dark text on it; the reading bar and
+  End session button are a deeper blue with white text.
 - 16:15: Yoon Woo asked for a lighter blue. The field is now `#2CA5DE` to `#45B6EC` to `#8FD6F6`, the
   left side's own text is dark ink, and the blends pass through lilac instead of purple.
 

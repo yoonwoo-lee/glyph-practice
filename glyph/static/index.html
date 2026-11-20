@@ -11,8 +11,9 @@
   @font-face { font-family: "Archivo"; src: url(/static/fonts/Archivo.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
 
   /* One field of color runs behind everything: sky blue with a hot pink bloom melting into it on the
-     left. The paper and the answers float on it. The answers side is sky blue on white; pink there is
-     only for the student's own mark (its cut-out, the word they underlined, the spark while reading). */
+     left. The paper and the answers float on it. On the answers side the top block (the headline, or
+     the newest answer) is filled with that same sky blue; pink there is only for the student's own
+     mark (its cut-out label, the line under the word they underlined, the spark). */
   :root {
     --sky: #45B6EC; --sky-deep: #0B7FB0; --sky-mid: #2CA5DE; --sky-soft: #A6DFF8; --sky-pale: #E6F6FD; --sky-line: #BFE6F7;
     --pink: #D83995; --pink-deep: #B01F78; --pink-soft: #F3A3D0; --pink-pale: #FBE4F1;
@@ -134,7 +135,7 @@
 
   /* ================= right: what it says ================= */
   .say { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin: 14px 14px 14px 0; border-radius: 28px; overflow: hidden;
-    background: radial-gradient(70% 44% at 104% -4%, rgba(69,182,236,.17), rgba(69,182,236,0) 70%), radial-gradient(60% 40% at -6% 104%, rgba(69,182,236,.15), rgba(69,182,236,0) 70%), var(--white);
+    background: radial-gradient(70% 44% at 104% -4%, rgba(69,182,236,.22), rgba(69,182,236,0) 70%), radial-gradient(64% 44% at -6% 104%, rgba(69,182,236,.24), rgba(69,182,236,0) 70%), var(--white);
     box-shadow: 0 0 0 1px rgba(255,255,255,.6), 0 40px 80px -36px rgba(6,70,105,.6); }
   .bar { display: flex; align-items: center; gap: 16px; padding: 20px 34px 0; flex-wrap: wrap; }
   .seg { display: inline-flex; border-bottom: 2px solid var(--line); }
@@ -156,17 +157,23 @@
   .label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
   /* ---- first screen: the marks ---- */
-  .intro h1 { font-size: clamp(38px, 4.3vw, 64px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 10px 0 16px; padding-bottom: .06em; width: fit-content;
-    background: linear-gradient(105deg, var(--sky-deep) 0%, #1A93CE 42%, var(--sky) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .intro > p { margin: 0 0 26px; font-size: 17px; color: var(--soft); max-width: 31em; }
-  .marks { border-top: 0; background: var(--blend) no-repeat 0 0 / 100% 3px; padding-top: 3px; }
+  .hero, .now { position: relative; overflow: hidden; isolation: isolate; border-radius: 24px; color: var(--ink);
+    background: radial-gradient(62% 80% at 100% 0%, rgba(226,246,255,.92), rgba(226,246,255,0) 70%), radial-gradient(52% 66% at 0% 100%, rgba(5,147,198,.6), rgba(5,147,198,0) 72%), linear-gradient(135deg, var(--sky-mid) 0%, var(--sky) 50%, #8FD6F6 100%);
+    box-shadow: 0 30px 60px -32px rgba(11,127,176,.95), inset 0 0 0 1px rgba(255,255,255,.5); }
+  .hero::before, .now::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: repeating-linear-gradient(90deg, rgba(255,255,255,.13) 0 1px, rgba(255,255,255,0) 1px 5px, rgba(4,90,130,.04) 5px 6px, rgba(255,255,255,0) 6px 10px); }
+  .hero { padding: 30px 32px 30px; margin: 4px 0 20px; }
+  .hero h1 { font-size: clamp(36px, 4.1vw, 62px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 0 0 16px; }
+  .hero p { margin: 0; font-size: 17px; font-weight: 500; color: rgba(6,42,64,.86); max-width: 24em; }
+  /* The one loud thing on this side: the spark, drawn in the pink of a mark. */
+  .hero .big { position: absolute; right: -44px; bottom: -52px; width: clamp(110px, 11.5vw, 166px); height: auto; transform: rotate(-12deg); color: var(--pink); filter: drop-shadow(0 14px 18px rgba(176,31,120,.35)); }
+  .marks { border-top: 0; }
   .markrow { display: grid; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 13px 0; border-bottom: 1px solid var(--line); }
-  .markrow svg { width: 92px; height: 54px; display: block; background: linear-gradient(120deg, var(--sky-pale), #F3EAF6 130%); border-radius: 10px; }
+  .markrow svg { width: 92px; height: 54px; display: block; background: #DDF1FB; border-radius: 12px; }
   .markrow b { font-size: 18px; font-stretch: 108%; font-weight: 700; letter-spacing: -0.01em; }
   .markrow span { color: var(--soft); font-size: 15px; line-height: 1.4; }
 
   /* ---- reading right now ---- */
-  .reading { display: flex; align-items: center; gap: 12px; padding: 13px 18px; margin-bottom: 16px; background: linear-gradient(100deg, var(--sky-mid) 0%, var(--sky) 55%, #8FD6F6 100%); color: var(--ink); border-radius: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 16px 30px -18px rgba(44,165,222,.95); }
+  .reading { display: flex; align-items: center; gap: 12px; padding: 13px 18px; margin-bottom: 16px; background: linear-gradient(100deg, #0A76A6 0%, var(--sky-deep) 30%, #1A93CE 68%, var(--sky) 100%); color: var(--white); border-radius: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 16px 30px -16px rgba(11,127,176,.95); }
   .reading .dot { width: 28px; height: 28px; border-radius: 50%; background: var(--white); display: grid; place-items: center; flex: none; }
   .reading svg { font-size: 17px; color: var(--pink); animation: turn 2.2s linear infinite; }
   .reading > * { position: relative; z-index: 1; }
@@ -175,29 +182,35 @@
   @keyframes turn { to { transform: rotate(360deg); } }
 
   /* ---- the newest answer ---- */
-  .now { border: 2px solid transparent; border-radius: 20px; padding: 24px 28px 26px; margin-bottom: 30px; position: relative;
-    background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(125deg, var(--sky-mid) 0%, var(--sky) 45%, var(--sky-soft) 100%) border-box;
-    box-shadow: 0 28px 54px -34px rgba(44,165,222,.95); }
-  .now.error { background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(var(--bad), var(--bad)) border-box; box-shadow: none; }
+  .now { padding: 26px 30px 28px; margin-bottom: 30px; }
+  .now.error { background: var(--white); box-shadow: inset 0 0 0 2px var(--bad); }
+  .now.error::before { display: none; }
   .now::after { content: ""; display: block; clear: both; }
   .now.fresh { animation: arrive .4s cubic-bezier(.2,.8,.2,1) both; }
   @keyframes arrive { from { opacity: 0; transform: translateY(12px); } }
   .meta { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
-  .tag { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(105deg, #096F9B 0%, var(--sky-deep) 55%, #0F84BA 100%); color: var(--white); border-radius: 999px; padding: 5px 14px 5px 11px; font-size: 14px; font-weight: 700; }
-  .tag svg { color: var(--white); font-size: 15px; }
-  .tag.error { background: var(--bad); }
-  .took { font-size: 13px; font-stretch: 90%; font-weight: 600; color: var(--soft); }
+  .tag { display: inline-flex; align-items: center; gap: 7px; background: var(--white); color: var(--ink); border-radius: 999px; padding: 5px 14px 5px 11px; font-size: 14px; font-weight: 800; box-shadow: 0 8px 18px -10px rgba(6,70,105,.6); }
+  .tag svg { color: var(--pink); font-size: 15px; }
+  .tag.error { background: var(--bad); color: var(--white); box-shadow: none; } .tag.error svg { color: var(--white); }
+  .took { font-size: 13px; font-stretch: 90%; font-weight: 600; color: rgba(6,42,64,.8); }
+  .now.error .took { color: var(--soft); }
   .took b { color: var(--ink); }
   .snip { float: right; width: 36%; min-width: 160px; max-width: 250px; margin: 0 0 12px 22px; }
-  .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--white); border: 2px solid var(--pink); border-radius: 10px; }
-  .snip figcaption { margin-top: 5px; font-size: 12px; font-stretch: 85%; font-weight: 700; color: var(--pink-deep); }
+  .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--white); border: 3px solid var(--white); border-radius: 12px; box-shadow: 0 16px 30px -16px rgba(6,60,90,.75); }
+  .snip figcaption { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 800; color: var(--white); background: #CC2E89; border-radius: 999px; padding: 2px 10px; }
   .words { font-size: clamp(23px, 2.15vw, 33px); font-weight: 500; line-height: 1.22; letter-spacing: -0.012em; margin: 0; text-wrap: pretty; }
-  .words mark { color: inherit; background: linear-gradient(90deg, #C9E9FA, #E1F4FD) no-repeat 0 92% / 100% 42%; padding: 0 .05em; margin: 0 -.05em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .words mark { color: inherit; background: linear-gradient(90deg, rgba(255,255,255,.78), rgba(255,255,255,.42)) no-repeat 0 92% / 100% 42%; padding: 0 .05em; margin: 0 -.05em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .now.fresh .words mark { animation: swipe .7s .2s cubic-bezier(.3,.7,.2,1) both; }
   @keyframes swipe { from { background-size: 0% 42%; } }
-  .words .term { display: block; font-size: 1.2em; font-weight: 800; font-stretch: 112%; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: .3em; width: fit-content; color: var(--pink); }
+  .words .term { display: block; font-size: 1.2em; font-weight: 800; font-stretch: 112%; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: .36em; width: fit-content; color: var(--ink);
+    padding-bottom: .16em; background: linear-gradient(var(--pink), var(--pink)) no-repeat 0 100% / 100% .13em; }
+  /* the word they underlined gets its underline back, in pink */
+  .now.fresh .words .term { animation: underline .6s .3s cubic-bezier(.3,.7,.2,1) both; }
+  @keyframes underline { from { background-size: 0% .13em; } }
   .words .term mark { background: none; }
-  .about { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--soft); display: flex; gap: 8px; clear: both; }
+  .now.error .words mark { background: none; }
+  .about { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.6); font-size: 14px; color: rgba(6,42,64,.82); display: flex; gap: 8px; clear: both; }
+  .now.error .about { border-top-color: var(--line); color: var(--soft); }
   .about b { color: var(--ink); font-weight: 700; flex: none; }
   .now.error .words { font-size: 17px; line-height: 1.5; font-weight: 500; }
 
@@ -250,8 +263,8 @@
   .key b { color: var(--ink); font-weight: 700; }
   .key .sws { display: inline-flex; gap: 2px; padding-left: 2px; }
   .key .sws i { width: 8px; height: 16px; border-radius: 2px; }
-  .btn { flex: none; background: linear-gradient(105deg, var(--sky-mid) 0%, var(--sky) 55%, #7FD0F5 100%); color: var(--ink); border: 0; border-radius: 12px; padding: 11px 20px; font-weight: 800; font-size: 15px; box-shadow: 0 14px 26px -14px rgba(44,165,222,1); transition: transform .2s, box-shadow .2s, filter .2s; }
-  .btn:hover { filter: brightness(1.05); transform: translateY(-1px); box-shadow: 0 18px 30px -14px rgba(44,165,222,1); }
+  .btn { flex: none; background: linear-gradient(105deg, #0A76A6 0%, var(--sky-deep) 45%, #1489C3 100%); color: var(--white); border: 0; border-radius: 12px; padding: 11px 20px; font-weight: 800; font-size: 15px; box-shadow: 0 14px 26px -12px rgba(11,127,176,1); transition: transform .2s, box-shadow .2s, filter .2s; }
+  .btn:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 18px 30px -12px rgba(11,127,176,1); }
   .btn:disabled { opacity: .6; cursor: default; }
   .foot .btn { margin-left: auto; }
   .c-yellow { background: var(--yellow); } .c-green { background: var(--green); } .c-blue { background: var(--blue); } .c-pink { background: var(--hl-pink); }
@@ -260,10 +273,10 @@
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; height: auto; }
     .eye { height: 78vh; } .say { min-height: 80vh; margin: 0 10px 10px; } .bar, .pane, .foot { padding-left: 18px; padding-right: 18px; }
-    .markrow { grid-template-columns: 92px 1fr; } .markrow span { grid-column: 2; }
+    .markrow { grid-template-columns: 92px 1fr; } .markrow span { grid-column: 2; } .hero { padding: 24px 22px; } .hero .big { width: 96px; right: -20px; bottom: -26px; opacity: .9; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } .stage.scanning .sweep { opacity: 0; } }
-  @media print { .eye, .bar, .foot, .acts, .app::before, .app::after { display: none !important; } body, .app, .say { background: #fff; box-shadow: none; margin: 0; } .app { display: block; height: auto; overflow: visible; } .sheet { border: 0; background: #fff; } }
+  @media print { .eye, .bar, .foot, .acts, .app::before, .app::after { display: none !important; } body, .app, .say { background: #fff; box-shadow: none; margin: 0; } .app { display: block; height: auto; overflow: visible; } .sheet { border: 0; background: #fff; } .now, .hero { box-shadow: none; } }
 </style>
 </head>
 <body>
@@ -333,8 +346,11 @@
 
     <div class="pane" id="feed">
       <div class="intro" id="intro">
-        <h1>Mark the page.<br>__NAME__ reads it.</h1>
-        <p>Keep working on paper. No typing, nothing to switch to. Draw one of these and lift your hand.</p>
+        <div class="hero">
+          <h1>Mark the page.<br>__NAME__ reads it.</h1>
+          <p>Keep working on paper. No typing, nothing to switch to. Draw one of these and lift your hand.</p>
+          <svg class="big" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"><path d="M50 8v84M8 50h84M20 20l60 60M80 20L20 80"/></g></svg>
+        </div>
         <div class="marks">
           <div class="markrow">
             <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BDE3F2"><rect x="8" y="14" width="42" height="5" rx="2.5"/><rect x="8" y="25" width="50" height="5" rx="2.5"/><rect x="8" y="36" width="34" height="5" rx="2.5"/></g><g stroke="#D83995" stroke-width="2.6" stroke-linecap="round" transform="translate(73 27)"><path d="M0-10V10M-10 0H10M-7-7L7 7M7-7L-7 7"/></g></svg>
