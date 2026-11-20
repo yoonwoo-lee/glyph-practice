@@ -157,7 +157,15 @@
   /* ---- first screen: the marks ---- */
   .intro h1 { font-size: clamp(34px, 3.7vw, 54px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 10px 0 16px; padding-bottom: .06em; width: fit-content;
     background: linear-gradient(105deg, #1A93CE 0%, var(--sky-mid) 34%, #A58FDB 64%, var(--pink) 94%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .intro > p { margin: 0 0 26px; font-size: 17px; color: var(--soft); max-width: 31em; }
+  .intro p { margin: 0 0 26px; font-size: 17px; color: var(--soft); max-width: 31em; }
+  /* Parts of the first screen fold away smoothly: the headline when a read starts, the list of marks
+     when the first answer arrives. (A grid row animating from 1fr to 0fr is a height animation.) */
+  .fold { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .6s cubic-bezier(.3,.7,.2,1), opacity .4s ease, transform .6s cubic-bezier(.3,.7,.2,1); }
+  .fold > div { min-height: 0; overflow: hidden; }
+  .fold.gone { grid-template-rows: 0fr; opacity: 0; transform: translateY(-14px); pointer-events: none; }
+  /* The answer is written out letter by letter; this is the pen. */
+  .caret { display: inline-block; width: .075em; height: .95em; margin-left: .05em; vertical-align: -.12em; border-radius: 1px; background: var(--pink); animation: blink .8s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
   .marks { border-top: 0; background: var(--blend) no-repeat 0 0 / 100% 3px; padding-top: 3px; }
   .markrow { display: grid; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 13px 0; border-bottom: 1px solid var(--line); }
   .markrow svg { width: 92px; height: 54px; display: block; background: linear-gradient(120deg, var(--sky-pale), #F3EAF6 130%); border-radius: 10px; }
@@ -167,7 +175,8 @@
   /* ---- reading right now ---- */
   .reading { display: flex; width: fit-content; align-items: center; gap: 9px; padding: 6px 16px 6px 7px; margin-bottom: 14px; background: linear-gradient(100deg, var(--sky-deep) 0%, #1A93CE 100%); color: var(--white); border-radius: 999px; font-size: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 12px 22px -14px rgba(11,127,176,.95); }
   .reading > * { position: relative; z-index: 1; }
-  .intro:not(.hide) + .reading { margin-top: 18px; }
+  .intro:not(.done) + .reading { margin-top: 18px; }
+  .reading:not(.hide) { animation: arrive .35s cubic-bezier(.2,.8,.2,1) both; }
   .reading .dot { width: 24px; height: 24px; border-radius: 50%; background: var(--white); display: grid; place-items: center; flex: none; }
   .reading svg { font-size: 15px; color: var(--pink); animation: turn 2.2s linear infinite; }
   .reading::after { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent); transform: translateX(-100%); animation: pass 1.5s linear infinite; }
@@ -262,7 +271,7 @@
     .eye { height: 78vh; } .say { min-height: 80vh; margin: 0 10px 10px; } .bar, .pane, .foot { padding-left: 18px; padding-right: 18px; }
     .markrow { grid-template-columns: 92px 1fr; } .markrow span { grid-column: 2; }
   }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } .stage.scanning .sweep { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .stage.scanning .sweep { opacity: 0; } }
   @media print { .eye, .bar, .foot, .acts, .app::before, .app::after { display: none !important; } body, .app, .say { background: #fff; box-shadow: none; margin: 0; } .app { display: block; height: auto; overflow: visible; } .sheet { border: 0; background: #fff; } }
 </style>
 </head>
@@ -333,8 +342,11 @@
 
     <div class="pane" id="feed">
       <div class="intro" id="intro">
+        <div class="fold" id="introTop"><div>
         <h1>Mark the page.<br>__NAME__ reads it.</h1>
         <p>Keep working on paper. No typing, nothing to switch to. Draw one of these and lift your hand.</p>
+        </div></div>
+        <div class="fold" id="introMarks"><div>
         <div class="marks">
           <div class="markrow">
             <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BDE3F2"><rect x="8" y="14" width="42" height="5" rx="2.5"/><rect x="8" y="25" width="50" height="5" rx="2.5"/><rect x="8" y="36" width="34" height="5" rx="2.5"/></g><g stroke="#D83995" stroke-width="2.6" stroke-linecap="round" transform="translate(73 27)"><path d="M0-10V10M-10 0H10M-7-7L7 7M7-7L-7 7"/></g></svg>
@@ -353,8 +365,8 @@
             <b>A highlight</b><span>Saved by color for your study guide. Costs no request.</span>
           </div>
         </div>
+      </div></div>
       </div>
-
       <div class="reading hide" id="reading"><span class="dot"><svg class="g"><use href="#g-spark"/></svg></span><span>Reading your mark</span></div>
       <article class="now hide" id="now" aria-live="polite"></article>
       <section class="shelf hide" id="shelf"><h4 class="label">Saved for your study guide</h4><div id="groups"></div></section>
@@ -387,7 +399,7 @@ const ANSWERS = ['hint', 'explain', 'define', 'nudge', 'error'];
 const ICON = { hint: 'spark', define: 'underline', explain: 'ask', nudge: 'nudge', error: 'error' };
 const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', nudge: 'Keep going', error: 'Problem' };
 const HL = { yellow: '#E0B800', green: '#2FA857', blue: '#1280CC', pink: '#E0489A' };
-let lastId = 0, legend = null, current = null, answers = 0, big = 'page', guideMd = '', last = null, shown = '', locked = false;
+let seen = false, polled = false, lastId = 0, legend = null, current = null, answers = 0, big = 'page', guideMd = '', last = null, shown = '', locked = false;
 const hl = {};   // color -> {label, ids: []}
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
@@ -461,6 +473,7 @@ function showStatus(s) {
   $('stateText').textContent = s.busy ? 'Reading your mark' : s.text;
   $('stage').classList.toggle('scanning', !!s.busy && big === 'page');
   $('reading').classList.toggle('hide', !s.busy);
+  $('introTop').classList.toggle('gone', seen || !!s.busy);   // the headline steps aside as soon as a read starts
   $('empty').classList.toggle('hide', !(v.phase === 'none' && big === 'page'));
   $('clock').textContent = clock(s.session_seconds || 0);
   $('rSheet').textContent = SHEET[v.phase] || '–';
@@ -542,8 +555,53 @@ function showNow(e, fresh) {
     if (s && s[2]) w.append(el('mark', '', s[1]), s[2]); else w.append(el('mark', '', e.body));
   }
   n.append(w);
-  if (e.kind === 'error') { const a = el('div', 'about'); a.append('It will try again by itself. If this keeps happening, check the key in .env and your connection.'); n.append(a); }
-  else if (m.target && e.kind !== 'define') { const a = el('div', 'about'); a.append(el('b', '', 'About'), m.target); n.append(a); }
+  let a = null;
+  if (e.kind === 'error') { a = el('div', 'about'); a.append('It will try again by itself. If this keeps happening, check the key in .env and your connection.'); n.append(a); }
+  else if (m.target && e.kind !== 'define') { a = el('div', 'about'); a.append(el('b', '', 'About'), m.target); n.append(a); }
+  if (fresh && e.kind !== 'error') typeOut([w, a], 2600);
+}
+
+/* Glyph writes its text out instead of dropping it in whole. The finished text is laid out first, so
+   nothing below it jumps; then it is emptied and filled back in, in place, with a caret at the tip.
+   A second call finishes the first at once, so text is never left half written. */
+let stopWriting = null;
+function typeOut(roots, maxMs) {
+  if (stopWriting) stopWriting();
+  roots = roots.filter(Boolean);
+  if (!roots.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const nodes = [];
+  roots.forEach(r => { r.style.minHeight = r.offsetHeight + 'px';
+    const walk = document.createTreeWalker(r, NodeFilter.SHOW_TEXT); while (walk.nextNode()) if (walk.currentNode.data) nodes.push(walk.currentNode); });
+  const full = nodes.map(t => t.data), total = full.reduce((sum, t) => sum + t.length, 0);
+  if (!total) { roots.forEach(r => r.style.minHeight = ''); return; }
+  const blocks = nodes.map(t => t.parentElement.closest('li, h1, h2, h3, p, .about'));   // hidden until the pen gets there
+  nodes.forEach(t => t.data = ''); blocks.forEach(b => { if (b) b.style.visibility = 'hidden'; });
+  const region = roots[0].closest('[aria-live]'); if (region) region.setAttribute('aria-busy', 'true');
+  const caret = el('span', 'caret'); caret.setAttribute('aria-hidden', 'true');
+  const ms = Math.max(500, Math.min(maxMs, total * 16)), t0 = performance.now();
+  let at = 0, done = 0, going = true;
+  const end = () => {
+    if (!going) return; going = false;
+    nodes.forEach((t, i) => t.data = full[i]); blocks.forEach(b => { if (b) b.style.visibility = ''; });
+    caret.remove(); roots.forEach(r => r.style.minHeight = ''); if (region) region.removeAttribute('aria-busy');
+    if (stopWriting === end) stopWriting = null;
+  };
+  stopWriting = end;
+  const step = now => {
+    if (!going) return;
+    const share = Math.min(1, (now - t0) / ms); let left = Math.round(total * share) - done;
+    while (at < nodes.length) {
+      const take = Math.min(full[at].length, left);
+      if (take > 0 && blocks[at]) blocks[at].style.visibility = '';
+      nodes[at].data = full[at].slice(0, take);
+      if (take < full[at].length) break;
+      left -= take; done += take; at++;
+    }
+    const tip = nodes[Math.min(at, nodes.length - 1)];
+    if (caret.previousSibling !== tip) tip.after(caret);
+    if (share < 1) requestAnimationFrame(step); else setTimeout(end, 900);   // the caret rests a moment, then goes
+  };
+  requestAnimationFrame(step);
 }
 
 function pastRow(e) {
@@ -571,7 +629,7 @@ function showShelf() {
 }
 
 function addEvent(e, fresh) {
-  $('intro').classList.add('hide');
+  seen = true; $('introTop').classList.add('gone'); $('introMarks').classList.add('gone'); $('intro').classList.add('done');
   if (ANSWERS.includes(e.kind)) {
     if (current) { $('rows').prepend(pastRow(current)); $('earlier').classList.remove('hide'); }
     current = e; $('now').classList.remove('hide'); showNow(e, fresh);
@@ -586,7 +644,7 @@ function addEvent(e, fresh) {
 
 async function poll() {
   try {
-    const first = lastId === 0;
+    const first = !polled; polled = true;      // only what was already there when the page opened appears without animation
     const d = await (await fetch('/api/state?since=' + lastId)).json();
     if (!legend) { legend = d.legend; showKeys(legend); }
     showStatus(d.status);
@@ -658,7 +716,7 @@ async function build() {
   let problem = '';
   try {
     const d = await (await fetch('/api/study-guide', {method: 'POST'})).json();
-    if (d.ok) { guideMd = d.markdown; renderGuide(guideMd); $('guideEmpty').classList.add('hide'); $('sheet').classList.remove('hide'); }
+    if (d.ok) { guideMd = d.markdown; renderGuide(guideMd); $('guideEmpty').classList.add('hide'); $('sheet').classList.remove('hide'); typeOut([$('guideText')], 3200); }
     else problem = 'The study guide could not be built: ' + d.error;
   } catch (err) { problem = 'The app is not running, so the study guide could not be built.'; }
   if (problem) { $('sheet').classList.add('hide'); $('guideEmpty').classList.remove('hide'); $('guideHint').textContent = problem; }

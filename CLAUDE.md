@@ -32,6 +32,9 @@ The README covers how to run it; this file covers the why and the plan.
   The one thing he rejected there is a thick, full-width hot pink "Reading your mark" bar: that is a
   small sky-blue pill now. Two other tries were dropped the same evening (pink removed from that
   side; the answer as a filled blue block). Don't restyle this side again unless he asks.
+  **Motion he asked for (Nov 19):** text Glyph writes is written out letter by letter with a pink
+  caret (answers in about 2.5 s, the study guide in about 3 s), never dropped in whole; the first-screen
+  headline folds away smoothly when a read starts and the list of marks when the first answer arrives.
 - This repo is the **practice build**. We use it to learn what's hard (camera, lighting, symbol
   detection, model latency) before the event.
 - **Rule: at the hackathon we rebuild from scratch in a new repo.** Don't copy code over. Use this

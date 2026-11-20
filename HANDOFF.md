@@ -37,6 +37,13 @@ He wants it a little less minimal; Skylar likes it minimal.
   undone. Now: the 16:15 answers side, with "Reading your mark" as a small sky-blue pill and the
   first-screen headline a little smaller (54 px at most). Lesson: when he says "too much X", ask or
   show which element before restyling everything that has X.
+- 19:00: Motion. Answers and the study guide are written out letter by letter (`typeOut` in
+  `index.html`: lays the text out, empties it, fills it back in place, so nothing jumps). The
+  first-screen headline folds away when a read starts, the list of marks when the first answer
+  arrives. Also fixed: the first answer of a session was treated as already there (`lastId === 0`),
+  so it never animated. He asked whether the camera view shows what is tracked: it shows only the
+  sheet outline; the page view shows the rest. Drawing the mark and highlights on the camera
+  picture too is offered, not built (it needs the page's turn, which `status.view` does not carry).
 - 16:15: Yoon Woo asked for a lighter blue. The field is now `#2CA5DE` to `#45B6EC` to `#8FD6F6`, the
   left side's own text is dark ink, and the blends pass through lilac instead of purple.
 
