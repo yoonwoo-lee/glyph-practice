@@ -14,6 +14,28 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-19 (19:10), Yoon Woo's Claude
+
+**Yoon Woo wants to be done building by Saturday Nov 21.** He asked whether the features all work.
+What I told him, so the next session says the same thing:
+
+- All 53 checks pass on `f9845e9` (12 + 9 + 32, run one after another).
+- Seen working on his camera before today's changes: sheet found and flattened, Rotate, spark → hint,
+  underline → definition on handwriting, yellow highlights.
+- **Never yet run against live Gemini or his camera:** everything changed on Nov 19 (one answer per
+  mark, the pink close-up and new prompt, underline on print, page numbers, "No sheet in view"), the
+  circled question mark, green / pink / blue highlighters, the study guide on real highlights (it is a
+  model call), the new look in Safari.
+- The one thing that decides Saturday is a 15-minute run of `docs/camera-test-checklist.md` (section
+  1b first) on a key with allowance left. Then fix what it shows, run it again, stop.
+- Not built, his call: stuck nudge; the mark and highlights drawn on the camera view.
+
+`[open]` Next session on his side: ask for the result of that camera run before building anything
+new. If his Mac is reachable, read `sessions/<latest>/` there yourself (events, `looks/`,
+`timings.jsonl`) instead of asking him to describe it.
+
+---
+
 ## 2026-11-19 (16:00), Yoon Woo's Claude
 
 Yoon Woo sent a reference for the colors (sky blue `#0593C6`, white `#FCFFFF`, hot pink `#D83995`,
