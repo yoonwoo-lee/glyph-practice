@@ -26,6 +26,9 @@ The README covers how to run it; this file covers the why and the plan.
   the paper and a white answers sheet float on it. Hot pink marks whatever is being read right now
   (it gathers behind the paper while a mark is read). Skylar likes it minimal, Yoon Woo wants it a
   little richer: keep the layout plain and put the richness in that one background.
+  On the answers side the main color is that same sky blue (button, tabs, card edge, headline,
+  "Reading your mark" bar). Pink there is a contrast color only, used for the student's own mark: its
+  cut-out, the word they underlined, the spark while reading. Yoon Woo found more pink than that too much.
 - This repo is the **practice build**. We use it to learn what's hard (camera, lighting, symbol
   detection, model latency) before the event.
 - **Rule: at the hackathon we rebuild from scratch in a new repo.** Don't copy code over. Use this

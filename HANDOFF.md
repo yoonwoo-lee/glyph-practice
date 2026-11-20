@@ -28,6 +28,9 @@ He wants it a little less minimal; Skylar likes it minimal.
 - While a mark is read the pink gathers behind the paper. Answer card and study guide have a
   sky-to-pink edge; the first-screen headline and the "Reading your mark" bar use the same blend.
 - Layout, wording, Rotate / Read page now / Tune, and every id the script uses are unchanged.
+- 18:30: Yoon Woo found the answers side had far too much pink. Its main color is now the same sky
+  blue; pink there is only for the student's own mark (cut-out, underlined word, spark while reading).
+  The pink bloom in the background stays on the left.
 - 16:15: Yoon Woo asked for a lighter blue. The field is now `#2CA5DE` to `#45B6EC` to `#8FD6F6`, the
   left side's own text is dark ink, and the blends pass through lilac instead of purple.
 

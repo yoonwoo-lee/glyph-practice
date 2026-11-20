@@ -10,13 +10,14 @@
   /* One family, three widths: wide for the name and the numbers, normal for reading, narrow for labels. */
   @font-face { font-family: "Archivo"; src: url(/static/fonts/Archivo.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
 
-  /* One field of color runs behind everything: sky blue with a hot pink bloom melting into it.
-     The paper and the answers float on it. Hot pink is whatever is being read right now. */
+  /* One field of color runs behind everything: sky blue with a hot pink bloom melting into it on the
+     left. The paper and the answers float on it. The answers side is sky blue on white; pink there is
+     only for the student's own mark (its cut-out, the word they underlined, the spark while reading). */
   :root {
     --sky: #45B6EC; --sky-deep: #0B7FB0; --sky-mid: #2CA5DE; --sky-soft: #A6DFF8; --sky-pale: #E6F6FD; --sky-line: #BFE6F7;
     --pink: #D83995; --pink-deep: #B01F78; --pink-soft: #F3A3D0; --pink-pale: #FBE4F1;
     --white: #FCFFFF; --ink: #062A40; --soft: #45667A; --faint: #7D99AA; --line: #D9E8EF; --bad: #C4281C;
-    --blend: linear-gradient(100deg, var(--sky) 0%, #A996DD 55%, var(--pink) 100%);
+    --blend: linear-gradient(100deg, var(--sky-mid) 0%, var(--sky) 50%, var(--sky-soft) 100%);
     --frost: rgba(252,255,255,.76);
     --yellow: #FFE234; --green: #5ED67E; --blue: #62BEFF; --hl-pink: #FF78BE;
     --font: "Archivo", "Helvetica Neue", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
@@ -33,14 +34,14 @@
   .app { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 100vh; min-height: 620px;
     position: relative; isolation: isolate; overflow: hidden;
     background: linear-gradient(150deg, var(--sky-mid) 0%, var(--sky) 44%, #8FD6F6 100%); }
-  /* The blooms: pink low on the left, running under the seam; light at the top; deep in the corner. */
+  /* The blooms: pink low on the left only; light at the top and behind the answers; deep in the corner. */
   .app::before { content: ""; position: absolute; inset: -14%; z-index: -2; pointer-events: none;
     background:
       radial-gradient(26% 25% at 17% 88%, rgba(216,57,149,1), rgba(216,57,149,0) 72%),
-      radial-gradient(15% 20% at 47% 60%, rgba(255,214,235,.62), rgba(255,214,235,0) 72%),
-      radial-gradient(22% 30% at 48% 76%, rgba(216,57,149,.80), rgba(216,57,149,0) 72%),
+      radial-gradient(15% 20% at 40% 60%, rgba(255,214,235,.62), rgba(255,214,235,0) 72%),
+      radial-gradient(18% 26% at 39% 80%, rgba(216,57,149,.66), rgba(216,57,149,0) 72%),
       radial-gradient(44% 42% at 20% 84%, rgba(246,170,212,.78), rgba(246,170,212,0) 74%),
-      radial-gradient(30% 34% at 95% 100%, rgba(216,57,149,.66), rgba(216,57,149,0) 72%),
+      radial-gradient(34% 36% at 96% 100%, rgba(222,244,254,.80), rgba(222,244,254,0) 72%),
       radial-gradient(46% 40% at 56% 3%, rgba(222,244,254,.88), rgba(222,244,254,0) 72%),
       radial-gradient(34% 32% at 5% 6%, rgba(5,147,198,.62), rgba(5,147,198,0) 72%);
     animation: drift 30s ease-in-out infinite alternate; will-change: transform; }
@@ -133,18 +134,18 @@
 
   /* ================= right: what it says ================= */
   .say { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin: 14px 14px 14px 0; border-radius: 28px; overflow: hidden;
-    background: radial-gradient(70% 44% at 104% -4%, rgba(69,182,236,.17), rgba(69,182,236,0) 70%), radial-gradient(60% 40% at -6% 104%, rgba(216,57,149,.12), rgba(216,57,149,0) 70%), var(--white);
+    background: radial-gradient(70% 44% at 104% -4%, rgba(69,182,236,.17), rgba(69,182,236,0) 70%), radial-gradient(60% 40% at -6% 104%, rgba(69,182,236,.15), rgba(69,182,236,0) 70%), var(--white);
     box-shadow: 0 0 0 1px rgba(255,255,255,.6), 0 40px 80px -36px rgba(6,70,105,.6); }
   .bar { display: flex; align-items: center; gap: 16px; padding: 20px 34px 0; flex-wrap: wrap; }
   .seg { display: inline-flex; border-bottom: 2px solid var(--line); }
   .seg button { border: 0; background: none; padding: 6px 2px 9px; margin: 0 22px -2px 0; font-size: 16px; font-weight: 700; font-stretch: 105%; color: var(--faint); border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 8px; }
   .seg button:last-child { margin-right: 0; }
   .seg button.on { color: var(--ink); border-bottom-color: transparent; background: var(--blend) no-repeat 0 100% / 100% 3px; }
-  .seg .n { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--pink); color: var(--white); font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
+  .seg .n { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--sky-deep); color: var(--white); font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
   .pages { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--soft); }
   .pages button { min-width: 28px; height: 28px; padding: 0 7px; border: 2px solid var(--sky-line); background: var(--white); color: var(--sky-deep); border-radius: 9px; font-weight: 700; font-size: 14px; }
-  .pages button.on { background: var(--pink); border-color: var(--pink); color: var(--white); cursor: default; box-shadow: 0 8px 16px -8px rgba(216,57,149,.9); }
-  .ask { display: flex; align-items: center; gap: 8px; width: 100%; background: linear-gradient(100deg, var(--sky-pale), var(--pink-pale)); border-radius: 12px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
+  .pages button.on { background: var(--sky-deep); border-color: var(--sky-deep); color: var(--white); cursor: default; box-shadow: 0 8px 16px -8px rgba(11,127,176,.9); }
+  .ask { display: flex; align-items: center; gap: 8px; width: 100%; background: linear-gradient(100deg, var(--sky-pale), #D6EFFB); border-radius: 12px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
   .ask button { border: 0; border-radius: 6px; padding: 5px 12px; font-weight: 700; font-size: 13px; background: var(--ink); color: var(--white); }
   .ask button.no { background: transparent; color: var(--ink); }
   .clock { margin-left: auto; display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 600; color: var(--soft); }
@@ -156,7 +157,7 @@
 
   /* ---- first screen: the marks ---- */
   .intro h1 { font-size: clamp(38px, 4.3vw, 64px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 10px 0 16px; padding-bottom: .06em; width: fit-content;
-    background: linear-gradient(105deg, #1A93CE 0%, var(--sky-mid) 34%, #A58FDB 64%, var(--pink) 94%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    background: linear-gradient(105deg, var(--sky-deep) 0%, #1A93CE 42%, var(--sky) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .intro > p { margin: 0 0 26px; font-size: 17px; color: var(--soft); max-width: 31em; }
   .marks { border-top: 0; background: var(--blend) no-repeat 0 0 / 100% 3px; padding-top: 3px; }
   .markrow { display: grid; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 13px 0; border-bottom: 1px solid var(--line); }
@@ -165,31 +166,33 @@
   .markrow span { color: var(--soft); font-size: 15px; line-height: 1.4; }
 
   /* ---- reading right now ---- */
-  .reading { display: flex; align-items: center; gap: 12px; padding: 13px 18px; margin-bottom: 16px; background: linear-gradient(100deg, var(--pink-deep) 0%, var(--pink) 42%, #B98AD6 78%, var(--sky) 108%); color: var(--white); border-radius: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 16px 30px -18px rgba(216,57,149,.95); }
-  .reading svg { font-size: 20px; animation: turn 2.2s linear infinite; }
-  .reading::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: translateX(-100%); animation: pass 1.5s linear infinite; }
+  .reading { display: flex; align-items: center; gap: 12px; padding: 13px 18px; margin-bottom: 16px; background: linear-gradient(100deg, var(--sky-mid) 0%, var(--sky) 55%, #8FD6F6 100%); color: var(--ink); border-radius: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 16px 30px -18px rgba(44,165,222,.95); }
+  .reading .dot { width: 28px; height: 28px; border-radius: 50%; background: var(--white); display: grid; place-items: center; flex: none; }
+  .reading svg { font-size: 17px; color: var(--pink); animation: turn 2.2s linear infinite; }
+  .reading > * { position: relative; z-index: 1; }
+  .reading::after { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent); transform: translateX(-100%); animation: pass 1.5s linear infinite; }
   @keyframes pass { to { transform: translateX(100%); } }
   @keyframes turn { to { transform: rotate(360deg); } }
 
   /* ---- the newest answer ---- */
   .now { border: 2px solid transparent; border-radius: 20px; padding: 24px 28px 26px; margin-bottom: 30px; position: relative;
-    background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(125deg, var(--sky) 0%, #A996DD 50%, var(--pink) 100%) border-box;
-    box-shadow: -22px 26px 50px -34px rgba(69,182,236,.95), 22px 26px 50px -34px rgba(216,57,149,.85); }
+    background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(125deg, var(--sky-mid) 0%, var(--sky) 45%, var(--sky-soft) 100%) border-box;
+    box-shadow: 0 28px 54px -34px rgba(44,165,222,.95); }
   .now.error { background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(var(--bad), var(--bad)) border-box; box-shadow: none; }
   .now::after { content: ""; display: block; clear: both; }
   .now.fresh { animation: arrive .4s cubic-bezier(.2,.8,.2,1) both; }
   @keyframes arrive { from { opacity: 0; transform: translateY(12px); } }
   .meta { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
-  .tag { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(105deg, var(--sky-deep) 0%, #7559A8 58%, var(--pink-deep) 100%); color: var(--white); border-radius: 999px; padding: 5px 14px 5px 11px; font-size: 14px; font-weight: 700; }
+  .tag { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(105deg, #096F9B 0%, var(--sky-deep) 55%, #0F84BA 100%); color: var(--white); border-radius: 999px; padding: 5px 14px 5px 11px; font-size: 14px; font-weight: 700; }
   .tag svg { color: var(--white); font-size: 15px; }
   .tag.error { background: var(--bad); }
   .took { font-size: 13px; font-stretch: 90%; font-weight: 600; color: var(--soft); }
   .took b { color: var(--ink); }
   .snip { float: right; width: 36%; min-width: 160px; max-width: 250px; margin: 0 0 12px 22px; }
-  .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--white); border: 2px solid var(--sky-line); border-radius: 10px; }
-  .snip figcaption { margin-top: 5px; font-size: 12px; font-stretch: 85%; font-weight: 600; color: var(--sky-deep); }
+  .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--white); border: 2px solid var(--pink); border-radius: 10px; }
+  .snip figcaption { margin-top: 5px; font-size: 12px; font-stretch: 85%; font-weight: 700; color: var(--pink-deep); }
   .words { font-size: clamp(23px, 2.15vw, 33px); font-weight: 500; line-height: 1.22; letter-spacing: -0.012em; margin: 0; text-wrap: pretty; }
-  .words mark { color: inherit; background: linear-gradient(90deg, #F9D3E8, #D2ECF7) no-repeat 0 92% / 100% 42%; padding: 0 .05em; margin: 0 -.05em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .words mark { color: inherit; background: linear-gradient(90deg, #C9E9FA, #E1F4FD) no-repeat 0 92% / 100% 42%; padding: 0 .05em; margin: 0 -.05em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .now.fresh .words mark { animation: swipe .7s .2s cubic-bezier(.3,.7,.2,1) both; }
   @keyframes swipe { from { background-size: 0% 42%; } }
   .words .term { display: block; font-size: 1.2em; font-weight: 800; font-stretch: 112%; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: .3em; width: fit-content; color: var(--pink); }
@@ -210,7 +213,7 @@
   /* ---- earlier answers, newest first ---- */
   .past { list-style: none; margin: 0; padding: 0; }
   .past li { position: relative; display: grid; grid-template-columns: 30px 1fr auto; gap: 0 12px; padding: 0 0 20px; }
-  .past li::before { content: ""; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: linear-gradient(var(--sky-line), var(--pink-soft)); opacity: .8; }
+  .past li::before { content: ""; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: var(--sky-line); }
   .past li:last-child { padding-bottom: 0; } .past li:last-child::before { display: none; }
   .past .dot { width: 30px; height: 30px; border-radius: 9px; background: var(--sky-pale); display: grid; place-items: center; font-size: 15px; color: var(--sky-deep); }
   .past .head { display: flex; align-items: baseline; gap: 10px; padding-top: 4px; }
@@ -222,7 +225,7 @@
 
   /* ---- study guide ---- */
   .sheet { border: 2px solid transparent; border-radius: 20px; padding: 34px 40px 38px; position: relative;
-    background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(125deg, var(--sky) 0%, #A996DD 50%, var(--pink) 100%) border-box; }
+    background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(125deg, var(--sky-mid) 0%, var(--sky) 45%, var(--sky-soft) 100%) border-box; }
   .sheet .acts { position: absolute; right: 22px; top: 22px; display: flex; gap: 6px; }
   .sheet .acts button { border: 2px solid var(--ink); background: var(--white); border-radius: 9px; padding: 4px 11px; font-size: 13px; font-weight: 700; }
   .sheet .acts button:hover { background: var(--ink); color: var(--white); }
@@ -234,7 +237,7 @@
   #guideText h3 i { width: 10px; height: 17px; border-radius: 3px; flex: none; }
   #guideText ul { margin: 0; padding: 0; list-style: none; }
   #guideText li { position: relative; padding: 5px 0 5px 18px; font-size: 16px; line-height: 1.5; max-width: 36em; }
-  #guideText li::before { content: ""; position: absolute; left: 2px; top: .95em; width: 7px; height: 2px; background: var(--pink); }
+  #guideText li::before { content: ""; position: absolute; left: 2px; top: .95em; width: 7px; height: 2px; background: var(--sky); }
   #guideText p { margin: 4px 0; color: var(--soft); }
   .blank h3 { font-size: clamp(32px, 3.4vw, 48px); font-weight: 800; font-stretch: 118%; letter-spacing: -0.04em; line-height: 1; margin: 12px 0 14px; }
   .blank p { margin: 0 0 22px; font-size: 16px; color: var(--soft); max-width: 30em; }
@@ -247,8 +250,8 @@
   .key b { color: var(--ink); font-weight: 700; }
   .key .sws { display: inline-flex; gap: 2px; padding-left: 2px; }
   .key .sws i { width: 8px; height: 16px; border-radius: 2px; }
-  .btn { flex: none; background: linear-gradient(105deg, #E65AAA 0%, var(--pink) 45%, var(--pink-deep) 100%); color: var(--white); border: 0; border-radius: 12px; padding: 11px 20px; font-weight: 700; font-size: 15px; box-shadow: 0 14px 26px -14px rgba(216,57,149,.95); transition: transform .2s, box-shadow .2s, filter .2s; }
-  .btn:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 18px 30px -14px rgba(216,57,149,1); }
+  .btn { flex: none; background: linear-gradient(105deg, var(--sky-mid) 0%, var(--sky) 55%, #7FD0F5 100%); color: var(--ink); border: 0; border-radius: 12px; padding: 11px 20px; font-weight: 800; font-size: 15px; box-shadow: 0 14px 26px -14px rgba(44,165,222,1); transition: transform .2s, box-shadow .2s, filter .2s; }
+  .btn:hover { filter: brightness(1.05); transform: translateY(-1px); box-shadow: 0 18px 30px -14px rgba(44,165,222,1); }
   .btn:disabled { opacity: .6; cursor: default; }
   .foot .btn { margin-left: auto; }
   .c-yellow { background: var(--yellow); } .c-green { background: var(--green); } .c-blue { background: var(--blue); } .c-pink { background: var(--hl-pink); }
@@ -352,7 +355,7 @@
         </div>
       </div>
 
-      <div class="reading hide" id="reading"><svg class="g"><use href="#g-spark"/></svg><span>Reading your mark</span></div>
+      <div class="reading hide" id="reading"><span class="dot"><svg class="g"><use href="#g-spark"/></svg></span><span>Reading your mark</span></div>
       <article class="now hide" id="now" aria-live="polite"></article>
       <section class="shelf hide" id="shelf"><h4 class="label">Saved for your study guide</h4><div id="groups"></div></section>
       <section class="hide" id="earlier"><h4 class="label">Earlier</h4><ol class="past" id="rows"></ol></section>
@@ -534,7 +537,7 @@ function showNow(e, fresh) {
   const w = el('p', 'words');
   if (e.kind === 'error') w.textContent = e.body;
   else if (e.kind === 'define' && m.target) { const t = el('span', 'term'); t.append(el('mark', '', m.target)); w.append(t, e.body); }
-  else { // a pink stripe runs under the first sentence
+  else { // a pale stripe runs under the first sentence
     const s = e.body.match(/^(.+?[.?!])(\s+[\s\S]*)?$/);
     if (s && s[2]) w.append(el('mark', '', s[1]), s[2]); else w.append(el('mark', '', e.body));
   }
