@@ -35,6 +35,12 @@ The README covers how to run it; this file covers the why and the plan.
   **Motion he asked for (Nov 19):** text Glyph writes is written out letter by letter with a pink
   caret (answers in about 2.5 s, the study guide in about 3 s), never dropped in whole; the first-screen
   headline folds away smoothly when a read starts and the list of marks when the first answer arrives.
+  **Toned down after outside feedback (Nov 19, 19:20):** the pink in the background is one soft glow in
+  the bottom left corner (several strong blooms read as "blotches"), and the scan is a thin line
+  passing slowly down the page with a faint glow, not a tall fast pink bar. Don't turn either back up.
+- **Order of work (Yoon Woo, Nov 19):** UI first for now; features later. He asked to be reminded:
+  when the UI work wraps up, remind him of the camera test on live Gemini (the one that decides
+  whether the features really work), then the stuck nudge and the camera-view overlay.
 - This repo is the **practice build**. We use it to learn what's hard (camera, lighting, symbol
   detection, model latency) before the event.
 - **Rule: at the hackathon we rebuild from scratch in a new repo.** Don't copy code over. Use this

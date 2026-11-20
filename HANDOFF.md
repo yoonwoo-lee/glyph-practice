@@ -30,8 +30,12 @@ What I told him, so the next session says the same thing:
   1b first) on a key with allowance left. Then fix what it shows, run it again, stop.
 - Not built, his call: stuck nudge; the mark and highlights drawn on the camera view.
 
-`[open]` Next session on his side: ask for the result of that camera run before building anything
-new. If his Mac is reachable, read `sessions/<latest>/` there yourself (events, `looks/`,
+19:20 update: he showed the look to someone, who found the scan effect and the pink in the bottom
+left corner a little too much. Both toned down (one soft corner glow; a thin slow scan line). He
+then said: UI only for now, features later, "just remind me". So:
+
+`[open]` Next session on his side: when the UI work wraps up, remind him of the camera run and ask
+for its result before building anything new. If his Mac is reachable, read `sessions/<latest>/` there yourself (events, `looks/`,
 `timings.jsonl`) instead of asking him to describe it.
 
 ---
