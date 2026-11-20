@@ -41,6 +41,8 @@ The README covers how to run it; this file covers the why and the plan.
 - **Order of work (Yoon Woo, Nov 19):** UI first for now; features later. He asked to be reminded:
   when the UI work wraps up, remind him of the camera test on live Gemini (the one that decides
   whether the features really work), then the stuck nudge and the camera-view overlay.
+  (Nov 19, 21:10: he went out and asked for the nudge and the overlay to be built meanwhile. Both are
+  done, see `HANDOFF.md`. What is left to remind him of is the camera test.)
 - This repo is the **practice build**. We use it to learn what's hard (camera, lighting, symbol
   detection, model latency) before the event.
 - **Rule: at the hackathon we rebuild from scratch in a new repo.** Don't copy code over. Use this
@@ -63,8 +65,8 @@ Walk Skylar through these in order, checking each one works before moving on.
    browser tab opens at http://127.0.0.1:8765. He should see a simulated worksheet get a hint, a
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
-5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 12 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 53 checks in total.
+5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 17 should pass.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 58 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -74,6 +76,10 @@ Walk Skylar through these in order, checking each one works before moving on.
    when done; don't push straight to `main`.
 
 ## Skylar's task: stuck nudge (branch `stuck-nudge`)
+
+**Built Nov 19 (evening) by Yoon Woo's Claude, at Yoon Woo's request, and merged to `main`.** The task
+is kept below as written, as the record of what was asked. Differences from it: a new highlight also
+restarts the clock, and the checks drive `_tick` with a made-up clock (`_stepper` in the tests).
 
 Small and self-contained: sized to finish in one sitting. Build and test it entirely with
 `--demo` and the automated checks; no camera needed. Skylar is on Claude Pro, so keep it lean:
@@ -140,7 +146,7 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
   one sheet taken away and brought back counted as a new page (numbers ran up to 18); a gray hoodie
   merged into the sheet's outline; the bare desk was read as a page and saved as highlights.
 
-**Built and covered by the checks (53 pass: 12 + 9 + 32), but not yet run on the real camera or
+**Built and covered by the checks (58 pass: 17 + 9 + 32), but not yet run on the real camera or
 against live Gemini:**
 - The Nov 19 fixes: new strokes recolored pink in the close-up and the model told to answer only
   those; nothing sent until the remembered page lines up with the page now; specks and edge slivers
@@ -155,7 +161,8 @@ against live Gemini:**
 - Spark → hint, underline → definition, circled question mark → explanation, highlights → study guide
   (one section per sheet when more than one was used).
 - Web page at http://127.0.0.1:8765: left half is what Glyph sees: the flattened page with
-  corner brackets, a pink frame and sweep while a mark is read, the camera as an inset (swappable),
+  corner brackets, a pink frame and sweep while a mark is read, the camera as an inset (swappable; the camera view shows the same
+  mark frame, highlights and covers, mapped onto the desk from `status.view.cam`),
   and a row of frosted readouts (sheet, page, ink, new ink, frame rate, last answer). Right half (a
   white sheet floating on the color field) is
   the newest answer as a large card with a cut-out of the mark, highlights by color, a timeline, page
@@ -237,7 +244,8 @@ Key design choices:
 
 1. **Run `docs/camera-test-checklist.md` on the real camera** with the Nov 19 changes, on a key with
    billing turned on.
-2. **Stuck nudge** — if the student stalls (or picks up their phone and scrolls), Glyph nudges them to keep going.
+2. **Stuck nudge** — built Nov 19 (no writing for `GLYPH_STUCK_SECONDS`, 90 by default → one "keep going"
+   card, no model call). Still open from the idea: noticing the student pick up their phone.
 3. **Mistake catcher + mistake log/calendar** — spot errors in written work, keep a running log over time.
 4. **Paper Ctrl+F** — ask where something is on the page and have it pointed out.
 5. **Custom symbol mapping UI** — let users add their own symbols without editing JSON.

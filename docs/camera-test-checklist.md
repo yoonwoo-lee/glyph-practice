@@ -74,6 +74,13 @@ Write a real physics problem with some working first. Lift your hand off the she
 - [ ] **End session** builds a study guide with the highlighted text readable, a Page 1 and a Page 2
       section, and the first sheet not counted twice.
 
+## 3b. Added Nov 19 evening (2 min, no requests spent)
+
+- [ ] Switch to **Camera** view and draw a spark: a pink frame with "Reading" sits on the spark on the
+      desk picture, not beside it. Highlights are outlined there too.
+- [ ] Stop writing for 90 seconds with the sheet in view: exactly one "Keep going" card appears, and
+      no second one until you write again.
+
 ## 4. If something is off (4 min)
 
 - [ ] Open http://127.0.0.1:8765/tune. Ink missed or noisy: move the ink slider. Wrong highlight

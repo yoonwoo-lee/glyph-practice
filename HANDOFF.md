@@ -14,6 +14,41 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-19 (21:30), Yoon Woo's Claude
+
+Yoon Woo went out for the evening and asked for work to go on without him. His answers to three
+questions: build the stuck nudge, then the camera-view overlay, then UI fixes; **no live Gemini
+calls**; the look stays as approved (fixes only); push to `main`.
+
+**Done** (`eff4577`, `3e8a446`, then this note; on `main` and `camera-test`, branch `stuck-nudge` merged)
+- **Stuck nudge.** No new writing for `GLYPH_STUCK_SECONDS` (90; `0` = off) with a sheet in plain view
+  → one "Keep going" card, from five fixed lines, no model call. The clock starts when a page is taken
+  in and starts again on new ink, a new highlight, a new page and Rotate. One card per pause. None
+  while a mark is being read, a full read is waiting, the page is covered or moving, or there is no
+  sheet. In `glyph/engine.py`: `NUDGES`, `Settings.stuck_seconds`, `_wrote`, the check before `_publish`.
+- **Camera view shows what is tracked.** `status.view.cam` carries the mark box, the highlights and
+  the covers as four corners each in the camera picture (page box → undo the view's turn → back
+  through the sheet's outline). The web page draws them on the camera view with the same styles.
+- Checks: `test_pipeline` is now 17 (4 for the nudge, 1 that the camera-view boxes map back onto the
+  page boxes, turned and not). 58 pass in all (17 + 9 + 32), run one after another.
+
+**Found**
+- New tests call `engine._tick(frame, now)` directly with a made-up clock (`_stepper`), half a second
+  per step. Stepping by 0.1 s made the suite take over three minutes.
+- Safari still not checked: WebKit cannot be installed in the sandbox. The `-webkit-` prefixes for
+  the frosted tiles and the gradient headline are in place.
+- The Mac stopped answering during this session (asleep or the app closed), so the Mac's clone is
+  still at `f1eae8d`. It needs `git pull --ff-only origin camera-test`.
+
+**Not verified:** the nudge and the camera-view boxes on the real camera (demo sheet and checks only).
+
+`[open]` Yoon Woo's side: the camera run on live Gemini (`docs/camera-test-checklist.md`, 1b first) is
+now the only thing between him and "done by Saturday". While there: switch to Camera view and see
+that the pink frame sits on the mark; stop writing for 90 s and see one "Keep going" card.
+`[done]` (from 19:10) He was reminded of the camera run; he chose the order above.
+
+---
+
 ## 2026-11-19 (19:10), Yoon Woo's Claude
 
 **Yoon Woo wants to be done building by Saturday Nov 21.** He asked whether the features all work.
