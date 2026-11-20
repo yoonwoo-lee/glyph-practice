@@ -20,8 +20,11 @@ The README covers how to run it; this file covers the why and the plan.
   steps and the stuck-nudge task below are kept as written; whoever builds the nudge follows the task.
 - **The name may change** (Glyf, Glyff and Gliff were floated Nov 19: there are already several
   "glyph" AI products). It is one setting, `GLYPH_NAME` in `.env`. Don't hard-code the name anywhere.
-- **Look:** sky blue, white and hot pink (chosen Nov 19). Sky blue is the scanning side, white is the
-  reading side, hot pink marks whatever is being read right now.
+- **Look:** sky blue `#0593C6`, white `#FCFFFF` and hot pink `#D83995` (Yoon Woo's reference, Nov 19).
+  The colors must **blend**: one field of sky blue with a pink bloom runs behind the whole window, and
+  the paper and a white answers sheet float on it. Hot pink marks whatever is being read right now
+  (it gathers behind the paper while a mark is read). Skylar likes it minimal, Yoon Woo wants it a
+  little richer: keep the layout plain and put the richness in that one background.
 - This repo is the **practice build**. We use it to learn what's hard (camera, lighting, symbol
   detection, model latency) before the event.
 - **Rule: at the hackathon we rebuild from scratch in a new repo.** Don't copy code over. Use this
@@ -135,9 +138,10 @@ against live Gemini:**
 **What is in the app:**
 - Spark → hint, underline → definition, circled question mark → explanation, highlights → study guide
   (one section per sheet when more than one was used).
-- Web page at http://127.0.0.1:8765: left half (sky blue) is what Glyph sees: the flattened page with
+- Web page at http://127.0.0.1:8765: left half is what Glyph sees: the flattened page with
   corner brackets, a pink frame and sweep while a mark is read, the camera as an inset (swappable),
-  and a row of readouts (sheet, page, ink, new ink, frame rate, last answer). Right half (white) is
+  and a row of frosted readouts (sheet, page, ink, new ink, frame rate, last answer). Right half (a
+  white sheet floating on the color field) is
   the newest answer as a large card with a cut-out of the mark, highlights by color, a timeline, page
   numbers, and a typeset study guide (Copy / Print). `/?guide` opens on the guide.
 - Page numbers: 1, 2, 3 in the order sheets are first seen. A returning sheet keeps its number (also

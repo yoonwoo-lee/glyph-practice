@@ -14,6 +14,31 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-19 (16:00), Yoon Woo's Claude
+
+Yoon Woo sent a reference for the colors (sky blue `#0593C6`, white `#FCFFFF`, hot pink `#D83995`,
+blue melting into pink behind ribbed glass) and said the first version's colors "don't really blend".
+He wants it a little less minimal; Skylar likes it minimal.
+
+**Done** (`glyph/static/index.html`, `glyph/static/tune.html`; styles only, no engine change)
+- One color field behind the whole window: deep sky to sky, a hot pink bloom low on the left that
+  runs under the seam, fine vertical ribs. It drifts slowly; motion is off under "reduce motion".
+- The answers side is now a white sheet with rounded corners floating on the field. Readouts, status
+  and buttons on the left are frosted white tiles so the color shows through them.
+- While a mark is read the pink gathers behind the paper. Answer card and study guide have a
+  sky-to-pink edge; the first-screen headline and the "Reading your mark" bar use the same blend.
+- Layout, wording, Rotate / Read page now / Tune, and every id the script uses are unchanged.
+
+**Found**
+- White text on `#0593C6` is only 3.5:1, so small white text sits on the deeper end of the field or
+  on frosted tiles with dark text. Hot pink on white is 4.3:1: fine for large type, use
+  `--pink-deep` for small.
+
+**Not verified:** Safari (the Mac's default browser) and the real camera view. Checked in Chrome at
+1440 and 820 wide with the demo sheet.
+
+---
+
 ## 2026-11-19 (afternoon), Yoon Woo's Claude
 
 Yoon Woo ran the camera at his desk on Nov 19 and reported: marks are picked up quickly now, but the
