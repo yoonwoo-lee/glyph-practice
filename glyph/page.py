@@ -791,7 +791,7 @@ def mask_bbox(mask: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
 NEW_INK_COLOR = (147, 20, 255)  # hot pink (B, G, R): how new strokes are shown to the model
 
 
-def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70, ink: Optional[np.ndarray] = None, old: Optional[np.ndarray] = None):
+def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70, ink: Optional[np.ndarray] = None, old: Optional[np.ndarray] = None, wide: bool = False):
     """Close-up of the new ink, with the new strokes colored pink and everything else as it is.
 
     The vision model is told that only the pink strokes are new. Fading the older writing, as
@@ -802,6 +802,7 @@ def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70, ink: Opt
     Painting the whole "new ink" area instead turned a small spark into a solid pink blob (its
     arms are a pixel or two apart, so the area has no gaps), and the model saw no symbol in it
     (camera run of Nov 20).
+    `wide` takes the close-up right across the page (for a line drawn down the margin).
     Returns (image, (x0, y0, x1, y1)) or (None, None) if there is no new ink.
     """
     box = mask_bbox(fresh)
@@ -811,6 +812,8 @@ def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70, ink: Opt
     tx0, ty0, tx1, ty1 = box
     x0, y0 = max(0, tx0 - pad), max(0, ty0 - pad)
     x1, y1 = min(w, tx1 + pad), min(h, ty1 + pad)
+    if wide:  # a line down the margin: the passage beside it runs the width of the page
+        x0, x1 = 0, w
     out = page[y0:y1, x0:x1].copy()
     strokes = whole_strokes(fresh, ink, old)[y0:y1, x0:x1]
     longest = max(out.shape[:2])

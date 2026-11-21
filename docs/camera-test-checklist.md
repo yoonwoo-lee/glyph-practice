@@ -91,6 +91,27 @@ Write a real physics problem with some working first. Lift your hand off the she
       guide" on the right, and the line is outlined in green on the page.
 - [ ] Click **End session**: the study guide lists the highlight and the words you looked up.
 
+## 3d. Added Nov 20 night: check mark, target, and editor mode (10 min, about 8 requests)
+
+None of these has been answered by live Gemini yet. Note for each: answered or not, right or wrong,
+and how many seconds.
+
+Student mode (a sheet with a problem you have solved on it):
+- [ ] Write your answer, then draw a **check mark** next to it, about as big as your spark: "Looks
+      right" or "Not yet" within about 10 seconds. It must not state the answer.
+- [ ] Change the answer to a wrong one and draw a second check: "Not yet", naming a step.
+- [ ] Draw a small check mark on its own next to an old answer (nothing else new): does it get a look?
+- [ ] Draw a **target** (a small circle inside a bigger one) next to the problem: a new problem of
+      the same kind, with no solution.
+
+Click **Editor** at the top left (the switch itself costs nothing), and put down a page of print:
+- [ ] Draw a **box** round a word that appears several times: the other places are outlined on the
+      page view, and the card says how many. Check the outlines sit on the right words.
+- [ ] Draw a **circle** round a word: synonyms.
+- [ ] Draw a **line down the margin** beside one paragraph: a summary of that paragraph only.
+- [ ] Underline a word: a definition, as in student mode.
+- [ ] Draw a spark: nothing (sparks are not editor marks). This costs one request.
+
 ## 4. If something is off (4 min)
 
 - [ ] Open http://127.0.0.1:8765/tune. Ink missed or noisy: move the ink slider. Wrong highlight

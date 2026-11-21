@@ -34,8 +34,8 @@ class ScriptedBrain:
         self.script = script
         self.calls = []
 
-    def analyze(self, page_jpg, crop_jpg=None, context="", shape_hint=None):
-        self.calls.append({"full": crop_jpg is None, "shape": shape_hint, "context": context})
+    def analyze(self, page_jpg, crop_jpg=None, context="", shape_hint=None, mode=""):
+        self.calls.append({"full": crop_jpg is None, "shape": shape_hint, "context": context, "mode": mode})
         if self.script is not None:
             return self.script(len(self.calls), crop_jpg, shape_hint)
         if crop_jpg is None or not shape_hint:

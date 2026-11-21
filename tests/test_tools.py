@@ -160,7 +160,7 @@ def _brain_with(models, behave):
             return type("R", (), {"text": behave(model, config, len(self.asked))})()
 
     b = brain_mod.Brain.__new__(brain_mod.Brain)
-    b._types, b.legend, b.system, b.last_model = types, config.load_legend(), "s", ""
+    b._types, b.legend, b.system, b.last_model, b._systems = types, config.load_legend(), "s", "", {}
     b._no_budget, b._resting, b._quota_hits, b.last_errors = set(), {}, {}, []
     b.models = list(models)
     b._client = type("C", (), {"models": Models()})()
@@ -670,8 +670,10 @@ def test_the_demo_ends_with_a_checked_answer():
     engine.brain = MockBrain(engine.legend, demo=True)
     for frame in demo.demo_frames():
         show(frame, 5)
-    assert kinds(session) == ["hint", "define", "highlight", "highlight", "check"], kinds(session)
+    assert kinds(session) == ["hint", "define", "highlight", "highlight", "check", "practice"], kinds(session)
     assert session.events_of("check")[0]["title"] == "Looks right"
+    assert session.events_of("practice")[0]["title"] == "Try this one"
+    assert "Problems to try" in engine.study_guide()
 
 
 def test_a_short_underline_right_under_a_small_word_is_looked_at():
@@ -755,6 +757,159 @@ def test_rotate_keeps_the_page_number():
     assert engine.status()["view"]["page_size"] == [demo.PAGE_H, demo.PAGE_W] or engine._shape[0] < engine._shape[1], engine._shape
     assert engine.store.page_no == 1 and engine.store.pages() == [1], engine.store.pages()
     assert len(engine.brain.calls) == 1, "the same sheet is not read in full a second time"
+
+
+# ---- student mode and editor mode --------------------------------------------------------------
+
+
+def test_each_mode_has_its_own_marks():
+    from glyph.brain import build_system_prompt, clean_result
+
+    legend = config.load_legend()
+    student, editor = config.legend_for(legend, "student"), config.legend_for(legend, "editor")
+    assert [m["id"] for m in config.modes_of(legend)] == ["student", "editor"]
+    assert config.actions_of(student) == ["hint", "explain", "define", "check", "practice"], config.actions_of(student)
+    assert config.actions_of(editor) == ["explain", "define", "find", "synonym", "summarize"], config.actions_of(editor)
+    assert editor["order"] == ["define", "find", "synonym", "summarize", "explain"], editor["order"]
+    # The model is only told about the marks of the mode that is on, and only those come back.
+    told = build_system_prompt(editor)
+    assert '"box"' in told and '"margin line"' in told and '"spark"' not in told and '"verdict"' not in told
+    assert '"box"' not in build_system_prompt(student)
+    raw = {"triggers": [
+        {"kind": "symbol", "symbol": "spark", "action": "hint", "target": "p1", "response": "a hint"},
+        {"kind": "box", "action": "find", "target": "heat", "response": "", "places": [{"box_2d": [100, 200, 130, 260]}]},
+        {"kind": "Margin_Line", "action": "summarize", "target": "The effect is", "response": "short"},
+        {"kind": "circle", "action": "find", "target": "x", "response": "a circle does not find"},
+    ]}
+    assert [(t["kind"], t["action"]) for t in clean_result(raw, editor)["triggers"]] == [("box", "find"), ("margin line", "summarize")]
+    assert [t["action"] for t in clean_result(raw, student)["triggers"]] == ["hint"]
+    # A legend with no modes works as before: every mark, one mode.
+    plain = {k: v for k, v in legend.items() if k != "modes"}
+    assert config.modes_of(plain) == [] and len(config.actions_of(config.legend_for(plain, "student"))) == 8
+
+
+def test_found_places_must_be_the_size_of_a_word():
+    from glyph.brain import clean_result
+
+    editor = config.legend_for(config.load_legend(), "editor")
+    places = [
+        {"box_2d": [100, 200, 130, 260]},      # on the 0 to 1000 scale
+        {"box_2d": [0.5, 0.2, 0.53, 0.26]},    # a model that answers from 0 to 1
+        {"box_2d": [0, 0, 900, 900]},          # most of the page: not a word
+        {"box_2d": "here"},                    # not a box at all
+    ]
+    t = clean_result({"triggers": [{"kind": "box", "action": "find", "target": "heat", "response": "", "places": places}]}, editor)["triggers"][0]
+    assert t["count"] == 4 and t["places"] == [[0.2, 0.1, 0.26, 0.13], [0.2, 0.5, 0.26, 0.53]], t
+
+
+def test_editor_demo_box_circle_and_margin_line():
+    """The reading sheet: an underline, a box (find), a circle (synonyms), a highlight, a margin line."""
+    from glyph.brain import MockBrain
+
+    s = demo.build_reading_steps()
+    engine, session, show = _stepper()
+    engine.brain = MockBrain(engine.legend, demo=True)
+    assert engine.set_mode("editor") == "editor"
+    for step in ("blank", "underline", "box"):
+        show(s[step], 5)
+    assert kinds(session) == ["define", "find"], kinds(session)
+    find = session.events_of("find")[0]
+    assert find["title"] == "Find: heat" and find["meta"]["count"] == 6 and "6 more times" in find["body"], find
+    # The six other places are sent to the web page as boxes on the page, and as they lie on the desk.
+    view = engine.status()["view"]
+    assert view["found_term"] == "heat" and len(view["found"]) == 6 and len(view["cam"]["found"]) == 6, view
+    want = [[x0 / 1000.0, y0 / 1000.0, x1 / 1000.0, y1 / 1000.0] for y0, x0, y1, x1 in demo.reading_places("heat")]
+    assert max(abs(a - b) for got, exp in zip(view["found"], want) for a, b in zip(got, exp)) < 0.002
+    for step in ("circle", "highlight", "margin"):
+        show(s[step], 5)
+    assert kinds(session) == ["define", "find", "synonym", "highlight", "summarize"], kinds(session)
+    assert engine.status()["view"]["found"] == [], "a newer answer takes the outlines away"
+    guide = engine.study_guide()
+    assert "## Synonyms" in guide and "**exacerbate**" in guide and "## Summaries" in guide, guide
+    # The close-up for the margin line runs the width of the page, so the passage is in it.
+    import cv2 as _cv2
+
+    looks = sorted((session.dir / "looks").glob("*_new_ink.jpg"))
+    assert _cv2.imread(str(looks[-1])).shape[1] >= 850, _cv2.imread(str(looks[-1])).shape
+
+
+def test_marks_on_words_already_on_a_sheet_are_left_alone_in_editor_mode():
+    page = demo.reading_page()
+    demo.draw_box(page)
+    marked = demo.desk_scene(page)
+    engine, session, show = _stepper(read_first_page=True)
+    engine.set_mode("editor")
+    engine.brain.script = lambda n, crop, shape: {"occluded": False, "triggers": [
+        {"kind": "box", "symbol": None, "action": "find", "target": "heat", "response": "", "count": 2, "places": []},
+        {"kind": "symbol", "symbol": "circled question mark", "action": "explain", "target": "paragraph 1", "response": "In plain words."},
+    ]}
+    show(marked, 4)
+    assert [(c["full"], c["mode"]) for c in engine.brain.calls] == [(True, "editor")], engine.brain.calls
+    assert kinds(session) == ["explain"], kinds(session)  # the symbol, not the old box
+    engine.look_now()
+    show(marked, 3)
+    assert kinds(session) == ["explain", "find"], kinds(session)
+    assert session.events_of("find")[0]["body"] == "It appears 2 more times on this page.", session.events_of("find")[0]["body"]
+
+
+def test_switching_mode_reads_nothing_and_the_next_mark_is_read_in_the_new_mode():
+    s = demo.build_steps()
+    engine, session, show = _stepper()
+    show(s["blank"], 3)
+    assert engine.status()["work_mode"] == "student" and len(engine.status()["modes"]) == 2
+    assert engine.set_mode("editor") == "editor" and engine.set_mode("no such mode") == "editor"
+    show(s["blank"], 4)
+    assert engine.brain.calls == [], "switching mode must not spend a request"
+    show(s["spark"], 4)
+    assert [c["mode"] for c in engine.brain.calls] == ["editor"], engine.brain.calls
+    assert engine.legend_now()["mode"] == "editor" and "box" in engine.legend_now()["marks"]
+
+
+def test_no_keep_going_card_in_editor_mode():
+    s = demo.build_steps()
+    engine, session, show = _stepper(stuck_seconds=20)
+    engine.set_mode("editor")
+    show(s["blank"], 60)
+    assert "nudge" not in kinds(session), kinds(session)
+    engine.set_mode("student")  # back to problems: the wait starts from here
+    show(s["blank"], 12)
+    assert "nudge" not in kinds(session), kinds(session)
+    show(s["blank"], 15)
+    assert kinds(session).count("nudge") == 1, kinds(session)
+
+
+def test_demo_puts_the_other_sheet_under_the_camera_and_comes_back_where_it_was():
+    from glyph.camera import DemoSource
+
+    a0, a1, b0, b1 = [np.full((4, 4, 3), v, np.uint8) for v in (10, 20, 30, 40)]
+    src = DemoSource({"student": [a0, a1], "editor": [b0, b1]}, "student", hold=0.2)
+    src.start()
+    assert src.read() is a0
+    time.sleep(0.25)
+    assert src.read() is a1
+    src.set_mode("editor")
+    assert src.read() is b0
+    time.sleep(0.25)
+    assert src.read() is b1
+    src.set_mode("student")
+    assert src.read() is a1, "the first sheet is shown as it was left, not from the start"
+
+
+def test_web_page_switches_mode():
+    from fastapi.testclient import TestClient
+    from glyph.app import create_app
+
+    s = demo.build_steps()
+    engine, brain, session = run([s["blank"]], hold=1.2)
+    client = TestClient(create_app(engine))
+    assert 'id="modes"' in client.get("/").text
+    state = client.get("/api/state").json()
+    assert state["status"]["work_mode"] == "student" and state["legend"]["mode"] == "student", state["status"]
+    r = client.post("/api/mode", json={"mode": "editor"})
+    assert r.status_code == 200 and r.json()["mode"] == "editor" and r.json()["legend"]["order"][0] == "define", r.text
+    state = client.get("/api/state").json()
+    assert state["status"]["work_mode"] == "editor" and "box" in state["legend"]["marks"], state["legend"]
+    assert client.post("/api/mode", json={"mode": "x"}).status_code == 400
 
 
 def test_web_page_carries_the_name_and_the_page_numbers():

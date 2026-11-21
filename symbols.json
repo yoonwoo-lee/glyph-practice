@@ -14,10 +14,42 @@
       "name": "check mark",
       "looks_like": "a tick: a short stroke down, then a longer stroke up to the right",
       "action": "check"
+    },
+    {
+      "name": "target",
+      "looks_like": "a bullseye: a small circle inside a bigger circle, nothing written in it",
+      "action": "practice"
     }
   ],
   "marks": {
-    "underline": "define"
+    "underline": "define",
+    "box": "find",
+    "circle": "synonym",
+    "margin line": "summarize"
+  },
+  "modes": {
+    "student": {
+      "label": "Student",
+      "about": "Solving problems",
+      "use": [
+        "spark",
+        "check mark",
+        "target",
+        "underline",
+        "circled question mark"
+      ]
+    },
+    "editor": {
+      "label": "Editor",
+      "about": "Reading and writing",
+      "use": [
+        "underline",
+        "box",
+        "circle",
+        "margin line",
+        "circled question mark"
+      ]
+    }
   },
   "highlight_colors": {
     "yellow": "Key ideas",

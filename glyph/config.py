@@ -116,8 +116,27 @@ DEFAULT_LEGEND = {
             "looks_like": "a tick: a short stroke down, then a longer stroke up to the right",
             "action": "check",
         },
+        {
+            "name": "target",
+            "looks_like": "a bullseye: a small circle inside a bigger circle, nothing written in it",
+            "action": "practice",
+        },
     ],
-    "marks": {"underline": "define"},
+    # Marks made on the words themselves: what each one does.
+    "marks": {"underline": "define", "box": "find", "circle": "synonym", "margin line": "summarize"},
+    # Each mode uses some of the symbols and marks above. Highlights work in every mode.
+    "modes": {
+        "student": {
+            "label": "Student",
+            "about": "Solving problems",
+            "use": ["spark", "check mark", "target", "underline", "circled question mark"],
+        },
+        "editor": {
+            "label": "Editor",
+            "about": "Reading and writing",
+            "use": ["underline", "box", "circle", "margin line", "circled question mark"],
+        },
+    },
     "highlight_colors": {
         "yellow": "Key ideas",
         "green": "Definitions",
@@ -126,21 +145,70 @@ DEFAULT_LEGEND = {
     },
 }
 
-ACTIONS = ("hint", "explain", "define", "check")
+ACTIONS = ("hint", "explain", "define", "check", "practice", "find", "synonym", "summarize")
 VERDICTS = ("right", "wrong", "unsure")  # what a check says about the student's answer
+
+# What each mark on words looks like, as the vision model is told.
+MARKS = {
+    "underline": "a pen line drawn under a word or short phrase. Fraction bars, equals signs, answer boxes and printed rules are not underlines.",
+    "box": "a hand-drawn rectangle around a word or short phrase. Printed boxes, table cells and answer boxes are not marks.",
+    "circle": "a hand-drawn circle or oval around a printed word or short phrase. A circle drawn around the student's own question mark is the circled question mark, not this.",
+    "margin line": "a long hand-drawn line running down the margin beside several lines of text. A printed rule or the edge of the sheet is not one.",
+}
+
+# The mode Glyph starts in. GLYPH_MODE in .env changes it; the button on the web page switches it.
+START_MODE = (os.getenv("GLYPH_MODE") or "student").strip().lower()
 
 
 def load_legend() -> dict:
-    """symbols.json maps each symbol and highlight color to what it does."""
+    """symbols.json maps each symbol, mark and highlight color to what it does, and says which
+    of them each mode uses."""
     path = ROOT / "symbols.json"
     legend = json.loads(json.dumps(DEFAULT_LEGEND))
     if path.exists():
         try:
             user = json.loads(path.read_text(encoding="utf-8"))
-            for key in ("symbols", "marks", "highlight_colors"):
+            for key in ("symbols", "marks", "modes", "highlight_colors"):
                 if key in user:
                     legend[key] = user[key]
         except (OSError, ValueError) as e:
             print(f"[glyph] could not read symbols.json ({e}); using the defaults")
     legend["symbols"] = [s for s in legend["symbols"] if s.get("action") in ACTIONS]
+    legend["marks"] = {k: v for k, v in legend.get("marks", {}).items() if k in MARKS and v in ACTIONS}
     return legend
+
+
+def modes_of(legend: dict) -> list:
+    """The modes a legend has, in order: [{"id", "label", "about"}]. None: one mode with everything."""
+    return [
+        {"id": key, "label": str(m.get("label") or key.title()), "about": str(m.get("about") or "")}
+        for key, m in (legend.get("modes") or {}).items()
+        if isinstance(m, dict)
+    ]
+
+
+def legend_for(legend: dict, mode: str = "") -> dict:
+    """The legend as one mode uses it: only that mode's symbols and marks.
+
+    A legend without modes, or a mode it does not have, gives everything (which is how Glyph
+    worked before there were modes).
+    """
+    spec = (legend.get("modes") or {}).get(mode)
+    out = dict(legend, mode=mode if spec else "")
+    if isinstance(spec, dict):
+        use = list(spec.get("use") or [])
+        out["symbols"] = [s for s in legend.get("symbols", []) if s.get("name") in use]
+        out["marks"] = {k: v for k, v in legend.get("marks", {}).items() if k in use}
+    else:
+        use = [s.get("name") for s in legend.get("symbols", [])] + list(legend.get("marks", {}))
+    # The actions in the order the mode lists its marks: the order they are shown in on the web page.
+    action = {s.get("name"): s.get("action") for s in out.get("symbols", [])}
+    action.update(out.get("marks", {}))
+    out["order"] = [action[name] for name in use if name in action]
+    return out
+
+
+def actions_of(legend: dict) -> list:
+    """Every action a legend can ask for, in the fixed order of ACTIONS."""
+    have = {s["action"] for s in legend.get("symbols", [])} | set(legend.get("marks", {}).values())
+    return [a for a in ACTIONS if a in have]

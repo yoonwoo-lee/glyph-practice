@@ -53,9 +53,13 @@ def main() -> int:
 
     try:
         if args.demo:
+            from glyph.camera import DemoSource
             from glyph.demo import demo_frames
 
-            source = FrameListSource(demo_frames(), hold=args.hold, label="demo")
+            # One sheet per mode; the button on the web page swaps them.
+            modes = [m["id"] for m in config.modes_of(config.load_legend())] or ["student"]
+            start = config.START_MODE if config.START_MODE in modes else modes[0]
+            source = DemoSource({m: demo_frames(m) for m in modes}, start, hold=args.hold)
         elif args.source:
             source = source_from_path(args.source, hold=args.hold)
         else:

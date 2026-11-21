@@ -67,7 +67,7 @@ def create_app(engine: Engine) -> FastAPI:
                 "status": engine.status(),
                 "events": events,
                 "last_id": events[-1]["id"] if events else since,
-                "legend": engine.legend,
+                "legend": engine.legend_now(),  # the marks of the mode that is on
                 "timings": engine.session.timings()[-1:],
             },
             headers={"Cache-Control": "no-store"},
@@ -77,6 +77,15 @@ def create_app(engine: Engine) -> FastAPI:
     def look():
         engine.look_now()
         return {"ok": True}
+
+    @app.post("/api/mode")
+    def mode(body: dict = Body(...)):
+        """Switch between student and editor mode. Costs no request."""
+        want = str(body.get("mode", ""))
+        if want not in (engine.legend.get("modes") or {}):
+            raise HTTPException(400, "no such mode")
+        now = engine.set_mode(want)
+        return {"ok": True, "mode": now, "legend": engine.legend_now(now)}
 
     @app.post("/api/rotate")
     def rotate():

@@ -50,7 +50,7 @@
   /* ================= left: the scan bed ================= */
   .eye { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 22px 28px 20px; color: var(--ink); }
   .glass { background: var(--frost); color: var(--ink); border: 1px solid rgba(255,255,255,.75); -webkit-backdrop-filter: blur(14px) saturate(1.5); backdrop-filter: blur(14px) saturate(1.5); box-shadow: 0 16px 34px -20px rgba(6,70,105,.5); }
-  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; row-gap: 10px; }
   .brand .logo { width: 36px; height: 36px; flex: none; border-radius: 11px; background: var(--white); display: grid; place-items: center; box-shadow: 0 10px 22px -10px rgba(6,70,105,.5); }
   .brand .logo svg { width: 22px; height: 22px; }
   .brand .word { font-size: 30px; font-weight: 800; font-stretch: 125%; letter-spacing: -0.035em; line-height: 1; text-transform: lowercase; }
@@ -61,6 +61,30 @@
   .state.busy .lamp { background: var(--white); box-shadow: none; animation: pulse .8s ease-in-out infinite; }
   .state.bad .lamp { background: var(--bad); }
   @keyframes pulse { 50% { transform: scale(1.7); opacity: .5; } }
+
+  /* Student or editor: which set of marks is in use. The thumb slides between the two and takes its
+     color from where it stands: the sky end of the blend for the first mode, the pink end for the last. */
+  .modes { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin-left: 8px; padding: 3px; border-radius: 999px; }
+  .modes button { position: relative; z-index: 1; border: 0; background: none; min-width: 82px; padding: 5px 16px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--soft); white-space: nowrap; transition: color .35s ease; }
+  .modes button:hover { color: var(--ink); }
+  .modes button[aria-pressed="true"] { color: var(--white); cursor: default; }
+  .modes .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / var(--n, 2)); border-radius: 999px;
+    background: linear-gradient(100deg, var(--sky-deep) 0%, #2C8FD0 30%, #7559A8 64%, var(--pink-deep) 100%) no-repeat; background-size: calc(var(--n, 2) * 100%) 100%;
+    background-position: calc(var(--i, 0) * 100% / max(1, var(--n, 2) - 1)) 0; transform: translateX(calc(var(--i, 0) * 100%));
+    box-shadow: 0 10px 18px -10px rgba(6,70,105,.9); }
+  .modes.ready .thumb { transition: transform .6s cubic-bezier(.6,-0.15,.2,1.2), background-position .6s ease; }
+  /* One thin line of light crosses the window when the mode changes, towards the side of the new
+     mode, and what belongs to the mode is replaced behind it. Once, and quickly. */
+  .msweep { position: absolute; top: 0; bottom: 0; left: 0; width: 9vw; z-index: 6; pointer-events: none; opacity: 0;
+    background: linear-gradient(90deg, rgba(69,182,236,0) 0%, rgba(69,182,236,.05) 60%, rgba(216,57,149,.08) 100%);
+    border-right: 1.5px solid transparent; border-image: linear-gradient(to bottom, var(--sky) 0%, var(--white) 46%, var(--pink) 100%) 1; }
+  .msweep.fwd { animation: msweep-f .8s cubic-bezier(.5,0,.25,1) both; }
+  .msweep.back { animation: msweep-b .8s cubic-bezier(.5,0,.25,1) both; }
+  @keyframes msweep-f { 0% { transform: translateX(-10vw); opacity: 0; } 14%, 86% { opacity: 1; } 100% { transform: translateX(101vw); opacity: 0; } }
+  @keyframes msweep-b { 0% { transform: translateX(101vw) scaleX(-1); opacity: 0; } 14%, 86% { opacity: 1; } 100% { transform: translateX(-10vw) scaleX(-1); opacity: 0; } }
+  /* The rows and keys of the new mode come in one after another, from the side the line came from. */
+  .swap > * { animation: comein .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--k, 0) * 50ms + 70ms); }
+  @keyframes comein { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * -14px)); } }
 
   .seeing { display: flex; align-items: center; gap: 12px; margin: 16px 0 10px; }
   .seeing h2 { margin: 0; font-size: 14px; font-weight: 700; }
@@ -97,6 +121,9 @@
   .hud .sheet { fill: rgba(138,212,240,.14); stroke: var(--white); stroke-width: 2.5; stroke-linejoin: round; }
   .hud .sheet-dot { fill: var(--pink); stroke: var(--white); stroke-width: 2; }
   .hud .hl { fill: none; stroke-width: 2.5; }
+  /* Every other place a boxed word appears. They arrive one after another, in reading order. */
+  .hud .found { fill: rgba(69,182,236,.20); stroke: var(--sky-deep); stroke-width: 2; stroke-linejoin: round; }
+  .hud .found.in { transform-box: fill-box; transform-origin: center; animation: lock .4s cubic-bezier(.2,.9,.2,1) both; animation-delay: calc(var(--k, 0) * 70ms); }
   .hud .cover { fill: rgba(6,42,64,.10); stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 5; }
   .hud .mark { fill: none; stroke: var(--pink); stroke-width: 3; stroke-linecap: square; stroke-linejoin: round; }
   .hud .mark.new { stroke-width: 1.5; stroke-dasharray: 5 5; }
@@ -160,7 +187,8 @@
   /* ---- first screen: the marks ---- */
   .intro h1 { font-size: clamp(34px, 3.7vw, 54px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 10px 0 16px; padding-bottom: .06em; width: fit-content;
     background: linear-gradient(105deg, #1A93CE 0%, var(--sky-mid) 34%, #A58FDB 64%, var(--pink) 94%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .intro p { margin: 0 0 26px; font-size: 17px; color: var(--soft); max-width: 31em; }
+  .intro p { margin: 0 0 22px; font-size: 17px; color: var(--soft); max-width: 34em; }
+  @media (max-height: 860px) { .intro h1 { font-size: clamp(30px, 3.1vw, 42px); margin: 2px 0 10px; } .intro p { margin-bottom: 14px; font-size: 16px; } .markrow { padding: 5px 0; } }
   /* Parts of the first screen fold away smoothly: the headline when a read starts, the list of marks
      when the first answer arrives. (A grid row animating from 1fr to 0fr is a height animation.) */
   .fold { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .6s cubic-bezier(.3,.7,.2,1), opacity .4s ease, transform .6s cubic-bezier(.3,.7,.2,1); }
@@ -170,8 +198,8 @@
   .caret { display: inline-block; width: .075em; height: .95em; margin-left: .05em; vertical-align: -.12em; border-radius: 1px; background: var(--pink); animation: blink .8s steps(1) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
   .marks { border-top: 0; background: var(--blend) no-repeat 0 0 / 100% 3px; padding-top: 3px; }
-  .markrow { display: grid; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 13px 0; border-bottom: 1px solid var(--line); }
-  .markrow svg { width: 92px; height: 54px; display: block; background: linear-gradient(120deg, var(--sky-pale), #F3EAF6 130%); border-radius: 10px; }
+  .markrow { display: grid; grid-template-columns: 82px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .markrow svg { width: 82px; height: 48px; display: block; background: linear-gradient(120deg, var(--sky-pale), #F3EAF6 130%); border-radius: 10px; }
   .markrow b { font-size: 18px; font-stretch: 108%; font-weight: 700; letter-spacing: -0.01em; }
   .markrow span { color: var(--soft); font-size: 15px; line-height: 1.4; }
 
@@ -271,6 +299,7 @@
   .key { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--soft); white-space: nowrap; }
   .key .ic { width: 24px; height: 24px; border-radius: 7px; background: var(--sky-pale); color: var(--sky-deep); display: grid; place-items: center; font-size: 13px; }
   .key b { color: var(--ink); font-weight: 700; }
+  .keyhead { align-self: center; font-size: 13px; font-weight: 700; color: var(--pink-deep); white-space: nowrap; min-width: 6.4em; }
   .key .sws { display: inline-flex; gap: 2px; padding-left: 2px; }
   .key .sws i { width: 8px; height: 16px; border-radius: 2px; }
   .btn { flex: none; background: linear-gradient(105deg, #E65AAA 0%, var(--pink) 45%, var(--pink-deep) 100%); color: var(--white); border: 0; border-radius: 12px; padding: 11px 20px; font-weight: 700; font-size: 15px; box-shadow: 0 14px 26px -14px rgba(216,57,149,.95); transition: transform .2s, box-shadow .2s, filter .2s; }
@@ -284,7 +313,7 @@
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; height: auto; }
     .eye { height: 78vh; } .say { min-height: 80vh; margin: 0 10px 10px; } .bar, .pane, .foot { padding-left: 18px; padding-right: 18px; }
-    .markrow { grid-template-columns: 92px 1fr; } .markrow span { grid-column: 2; }
+    .markrow { grid-template-columns: 82px 1fr; } .markrow span { grid-column: 2; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .stage.scanning .sweep { opacity: 0; } }
   @media print { .eye, .bar, .foot, .acts, .app::before, .app::after { display: none !important; } body, .app, .say { background: #fff; box-shadow: none; margin: 0; } .app { display: block; height: auto; overflow: visible; } .sheet { border: 0; background: #fff; } }
@@ -297,6 +326,10 @@
     <symbol id="g-underline" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v7a5 5 0 0 0 10 0V4"/><path d="M4 20.5h16"/></g></symbol>
     <symbol id="g-ask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.4a2.8 2.8 0 1 1 4.2 2.4c-.9.6-1.5 1.1-1.5 2.2"/><path d="M12 17.2v.1"/></g></symbol>
     <symbol id="g-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13l5 5L19.5 6.5"/></g></symbol>
+    <symbol id="g-target" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.4"/></g></symbol>
+    <symbol id="g-box" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.5"/><path d="M8 12h8"/></g></symbol>
+    <symbol id="g-circle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><ellipse cx="12" cy="12" rx="9.5" ry="6.2"/><path d="M8.5 12h7"/></g></symbol>
+    <symbol id="g-margin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M5 4v16" stroke-width="2.7"/><path d="M10 7h10M10 12h10M10 17h7" stroke-width="2"/></g></symbol>
     <symbol id="g-nudge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></g></symbol>
     <symbol id="g-error" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 4v10M12 19v.1"/></g></symbol>
     <symbol id="g-pen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/></g></symbol>
@@ -304,11 +337,13 @@
 </svg>
 
 <div class="app">
+  <div class="msweep" id="msweep" aria-hidden="true"></div>
   <!-- ============ left ============ -->
   <section class="eye" aria-label="What __NAME__ sees">
     <div class="brand">
       <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="#D83995" stroke-width="4.6" stroke-linecap="round"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8L6.8 25.2"/></g></svg></span>
       <span class="word">__NAME__</span>
+      <div class="modes glass hide" id="modes" role="group" aria-label="Mode: which marks are in use"><span class="thumb"></span></div>
       <div class="state glass wait" id="state"><span class="lamp"></span><span id="stateText">Connecting</span></div>
     </div>
     <div class="seeing">
@@ -360,31 +395,10 @@
       <div class="intro" id="intro">
         <div class="fold" id="introTop"><div>
         <h1>Mark the page.<br>__NAME__ reads it.</h1>
-        <p>Keep working on paper. No typing, nothing to switch to. Draw one of these and lift your hand.</p>
+        <p id="introWords">Keep working on paper. No typing, nothing to switch to. Draw one of these and lift your hand.</p>
         </div></div>
         <div class="fold" id="introMarks"><div>
-        <div class="marks">
-          <div class="markrow">
-            <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BDE3F2"><rect x="8" y="14" width="42" height="5" rx="2.5"/><rect x="8" y="25" width="50" height="5" rx="2.5"/><rect x="8" y="36" width="34" height="5" rx="2.5"/></g><g stroke="#D83995" stroke-width="2.6" stroke-linecap="round" transform="translate(73 27)"><path d="M0-10V10M-10 0H10M-7-7L7 7M7-7L-7 7"/></g></svg>
-            <b>A spark</b><span>One hint for the problem next to it. Never the answer.</span>
-          </div>
-          <div class="markrow">
-            <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BDE3F2"><rect x="8" y="14" width="46" height="5" rx="2.5"/><rect x="8" y="25" width="38" height="5" rx="2.5"/></g><rect x="8" y="36" width="44" height="5" rx="2.5" fill="#062A40"/><path d="M62 33l5 6 12-15" fill="none" stroke="#D83995" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <b>A check mark</b><span>Checks the answer next to it. Right or not yet, never the answer.</span>
-          </div>
-          <div class="markrow">
-            <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BDE3F2"><rect x="8" y="14" width="70" height="5" rx="2.5"/><rect x="8" y="26" width="20" height="5" rx="2.5"/><rect x="62" y="26" width="20" height="5" rx="2.5"/><rect x="8" y="40" width="52" height="5" rx="2.5"/></g><rect x="32" y="26" width="26" height="5" rx="2.5" fill="#062A40"/><path d="M31 35c8-2 18 1 28-1" fill="none" stroke="#D83995" stroke-width="2.6" stroke-linecap="round"/></svg>
-            <b>An underline</b><span>What the word means on this page.</span>
-          </div>
-          <div class="markrow">
-            <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BDE3F2"><rect x="8" y="14" width="40" height="5" rx="2.5"/><rect x="8" y="25" width="46" height="5" rx="2.5"/><rect x="8" y="36" width="30" height="5" rx="2.5"/></g><g fill="none" stroke="#D83995" stroke-width="2.4" stroke-linecap="round"><circle cx="72" cy="27" r="12"/><path d="M68.5 23.5a3.6 3.6 0 1 1 5.4 3.1c-1.2.8-1.9 1.4-1.9 2.8M72 33.6v.1"/></g></svg>
-            <b>A circled question mark</b><span>The passage next to it, in plain words.</span>
-          </div>
-          <div class="markrow">
-            <svg viewBox="0 0 92 54" aria-hidden="true"><rect x="6" y="11" width="80" height="12" rx="2" fill="#FFE234"/><rect x="6" y="31" width="56" height="12" rx="2" fill="#5ED67E"/><g fill="#062A40" opacity=".55"><rect x="10" y="14.5" width="70" height="5" rx="2.5"/><rect x="10" y="34.5" width="46" height="5" rx="2.5"/></g></svg>
-            <b>A highlight</b><span>Saved by color for your study guide. Costs no request.</span>
-          </div>
-        </div>
+        <div class="marks" id="markRows"></div>
       </div></div>
       </div>
       <div class="label nowhead hide" id="nowHead"><span id="nowWord">Latest answer</span>
@@ -417,9 +431,10 @@
 <script>
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
-const ANSWERS = ['hint', 'explain', 'define', 'check', 'nudge', 'error'];
-const ICON = { hint: 'spark', define: 'underline', explain: 'ask', check: 'check', nudge: 'nudge', error: 'error' };
-const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', check: 'Check', nudge: 'Keep going', error: 'Problem' };
+const ANSWERS = ['hint', 'explain', 'define', 'check', 'practice', 'find', 'synonym', 'summarize', 'nudge', 'error'];
+const ICON = { hint: 'spark', define: 'underline', explain: 'ask', check: 'check', practice: 'target', find: 'box', synonym: 'circle', summarize: 'margin', nudge: 'nudge', error: 'error' };
+const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', check: 'Check', practice: 'Try this one', find: 'Find', synonym: 'Synonyms', summarize: 'Summary', nudge: 'Keep going', error: 'Problem' };
+const TERMED = ['define', 'find', 'synonym'];   // answers about one word: the word leads the card
 /* A checked answer is named by its verdict (the title says "Looks right", "Not yet" or "Could not tell"),
    and only "right" wears the tick: "not yet" gets the keep-going arrow. */
 const VERDICT_ICON = { right: 'check', wrong: 'nudge', unsure: 'ask' };
@@ -427,6 +442,7 @@ const iconOf = e => e.kind === 'check' ? (VERDICT_ICON[(e.meta || {}).verdict] |
 const nameOf = e => e.kind === 'check' ? e.title : (KIND[e.kind] || e.title);
 const HL = { yellow: '#E0B800', green: '#2FA857', blue: '#1280CC', pink: '#E0489A' };
 let seen = false, polled = false, lastId = 0, legend = null, current = null, answers = 0, big = 'page', guideMd = '', last = null, shown = '', locked = false;
+let mode = null, modeList = [], modeBusy = 0, foundShown = '';
 const hl = {};   // color -> {label, ids: []}
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
@@ -454,7 +470,7 @@ function brackets(g, x0, y0, x1, y1, len, cls) {
 }
 function draw(s) {
   const hud = $('hud'), v = s.view || {}, fit = $('fit'), W = fit.clientWidth, H = fit.clientHeight;
-  const key = JSON.stringify([big, W, H, v.phase, v.box, v.box_state, v.highlights, v.covers, v.quad, v.cam]);
+  const key = JSON.stringify([big, W, H, v.phase, v.box, v.box_state, v.highlights, v.covers, v.found, v.quad, v.cam]);
   if (key === shown) return; shown = key;      // nothing moved: leave the drawing (and its animation) alone
   hud.textContent = '';
   if (!W || !H) return;
@@ -469,6 +485,7 @@ function draw(s) {
     const at = q => q.map(([x, y]) => [x * W, y * H]), str = q => q.map(p => p.join(',')).join(' ');
     (c.highlights || []).forEach(h => hud.append(svg('polygon', { class: 'hl', points: str(at(h.pts)), stroke: HL[h.color] || '#45667A' })));
     (c.covers || []).forEach(q => hud.append(svg('polygon', { class: 'cover', points: str(at(q)) })));
+    (c.found || []).forEach(q => hud.append(svg('polygon', { class: 'found', points: str(at(q)) })));
     if (c.box) {
       const q = at(c.box), state = v.box_state || 'new';
       const g = svg('g', state === 'new' ? {} : { class: 'lock' });
@@ -494,6 +511,11 @@ function draw(s) {
     hud.append(svg('rect', { class: 'hl', x: x0 - 3, y: y0 - 3, width: x1 - x0 + 6, height: y1 - y0 + 6, rx: 3, stroke: HL[h.color] || '#45667A' })); });
   (v.covers || []).forEach(b => { const [x0, y0, x1, y1] = px(b);
     hud.append(svg('rect', { class: 'cover', x: x0, y: y0, width: x1 - x0, height: y1 - y0 })); });
+  // Where a boxed word was found. They come in one by one the first time; after that they just stand.
+  const foundKey = JSON.stringify(v.found || []), arrive = foundKey !== foundShown; foundShown = foundKey;
+  (v.found || []).forEach((b, i) => { const [x0, y0, x1, y1] = px(b);
+    const r = svg('rect', { class: 'found' + (arrive ? ' in' : ''), x: x0 - 3, y: y0 - 2, width: x1 - x0 + 6, height: y1 - y0 + 4, rx: 4 });
+    r.style.setProperty('--k', i); hud.append(r); });
   if (v.box) {
     let [x0, y0, x1, y1] = px(v.box); const m = 7; x0 -= m; y0 -= m; x1 += m; y1 += m;
     const state = v.box_state || 'new';
@@ -534,11 +556,62 @@ function showStatus(s) {
   $('model').textContent = s.mode === 'mock' ? 'Practice answers' : (s.model || '');
   const notes = [];
   if (v.phase && v.phase !== 'none' && !s.page_found) notes.push('No sheet outline found, so the whole picture is being read. A darker desk helps.');
-  if (s.mode === 'mock') notes.push('Practice answers: no Gemini key in .env yet.');
+  if (s.mode === 'mock') notes.push('Practice answers: Gemini is not being asked.');
   $('note').textContent = notes.join(' ');
   $('note').classList.toggle('hide', !notes.length);
   showPages(pages, s.page_no);
+  showModes(s.modes || [], s.work_mode);
   draw(s);
+}
+
+/* ---------- student or editor ---------- */
+const GLYPHS = '*_?[]()|/+=<>';
+/* The new word is worked out letter by letter, from left to right, out of the marks themselves. */
+function decode(node, text, ms) {
+  if (!node) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { node.textContent = text; return; }
+  const t0 = performance.now(), my = (node._decode = (node._decode || 0) + 1);
+  const step = now => {
+    if (node._decode !== my) return;
+    const done = Math.min(1, (now - t0) / ms), fixed = Math.floor(done * text.length);
+    let out = text.slice(0, fixed);
+    for (let i = fixed; i < text.length; i++) out += text[i] === ' ' ? ' ' : GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+    node.textContent = out;
+    if (done < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function showModes(list, now) {
+  const box = $('modes');
+  if (JSON.stringify(list) !== JSON.stringify(modeList)) {      // build the control once
+    modeList = list; box.querySelectorAll('button').forEach(b => b.remove());
+    box.classList.toggle('hide', list.length < 2); box.style.setProperty('--n', Math.max(1, list.length));
+    list.forEach(m => { const b = el('button', '', m.label); b.dataset.mode = m.id; b.title = m.about; b.onclick = () => chooseMode(m.id); box.append(b); });
+  }
+  if (now === mode || performance.now() < modeBusy) return;      // a click is still on its way to the app
+  const first = mode === null; markMode(now, !first);
+  if (first) requestAnimationFrame(() => requestAnimationFrame(() => box.classList.add('ready')));   // no slide on arrival
+}
+/* Everything that moves when the mode changes, in one go: the thumb slides, the line crosses, the
+   sheet's corners lock on again, and the new mode's name is worked out. */
+function markMode(id, moving) {
+  const was = modeList.findIndex(m => m.id === mode), i = Math.max(0, modeList.findIndex(m => m.id === id)), box = $('modes');
+  mode = id; box.style.setProperty('--i', i);
+  box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === id)));
+  document.documentElement.style.setProperty('--dir', i >= was ? 1 : -1);
+  if (!moving) return;
+  const line = $('msweep'); line.className = 'msweep'; void line.offsetWidth; line.className = 'msweep ' + (i >= was ? 'fwd' : 'back');
+  const b = box.querySelector('button[aria-pressed="true"]'); if (b && modeList[i]) decode(b, modeList[i].label, 420);
+  locked = false; shown = ''; if (last) draw(last);
+}
+async function chooseMode(id) {
+  if (id === mode) return;
+  modeBusy = performance.now() + 1500; markMode(id, true);
+  try {
+    const d = await (await fetch('/api/mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: id }) })).json();
+    if (d.legend) setLegend(d.legend, true);
+  } catch (err) { /* the next poll puts the control back where the app really is */ }
+  modeBusy = 0;
 }
 
 /* ---------- pages seen so far ---------- */
@@ -565,21 +638,57 @@ function askSame(n, cur) {
   a.append('Is the sheet under the camera page ' + n + '? Its answers and highlights move there.', yes, no);
 }
 
-/* ---------- the marks, along the bottom ---------- */
-function showKeys(l) {
+/* ---------- the marks of the mode that is on: the list on the first screen, the keys along the bottom ---------- */
+const BARS = '<g fill="#BDE3F2"><rect x="8" y="14" width="42" height="5" rx="2.5"/><rect x="8" y="25" width="50" height="5" rx="2.5"/><rect x="8" y="36" width="34" height="5" rx="2.5"/></g>';
+const WORD = '<g fill="#BDE3F2"><rect x="8" y="14" width="70" height="5" rx="2.5"/><rect x="8" y="26" width="20" height="5" rx="2.5"/><rect x="62" y="26" width="20" height="5" rx="2.5"/><rect x="8" y="40" width="52" height="5" rx="2.5"/></g><rect x="32" y="26" width="26" height="5" rx="2.5" fill="#062A40"/>';
+const PINK = 'fill="none" stroke="#D83995" stroke-linecap="round" stroke-linejoin="round"';
+const MARK = {   // action -> how its row reads, and the little picture of the mark
+  hint: ['A spark', 'One hint for the problem next to it. Never the answer.', BARS + `<g ${PINK} stroke-width="2.6" transform="translate(73 27)"><path d="M0-10V10M-10 0H10M-7-7L7 7M7-7L-7 7"/></g>`],
+  check: ['A check mark', 'Checks the answer next to it. Right or not yet, never the answer.', '<g fill="#BDE3F2"><rect x="8" y="14" width="46" height="5" rx="2.5"/><rect x="8" y="25" width="38" height="5" rx="2.5"/></g><rect x="8" y="36" width="44" height="5" rx="2.5" fill="#062A40"/>' + `<path d="M62 33l5 6 12-15" ${PINK} stroke-width="2.6"/>`],
+  practice: ['A target', 'One new problem like the one next to it.', BARS + `<g ${PINK} stroke-width="2.4"><circle cx="72" cy="27" r="11.5"/><circle cx="72" cy="27" r="4"/></g>`],
+  define: ['An underline', 'What the word means on this page.', WORD + `<path d="M31 35c8-2 18 1 28-1" ${PINK} stroke-width="2.6"/>`],
+  find: ['A box', 'Every other place the word appears, outlined on the page.', WORD + `<rect x="27.5" y="20.5" width="35" height="16" rx="2" ${PINK} stroke-width="2.4"/><g fill="none" stroke="#0B7FB0" stroke-width="1.6"><rect x="5.5" y="11.5" width="20" height="10" rx="2"/><rect x="38.5" y="37.5" width="24" height="10" rx="2"/></g>`],
+  synonym: ['A circle', 'Words that could take its place.', WORD + `<ellipse cx="45" cy="28.5" rx="19" ry="9.5" ${PINK} stroke-width="2.4"/>`],
+  summarize: ['A line down the margin', 'The passage beside it, in two or three sentences.', '<g fill="#BDE3F2"><rect x="24" y="10" width="58" height="5" rx="2.5"/><rect x="24" y="20" width="52" height="5" rx="2.5"/><rect x="24" y="30" width="60" height="5" rx="2.5"/><rect x="24" y="40" width="40" height="5" rx="2.5"/></g>' + `<path d="M13 9c1 12-1 24 0 37" ${PINK} stroke-width="2.8"/>`],
+  explain: ['A circled question mark', 'The passage next to it, in plain words.', '<g fill="#BDE3F2"><rect x="8" y="14" width="40" height="5" rx="2.5"/><rect x="8" y="25" width="46" height="5" rx="2.5"/><rect x="8" y="36" width="30" height="5" rx="2.5"/></g>' + `<g ${PINK} stroke-width="2.4"><circle cx="72" cy="27" r="12"/><path d="M68.5 23.5a3.6 3.6 0 1 1 5.4 3.1c-1.2.8-1.9 1.4-1.9 2.8M72 33.6v.1"/></g>`],
+  highlight: ['A highlight', 'Saved by color for your study guide. Costs no request.', '<rect x="6" y="11" width="80" height="12" rx="2" fill="#FFE234"/><rect x="6" y="31" width="56" height="12" rx="2" fill="#5ED67E"/><g fill="#062A40" opacity=".55"><rect x="10" y="14.5" width="70" height="5" rx="2.5"/><rect x="10" y="34.5" width="46" height="5" rx="2.5"/></g>'],
+};
+const VERB = { hint: 'hint', explain: 'explanation', define: 'meaning', check: 'checks your answer', practice: 'new problem', find: 'finds the word', synonym: 'synonyms', summarize: 'summary' };
+const SHORT = { explain: 'Circled ?' };   // names that are too long for the bottom line
+function setLegend(l, moving) {
+  legend = l; showRows(l, moving); showKeys(l, moving);
+  const m = modeList.find(x => x.id === l.mode);
+  $('introWords').textContent = (m ? m.label + ' mode, for ' + m.about.toLowerCase() + '. ' : 'Keep working on paper. ') + 'Draw one of these and lift your hand. Nothing to type.';
+}
+function restagger(box, moving) {   // the children come in one after another when the mode has just changed
+  box.classList.remove('swap');
+  if (!moving) return;
+  [...box.children].forEach((c, i) => c.style.setProperty('--k', i)); void box.offsetWidth; box.classList.add('swap');
+}
+function showRows(l, moving) {
+  const box = $('markRows'); box.textContent = '';
+  (l.order || []).concat(Object.keys(l.highlight_colors || {}).length ? ['highlight'] : []).forEach(a => {
+    const m = MARK[a]; if (!m) return;
+    const row = el('div', 'markrow'), art = svg('svg', { viewBox: '0 0 92 54', 'aria-hidden': 'true' });
+    art.innerHTML = m[2]; row.append(art, el('b', '', m[0]), el('span', '', m[1])); box.append(row);
+  });
+  restagger(box, moving);
+}
+function showKeys(l, moving) {
   const box = $('keys'); box.textContent = '';
-  const verb = { hint: 'for a hint', explain: 'for an explanation', define: 'for the meaning', check: 'to check an answer' };
-  const ic = { hint: 'spark', explain: 'ask', check: 'check' };
+  const m = modeList.find(x => x.id === l.mode);
+  if (m) { const h = el('span', 'keyhead', m.label + ' marks'); box.append(h); if (moving) decode(h, m.label + ' marks', 520); }
   const add = (ic, name, does) => { const k = el('span', 'key'), i = el('span', 'ic'); i.append(icon(ic)); k.title = name + ' ' + does; k.append(i, el('b', '', name), el('span', 'd', does)); box.append(k); };
-  (l.symbols || []).forEach(s => add(ic[s.action] || 'ask', cap(s.name), verb[s.action] || s.action));
-  if (l.marks && l.marks.underline) add('underline', 'Underline', verb[l.marks.underline] || l.marks.underline);
+  const named = {}; (l.symbols || []).forEach(x => named[x.action] = x.name); Object.entries(l.marks || {}).forEach(([name, a]) => named[a] = name);
+  (l.order || []).forEach(a => add(ICON[a] || 'ask', SHORT[a] || cap(named[a] || a), VERB[a] || a));
   const colors = Object.entries(l.highlight_colors || {});
   if (colors.length) {
     const k = el('span', 'key'), i = el('span', 'ic'), sw = el('span', 'sws'); i.append(icon('pen'));
     colors.forEach(([c, label]) => { const x = el('i', 'c-' + c); x.title = label; sw.append(x); });
     k.title = colors.map(([c, label]) => cap(c) + ': ' + label).join('\n');
-    k.append(i, el('b', '', 'Highlight'), el('span', 'd', 'to save'), sw); box.append(k);
+    k.append(i, el('b', '', 'Highlight'), el('span', 'd', 'saved'), sw); box.append(k);
   }
+  restagger(box, moving);
 }
 
 /* ---------- the newest answer ---------- */
@@ -593,7 +702,7 @@ function showNow(e, fresh) {
   const body = el('div', 'body'), w = el('p', 'words' + (e.body.length > 170 ? ' long' : e.body.length > 90 ? ' mid' : ''));
   n.append(body);
   if (e.kind === 'error') w.textContent = e.body;
-  else if (e.kind === 'define' && m.target) { const t = el('span', 'term'); t.append(el('mark', '', m.target)); w.append(t, e.body); }
+  else if (TERMED.includes(e.kind) && m.target) { const t = el('span', 'term'); t.append(el('mark', '', m.target)); w.append(t, e.body); }
   else { // a pink stripe runs under the first sentence
     const s = e.body.match(/^(.+?[.?!])(\s+[\s\S]*)?$/);
     if (s && s[2]) w.append(el('mark', '', s[1]), s[2]); else w.append(el('mark', '', e.body));
@@ -606,7 +715,7 @@ function showNow(e, fresh) {
   }
   let a = null;
   if (e.kind === 'error') { a = el('div', 'about'); a.append('It will try again by itself. If this keeps happening, check the key in .env and your connection.'); n.append(a); }
-  else if (m.target && e.kind !== 'define') { a = el('div', 'about'); a.append(el('b', '', 'About'), m.target); n.append(a); }
+  else if (m.target && !TERMED.includes(e.kind)) { a = el('div', 'about'); a.append(el('b', '', e.kind === 'summarize' ? 'Passage' : 'About'), m.target + (e.kind === 'summarize' ? ' ...' : '')); n.append(a); }
   if (fresh && e.kind !== 'error') typeOut([w, a], 2600);
 }
 
@@ -656,9 +765,9 @@ function typeOut(roots, maxMs) {
 function pastRow(e) {
   const m = e.meta || {}, li = el('li', e.kind), dot = el('span', 'dot'); dot.append(icon(iconOf(e)));
   const body = el('div'), head = el('div', 'head');
-  head.append(el('b', '', e.kind === 'define' && m.target ? m.target : nameOf(e)), el('span', 'num', clock(e.at || 0)));
+  head.append(el('b', '', TERMED.includes(e.kind) && m.target ? m.target : nameOf(e)), el('span', 'num', clock(e.at || 0)));
   body.append(head);
-  if (m.target && e.kind !== 'define') body.append(el('div', 'on', 'About ' + m.target));   // which problem a hint was for
+  if (m.target && !TERMED.includes(e.kind)) body.append(el('div', 'on', 'About ' + m.target));   // which problem a hint was for
   body.append(el('p', '', e.body)); li.append(dot, body);
   if (m.snip) { const img = el('img', 'thumb'); img.alt = ''; img.onerror = () => img.remove(); img.src = '/api/snip/' + m.snip + '.jpg'; li.append(img); }
   return li;
@@ -714,8 +823,8 @@ async function poll() {
   try {
     const first = !polled; polled = true;      // only what was already there when the page opened appears without animation
     const d = await (await fetch('/api/state?since=' + lastId)).json();
-    if (!legend) { legend = d.legend; showKeys(legend); }
-    showStatus(d.status);
+    showStatus(d.status);      // (the mode control first: the legend's wording uses the mode's name)
+    if (d.legend && (!legend || legend.mode !== d.legend.mode) && performance.now() >= modeBusy) setLegend(d.legend, !first && !!legend);
     d.events.forEach(e => addEvent(e, !first));
     lastId = d.last_id;
     if (first && location.search === '?guide') build();  // /?guide opens straight on the study guide

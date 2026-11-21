@@ -40,6 +40,13 @@ The README covers how to run it; this file covers the why and the plan.
   **Motion he asked for (Nov 19):** text Glyph writes is written out letter by letter with a pink
   caret (answers in about 2.5 s, the study guide in about 3 s), never dropped in whole; the first-screen
   headline folds away smoothly when a read starts and the list of marks when the first answer arrives.
+  **The mode switch (Nov 20 night; he asked for it "clean", in the color scheme, the animation "pretty
+  cool" but "slightly minimalistic but techy"):** a frosted pill beside the name with Student | Editor.
+  The thumb slides and takes its color from where it stands (sky end of the blend for Student, pink end
+  for Editor). On a switch, once: a thin line of light crosses the window towards the new mode's side
+  (0.8 s, faint tail), the new mode's name is worked out letter by letter from mark characters
+  (`*_?[]()|`), the sheet's corners lock on again, and the mode's rows and keys come in one after
+  another. Nothing else moves and the background is untouched. He has not seen it yet.
   **Toned down after outside feedback (Nov 19, 19:20):** the pink in the background is one soft glow in
   the bottom left corner (several strong blooms read as "blotches"), and the scan is a thin line
   passing slowly down the page with a faint glow, not a tall fast pink bar. Don't turn either back up.
@@ -68,10 +75,13 @@ Walk Skylar through these in order, checking each one works before moving on.
    `bash start.sh` works there too, and he activates with `source venv/Scripts/activate` instead of
    `source venv/bin/activate` below. (`start.bat` is for plain Command Prompt.) First run sets up a venv (~1 min), then a
    browser tab opens at http://127.0.0.1:8765. He should see a simulated worksheet get a hint, a
-   definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
+   definition, two highlights, a checked answer and a practice problem; clicking **Editor** at the top
+   swaps in a page of reading that gets a definition, a find, synonyms, a highlight and a summary. Then
+   "End session" for the study guide. Ctrl+C stops it. (With a key in `.env`, plain `--demo` sends the
+   demo sheets to live Gemini and spends requests: `--demo --mock` is the free one.)
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 17 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 64 checks in total.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 77 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -135,10 +145,25 @@ you draw marks, and Glyph reacts:
 | Underline a word | **Defines** it in the context of the page (≤35 words) |
 | Highlighter (yellow / green / pink / blue) | Saves the highlight; "End session" builds a **study guide** grouped by color |
 | Circled question mark (extra, removable) | **Explains** the passage (≤70 words) |
+| Check mark next to an answer (student mode) | **Checks** it: "Looks right" / "Not yet" + which step to look at again. Never the answer (≤40 words) |
+| Target, a bullseye, next to a problem (student mode) | One **new problem** of the same kind, unsolved (≤60 words) |
+| Box around a word (editor mode) | **Finds** every other place the word appears and outlines them on the page view (paper Ctrl+F) |
+| Circle around a word (editor mode) | Three to five **synonyms** that fit the sentence (≤35 words) |
+| Line down the margin beside a passage (editor mode) | **Summary** of that passage (≤60 words) |
 
 Hint-first is the core idea: it should push the student to solve it themselves, not hand over answers.
 
-Symbol → action mapping lives in `symbols.json`, so new symbols are a config change, not a code change.
+**Two modes (built Nov 20 night, Yoon Woo's answers in brackets):** Student, for solving problems
+(spark, check mark, target, underline, circled question mark) and Editor, for reading and writing
+(underline, box, circle, margin line, circled question mark). Highlights and the study guide work in
+both. Switched with a button on the web page [his choice over a mark on paper]; box = find and
+circle = synonyms [his choice]; a margin line = summary [his choice]; a mark that draws a
+visualization is left for later [his choice]. No "keep going" card in editor mode. Switching reads
+nothing and spends no request. `GLYPH_MODE` in `.env` sets the mode Glyph starts in.
+
+Symbol → action mapping lives in `symbols.json`, and so does which marks each mode uses (`modes`). A
+new symbol that reuses an action is a config change; a new action also needs its lines in `HOW` in
+`glyph/brain.py`.
 
 ## Current status (Nov 20)
 
@@ -160,14 +185,28 @@ camera):**
 returning sheet counted as new, a gray hoodie merged into the outline, the bare desk read as a page.
 All fixed on Nov 19 and none of them came back on Nov 20.
 
-**Built and covered by the checks (64 pass: 17 + 9 + 38), but not yet seen on the real camera:**
-- The Nov 20 fixes above; the stuck nudge; the marks drawn on the Camera view.
+**Nov 20, about 22:00:** Yoon Woo ran section 3c of the checklist on the camera and reported that all
+the fixes work ("the product is working really well"). The session was not read back from the Mac.
+
+**Built and covered by the checks (77 pass: 17 + 9 + 51), but not yet seen on the real camera or
+answered by live Gemini:**
+- Everything built Nov 20 night: the check mark, the target, the two modes, box / circle / margin
+  line, the places a boxed word was found drawn on the page. The prompts for these have never been
+  sent to Gemini. The riskiest are find (it relies on the model returning `box_2d` positions for
+  words in small print) and check (a wrong "Looks right" is worse than no answer).
+- Whether a small check mark alone is enough ink for a look (a look needs 120 px; a spark has about
+  twice the strokes of a tick the same size), and whether a box or circle drawn tight round print
+  counts as new ink.
+- The stuck nudge; the marks drawn on the Camera view.
 - Study guide sections per page and the real study guide call; pink and blue highlighters; the
   circled question mark.
 
 **What is in the app:**
 - Spark → hint, underline → definition, circled question mark → explanation, highlights → study guide
-  (one section per sheet when more than one was used).
+  (one section per sheet when more than one was used). Check mark → verdict, target → practice
+  problem, and in editor mode box → find, circle → synonyms, margin line → summary (see the table).
+- Student | Editor switch at the top left of the page (`POST /api/mode`). The list of marks on the
+  first screen and the line of marks along the bottom follow the mode.
 - Web page at http://127.0.0.1:8765: left half is what Glyph sees: the flattened page with
   corner brackets, a pink frame and sweep while a mark is read, the camera as an inset (swappable; the camera view shows the same
   mark frame, highlights and covers, mapped onto the desk from `status.view.cam`),
@@ -177,7 +216,9 @@ All fixed on Nov 19 and none of them came back on Nov 20.
   numbers, and a typeset study guide (Copy / Print). `/?guide` opens on the guide.
 - Page numbers: 1, 2, 3 in the order sheets are first seen. A returning sheet keeps its number (also
   when turned 180°). Clicking an earlier number and "Yes, same sheet" merges by hand (`POST /api/page`).
-- `--demo` plays a simulated worksheet with no camera; without a key it shows practice answers.
+- `--demo` plays a simulated worksheet with no camera, and a page of reading when the mode is switched
+  to Editor (each sheet moves on only while its mode is on). Without a key, or with `--mock`, it shows
+  practice answers. With a key, `--demo` alone spends real requests.
 - `/tune` page: live views of ink / highlighter / hand detection, sliders, click-to-pick highlighter
   colors, saves to `.env`.
 - Logs per session in `sessions/<ts>/`: `timings.jsonl` (seconds per look, which model answered, which
@@ -215,11 +256,11 @@ All fixed on Nov 19 and none of them came back on Nov 20.
 |---|---|
 | `Start Glyph.command` | Mac: double-click to start with the camera (keeps the Mac awake) |
 | `run.py` | CLI: `--demo`, `--camera auto` (default: the camera that sees a sheet) or `--camera N`, `--list-cameras`, `--source <video/photos>`, `--mock`, `--rotate`, `--port` |
-| `glyph/camera.py` | Frame sources: camera, video file, photo list, demo. Chooses the camera; says how to connect the phone |
+| `glyph/camera.py` | Frame sources: camera, video file, photo list, demo (`DemoSource`: one sheet per mode). Chooses the camera; says how to connect the phone |
 | `glyph/page.py` | Sheet detection + perspective warp, ink strength, what counts as new ink, hand/object "cover" (not shadows), telling sheets apart, focus crop |
 | `glyph/engine.py` | Main loop. New ink + still picture → "look". Keeps the outline steady, follows a sliding sheet, cooldown 4s, max 8 calls/min, backoff on errors, dedupes repeated answers |
 | `glyph/highlights.py` | Highlighter detection by color, saves crops, tracks per page |
-| `glyph/brain.py` | Prompt + Gemini call with model fallbacks and usage-limit handling, returns strict JSON (hint / define / explain); `MockBrain` for testing |
+| `glyph/brain.py` | Prompt (built per mode from the legend: `HOW` has the lines for each action) + Gemini call with model fallbacks and usage-limit handling, returns strict JSON; `MockBrain` for testing (it goes by the shape of the new ink, it cannot see) |
 | `glyph/session.py` | Saves each session to `sessions/<timestamp>/` (events, model inputs, study guide) |
 | `glyph/app.py` | FastAPI routes: `/`, `/api/frame/page.jpg`, `/api/frame/raw.jpg` (the page asks for these in a loop), `/api/state`, `/api/look`, `/api/rotate`, `/api/page` (same sheet as an earlier number), `/api/study-guide`. Puts the name from `GLYPH_NAME` into the pages |
 | `glyph/tune.py` | Tuning page backend: detection overlays, color picking, save to `.env` |
@@ -229,6 +270,21 @@ All fixed on Nov 19 and none of them came back on Nov 20.
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
+- (Nov 20 night) The model is told only about the marks of the mode that is on, and anything else
+  it returns is dropped (`config.legend_for`, `clean_result`). A look carries the mode it was sent in.
+- A check: the model first writes its own solution in a `work` field (thinking is off, so this is
+  where it reasons), then a verdict. `work` is saved in `sessions/<ts>/looks/NNN_check.txt` and never
+  sent to the web page. No clear verdict counts as "unsure", never as right.
+- Marks on words (underline, box, circle, margin line) and check marks already on a sheet when it
+  comes into view are left alone; the prompt says so and the engine drops them. "Read page now"
+  answers them (the note sent with the pictures says the student asked).
+- A second spark, question mark, check or target by the same problem is answered again; a mark on a
+  word is answered once.
+- Find: the model returns `places` as `box_2d` [ymin, xmin, ymax, xmax] on a 0 to 1000 scale of the
+  page picture. Boxes that cannot be one word are dropped. The sentence on the card is written by the
+  engine from the counts, so it always matches what is outlined. The outlines stay until the next
+  answer or a new sheet.
+- A long upright stroke in a mode with margin lines gets a close-up as wide as the page.
 - (Nov 20: the pink goes on the ink itself, by darkness, after the close-up is enlarged. Painting the
   whole new-ink area turned a small spark into a solid pink blob and live Gemini answered nothing.)
 - After a full read that gave an answer, the picture it was given is the remembered page (not under a
@@ -262,16 +318,19 @@ Key design choices:
 
 ## Next up (not built yet, rough priority)
 
-0. **Writer mode / annotation mode** (asked for Nov 17, on hold; raise it when Yoon Woo next asks for
-   features): the same marks do different
-   jobs per mode. Writer = solving problems, annotation = readings and books.
+0. **Modes: built Nov 20 night** as Student and Editor (see "What Glyph is"). Left from what he and
+   Skylar listed: a mark that makes a **visualization** in editor mode (he chose "leave it for
+   later"; a concept map of boxes and arrows drawn by the page from the model's list was the
+   suggestion), and whatever the "and more" in his message was (ask).
 
-1. **Camera run on live Gemini: done Nov 20** (see Current status). Left: re-check the four fixes from
-   that run (`docs/camera-test-checklist.md`, section 3c), the study guide, the nudge on the camera.
+1. **Camera run on live Gemini of the Nov 20 night features** (`docs/camera-test-checklist.md`,
+   section 3d, about 8 requests). The four fixes of section 3c passed on the camera (his report).
+   Also still unseen on the camera: the study guide, the nudge.
 2. **Stuck nudge** — built Nov 19 (no writing for `GLYPH_STUCK_SECONDS`, 90 by default → one "keep going"
    card, no model call). Still open from the idea: noticing the student pick up their phone.
 3. **Mistake catcher + mistake log/calendar** — spot errors in written work, keep a running log over time.
-4. **Paper Ctrl+F** — ask where something is on the page and have it pointed out.
+4. **Paper Ctrl+F** — built Nov 20 night as the box in editor mode. Not built: asking for a word that
+   is not on the page in front of you (typing or saying it).
 5. **Custom symbol mapping UI** — let users add their own symbols without editing JSON.
 6. Audio replies (voice), finger-frame screenshot (point/frame with fingers to capture a region),
    left-hand gestures.

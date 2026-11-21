@@ -63,9 +63,16 @@ _K61 = np.ones((61, 61), np.uint8)
 CUT_OFF_TEXT = "Part of the sheet is outside the camera's view. Slide it back, or raise the phone."
 NO_SHEET_TEXT = "No sheet in view. Put your page under the camera."
 
-TITLES = {"hint": "Hint", "explain": "Explanation", "define": "Definition", "check": "Check"}
+TITLES = {
+    "hint": "Hint", "explain": "Explanation", "define": "Definition", "check": "Check",
+    "practice": "Try this one", "find": "Find", "synonym": "Synonyms", "summarize": "Summary",
+}
 VERDICT_TITLES = {"right": "Looks right", "wrong": "Not yet", "unsure": "Could not tell"}
-ANSWERS = ("hint", "explain", "define", "check")  # the kinds of event that answer a mark
+ANSWERS = config.ACTIONS  # the kinds of event that answer a mark
+NAMED = {"define": "Definition", "find": "Find", "synonym": "Synonyms"}  # titled with the word they are about
+# A second mark by the same problem or passage may be answered again: a stronger hint, another
+# try at the answer, one more practice problem. A mark on a word is answered once.
+REPEATABLE = ("hint", "explain", "check", "practice")
 
 # Shown when the student has not written anything for a while. Never an answer, no model call.
 NUDGES = [
@@ -112,6 +119,11 @@ class Engine:
         self.brain = brain
         self.session = session
         self.legend = legend
+        modes = [m["id"] for m in config.modes_of(legend)]
+        self.mode = config.START_MODE if config.START_MODE in modes else (modes[0] if modes else "")
+        self._mode_was = self.mode
+        self._legends: dict = {}  # mode -> the legend as that mode uses it
+        self._found: Optional[dict] = None  # the places a boxed word was found, drawn on the page view
         self.settings = settings or Settings()
         self.store = HighlightStore(session.dir / "highlights", legend.get("highlight_colors", {}))
         self.running = False
@@ -211,6 +223,24 @@ class Engine:
             self._turned += 1
             return self._rotate * 90
 
+    def set_mode(self, mode: str) -> str:
+        """Switch between the modes of the legend (student, editor). Marks already on the page
+        stay as they are: nothing is read again, and no request is spent."""
+        with self._lock:
+            if mode in (self.legend.get("modes") or {}):
+                self.mode = mode
+            mode = self.mode
+        follow = getattr(self.source, "set_mode", None)
+        if follow:  # the demo puts the other mode's sheet under the "camera"
+            follow(mode)
+        return mode
+
+    def legend_now(self, mode: Optional[str] = None) -> dict:
+        mode = self.mode if mode is None else mode
+        if mode not in self._legends:
+            self._legends[mode] = config.legend_for(self.legend, mode)
+        return self._legends[mode]
+
     def same_sheet_as(self, page_no: int) -> None:
         """The user says the sheet on view is page `page_no` (Glyph gave it a new number)."""
         with self._lock:
@@ -227,7 +257,9 @@ class Engine:
     def status(self) -> dict:
         with self._lock:
             s = dict(self._status)
-        s["mode"] = getattr(self.brain, "name", "?")
+        s["mode"] = getattr(self.brain, "name", "?")  # which brain answers: "gemini" or "mock"
+        s["work_mode"] = self.mode  # student or editor
+        s["modes"] = config.modes_of(self.legend)
         s["model"] = getattr(self.brain, "last_model", "") or ""
         s["camera"] = getattr(self.source, "label", "")
         s["highlights"] = len(self.store.all())
@@ -297,6 +329,7 @@ class Engine:
         self._ink_hist.clear()
         self._page_unnamed = True
         self._in_place = "same"
+        self._found = None
         self.store.new_page()
 
     def _forget_sheet(self) -> None:
@@ -317,6 +350,10 @@ class Engine:
         s = self.settings
         self._apply_results(now)
         self._ticks.append(now)
+        if self.mode != self._mode_was:
+            self._mode_was = self.mode
+            if self._last_ink is not None:
+                self._wrote(now)  # a fresh start: no "keep going" card for time spent in the other mode
 
         stable_for = self._stability.update(frame, now)
         stable = stable_for >= s.settle
@@ -620,6 +657,7 @@ class Engine:
         # One card per pause; the next one needs new writing first.
         if (
             s.stuck_seconds > 0 and phase == "watching" and not self._want_full and not err
+            and "hint" in config.actions_of(self.legend_now())  # a mode for solving problems
             and self._last_ink is not None and not self._nudged and now - self._last_ink >= s.stuck_seconds
         ):
             self._nudged = True
@@ -718,13 +756,19 @@ class Engine:
         if len(self._call_times) >= s.max_calls_per_min:
             return "Paused: reached the calls-per-minute limit"
 
+        mode = self.mode
         crop, box, shape_hint, symbol_sized = None, None, None, False
         if not full:
-            crop, box = make_focus_crop(page, fresh, ink=ink, old=self.baseline)
+            tight = mask_bbox(fresh)
+            if tight is None:
+                return None
+            shape_hint = (tight[2] - tight[0], tight[3] - tight[1])
+            # A long upright stroke where margin lines mean something: show the whole width of
+            # the page beside it, since the passage it marks runs right across.
+            wide = "margin line" in self.legend_now(mode).get("marks", {}) and shape_hint[1] >= 90 and shape_hint[1] >= 3 * shape_hint[0]
+            crop, box = make_focus_crop(page, fresh, ink=ink, old=self.baseline, wide=wide)
             if crop is None:
                 return None
-            tight = mask_bbox(fresh)
-            shape_hint = (tight[2] - tight[0], tight[3] - tight[1])
             # Is any of the new ink the size and shape of a drawn symbol (not a long flat line)?
             symbol_sized = any(14 <= max(w, h) <= 220 and min(w, h) >= 10 and max(w, h) <= 3 * min(w, h) for _, _, w, h in ink_groups(fresh))
         reason = self._want_full if full else "new ink"
@@ -738,6 +782,7 @@ class Engine:
         job = {
             "n": self._looks,
             "full": full,
+            "mode": mode,
             "reason": reason,
             "epoch": self.epoch,
             "page": page.copy(),
@@ -808,7 +853,7 @@ class Engine:
             self.session.save_look(job["n"], page_jpg, crop_jpg)
             t0 = time.time()
             try:
-                result = self.brain.analyze(page_jpg, crop_jpg, context=job["context"], shape_hint=job["shape_hint"])
+                result = self.brain.analyze(page_jpg, crop_jpg, context=job["context"], shape_hint=job["shape_hint"], mode=job.get("mode", ""))
             finally:
                 job["model_s"] = time.time() - t0
                 job["model"] = getattr(self.brain, "last_model", "") or getattr(self.brain, "name", "")
@@ -874,9 +919,10 @@ class Engine:
                     # A sheet that comes into view with underlines on it was underlined some other
                     # day: those are left alone (Yoon Woo, Nov 20). Symbols on it are answered, and
                     # so is everything when the student asks for the sheet to be read.
-                    # A check mark already on a sheet is left alone the same way: it may be a
-                    # teacher's, and checking every tick on a marked sheet is a long answer.
-                    if (t.get("kind") == "underline" or t["action"] == "check") and job["reason"] != "you asked":
+                    # The same goes for every mark on words (a box, a circle, a margin line) and
+                    # for check marks: a tick may be a teacher's, and checking every tick on a
+                    # marked sheet is a long answer.
+                    if (t.get("kind", "symbol") != "symbol" or t["action"] == "check") and job["reason"] != "you asked":
                         continue
                     # Reading a whole sheet finds every mark on it, old ones too. One that was
                     # answered before, on any sheet, is the same mark seen again.
@@ -889,15 +935,30 @@ class Engine:
                     # answering an old mark because something else on the page changed.
                     # A second check by the same problem is the student trying again after "not
                     # yet": that one is answered even when the answer is word for word the same.
-                    if t["action"] == "define" or not job.get("symbol_sized"):
+                    if t["action"] not in REPEATABLE or not job.get("symbol_sized"):
                         continue
                     if t["action"] != "check" and self._said_before(t["response"]):
                         continue
                 self._handled.append(key + (page_no,))
                 title = TITLES.get(t["action"], t["action"].title())
-                if t["action"] == "define" and t["target"]:
-                    title = "Definition: " + t["target"][:60]
-                extra = {}
+                if t["action"] in NAMED and t["target"]:
+                    title = "{}: {}".format(NAMED[t["action"]], t["target"][:60])
+                extra, body = {}, t["response"]
+                if job.get("mode"):
+                    extra["mode"] = job["mode"]
+                if t["action"] == "find":
+                    # Said in Glyph's own words, so the count always matches what is outlined.
+                    places = t.get("places") or []
+                    n = max(int(t.get("count") or 0), len(places))
+                    extra["count"] = n
+                    if not n:
+                        body = "It does not appear anywhere else on this page."
+                    else:
+                        body = "It appears {} more time{} on this page".format(n, "" if n == 1 else "s")
+                        body += ", outlined." if len(places) == n == 1 else ", each one outlined." if len(places) == n else ". {} of them {} outlined.".format(len(places), "is" if len(places) == 1 else "are") if places else "."
+                    self._found = {"term": t["target"], "boxes": places, "epoch": job["epoch"]} if same_page else None
+                elif same_page and self._found is not None:
+                    self._found = None  # the outlines belong to the find card; a newer answer takes its place
                 if t["action"] == "check":
                     extra["verdict"] = t.get("verdict") or "unsure"
                     title = VERDICT_TITLES[extra["verdict"]]
@@ -909,7 +970,7 @@ class Engine:
                         except OSError:
                             pass
                 self.session.add_event(
-                    t["action"], title, t["response"], target=t["target"], symbol=t.get("symbol"),
+                    t["action"], title, body, target=t["target"], symbol=t.get("symbol"),
                     seconds=timing["total_s"], model_seconds=timing["model_s"], snip=self._snip(job),
                     page=job.get("page_no"), **extra
                 )
@@ -1022,10 +1083,13 @@ class Engine:
         defs = self.session.events_of("define")
         helped = self.session.events_of("hint", "explain")
         checked = self.session.events_of("check")
-        pages = sorted(
-            {r["page_no"] for r in regions}
-            | {e["meta"].get("page") for e in defs + helped + checked if e["meta"].get("page") is not None}
-        )
+        more = [  # (heading, events, how one is written)
+            ("Synonyms", self.session.events_of("synonym"), lambda e: "**{}**: {}".format(e["meta"].get("target", "?"), e["body"])),
+            ("Summaries", self.session.events_of("summarize"), lambda e: e["body"]),
+            ("Problems to try", self.session.events_of("practice"), lambda e: e["body"]),
+        ]
+        every = defs + helped + checked + [e for _, events, _ in more for e in events]
+        pages = sorted({r["page_no"] for r in regions} | {e["meta"].get("page") for e in every if e["meta"].get("page") is not None})
         split = len(pages) > 1
         head = "###" if split else "##"
 
@@ -1059,6 +1123,10 @@ class Engine:
             if checks:
                 out += ["", head + " Answers you checked"]
                 out += ["- {}: **{}.** {}".format(e["meta"].get("target", "?"), e["title"], e["body"]) for e in checks]
+            for name, events, line in more:
+                these = [e for e in events if mine(e)]
+                if these:
+                    out += ["", head + " " + name] + ["- " + line(e) for e in these]
             return out
 
         parts = ["# Study guide", "", time.strftime("%A, %B %d, %Y")]
@@ -1100,7 +1168,13 @@ class Engine:
             for c in outlines[:6]:
                 x, y, w, h = cv2.boundingRect(c)
                 covers.append(unit(x, y, x + w, y + h))
-        highlights = [] if phase == "none" else [{"color": r["color"], "box": unit(r["bbox"][0], r["bbox"][1], r["bbox"][0] + r["bbox"][2], r["bbox"][1] + r["bbox"][3])} for r in regions]
+        # A sheet that cannot be matched to the remembered one is a different sheet waiting to be
+        # taken in: what was outlined on the old one does not belong on it.
+        other_sheet = phase == "none" or (phase == "moving" and self._in_place == "lost")
+        found = []
+        if self._found and self._found["epoch"] == self.epoch and not other_sheet:
+            found = [list(b) for b in self._found["boxes"]]
+        highlights = [] if other_sheet else [{"color": r["color"], "box": unit(r["bbox"][0], r["bbox"][1], r["bbox"][0] + r["bbox"][2], r["bbox"][1] + r["bbox"][3])} for r in regions]
         fh, fw = frame.shape[:2]
         quad = None
         if self.quad is not None and show_quad:
@@ -1126,6 +1200,7 @@ class Engine:
                     "box": on_camera(box) if box else None,
                     "highlights": [{"color": h["color"], "pts": on_camera(h["box"])} for h in highlights],
                     "covers": [on_camera(c) for c in covers],
+                    "found": [on_camera(b) for b in found],
                 }
         ticks = list(self._ticks)
         rate = (len(ticks) - 1) / (ticks[-1] - ticks[0]) if len(ticks) > 2 and ticks[-1] > ticks[0] else 0.0
@@ -1135,6 +1210,8 @@ class Engine:
             "box_state": "reading" if (reading and self._busy) else ("read" if reading else "new"),
             "highlights": highlights,
             "covers": covers,
+            "found": found,
+            "found_term": self._found["term"] if found else "",
             "quad": quad,
             "cam": cam,
             "page_size": [pw, ph],

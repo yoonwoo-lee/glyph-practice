@@ -108,6 +108,125 @@ def draw_answer_with_check(page: np.ndarray, text: str = "a = g sin(30) = 4.9", 
     draw_check(page, (org[0] + width + 34, org[1] - 3))
 
 
+def draw_target(page: np.ndarray, center=(740, 420), radius: int = 24) -> None:
+    """The practice symbol: a small circle inside a bigger one, next to the problem."""
+    cv2.circle(page, center, radius, PEN, 3, cv2.LINE_AA)
+    cv2.circle(page, center, max(4, radius // 3), PEN, 3, cv2.LINE_AA)
+
+
+# ---- the sheet for editor mode: a page of reading --------------------------------------------
+
+READING_TITLE = "Reading 4  -  Urban heat islands"
+READING = [
+    "Cities are often several degrees warmer than the",
+    "land around them. Dark roofs and asphalt have a low",
+    "albedo: they absorb sunlight and release it as heat",
+    "after dark. Tall buildings trap that heat, and cars",
+    "and air conditioners add waste heat of their own.",
+    "",
+    "The effect is strongest on calm summer nights, when",
+    "stored heat cannot escape. Heat waves exacerbate it,",
+    "and the people most exposed often have the least shade.",
+    "Trees, cool roofs and lighter pavement all cut the heat.",
+]
+READING_X, READING_Y, READING_TITLE_Y = 110, 200, 90
+BOXED = (2, "heat")  # the word the demo draws a box round: (line, word)
+
+
+def reading_page() -> np.ndarray:
+    """A page of dense reading: a title and two paragraphs."""
+    page = np.full((PAGE_H, PAGE_W, 3), 244, np.uint8)
+    cv2.putText(page, READING_TITLE, (70, READING_TITLE_Y), FONT, 1.0, INK, 2, cv2.LINE_AA)
+    cv2.line(page, (70, 110), (780, 110), INK, 1, cv2.LINE_AA)
+    for i, line in enumerate(READING):
+        if line:
+            cv2.putText(page, line, (READING_X, READING_Y + NOTES_DY * i), FONT, NOTES_SCALE, INK, 2, cv2.LINE_AA)
+    return page
+
+
+def _reading_span(line_no: int, word: str, start: int = 0) -> Tuple[int, int, int]:
+    """x0, x1 and text baseline y of a word in the reading (the first one at or after `start`)."""
+    line = READING[line_no]
+    at = line.index(word, start)
+    (before, _), _ = cv2.getTextSize(line[:at], FONT, NOTES_SCALE, 2)
+    (width, _), _ = cv2.getTextSize(word, FONT, NOTES_SCALE, 2)
+    return READING_X + before, READING_X + before + width, READING_Y + NOTES_DY * line_no
+
+
+def reading_places(word: str) -> List[List[int]]:
+    """Where a word stands in the reading, apart from the boxed one: [ymin, xmin, ymax, xmax] from 0 to 1000."""
+    out = []
+
+    def add(x0, x1, y, up):
+        out.append([int(1000 * (y - up) / PAGE_H), int(1000 * (x0 - 3) / PAGE_W), int(1000 * (y + 8) / PAGE_H), int(1000 * (x1 + 3) / PAGE_W)])
+
+    at = READING_TITLE.lower().find(word.lower())
+    if at >= 0:
+        (before, _), _ = cv2.getTextSize(READING_TITLE[:at], FONT, 1.0, 2)
+        (width, _), _ = cv2.getTextSize(READING_TITLE[at : at + len(word)], FONT, 1.0, 2)
+        add(70 + before, 70 + before + width, READING_TITLE_Y, 30)
+    for i, line in enumerate(READING):
+        low, start = line.lower(), 0
+        while True:
+            at = low.find(word.lower(), start)
+            if at < 0:
+                break
+            start = at + len(word)
+            if (i, word) == BOXED and at == low.find(word.lower()):
+                continue  # the boxed one itself
+            x0, x1, y = _reading_span(i, line[at : at + len(word)], at)
+            add(x0, x1, y, 24)
+    return out
+
+
+def draw_reading_underline(page: np.ndarray, line_no: int = 2, word: str = "albedo") -> None:
+    x0, x1, y = _reading_span(line_no, word)
+    cv2.line(page, (x0 - 2, y + 11), (x1 + 2, y + 12), PEN, 3, cv2.LINE_AA)
+
+
+def draw_box(page: np.ndarray, line_no: int = BOXED[0], word: str = BOXED[1]) -> None:
+    """A box round a word: find every other place it appears."""
+    x0, x1, y = _reading_span(line_no, word)
+    cv2.rectangle(page, (x0 - 5, y - 29), (x1 + 7, y + 11), PEN, 3, cv2.LINE_AA)
+
+
+def draw_circle(page: np.ndarray, line_no: int = 7, word: str = "exacerbate") -> None:
+    """A circle round a word: synonyms."""
+    x0, x1, y = _reading_span(line_no, word)
+    cv2.ellipse(page, ((x0 + x1) // 2, y - 9), ((x1 - x0) // 2 + 7, 23), 0, 0, 360, PEN, 3, cv2.LINE_AA)
+
+
+def draw_margin_line(page: np.ndarray, first: int = 6, last: int = 9) -> None:
+    """A line down the margin beside a passage: a summary of it."""
+    x, y0, y1 = READING_X - 26, READING_Y + NOTES_DY * first - 24, READING_Y + NOTES_DY * last + 8
+    cv2.line(page, (x, y0), (x + 2, y1), PEN, 3, cv2.LINE_AA)
+
+
+def draw_reading_highlight(page: np.ndarray, line_no: int = 9, color: str = "blue") -> None:
+    (width, _), _ = cv2.getTextSize(READING[line_no], FONT, NOTES_SCALE, 2)
+    x0, x1, y = READING_X, READING_X + width, READING_Y + NOTES_DY * line_no
+    x0, x1, y0, y1 = x0 - 6, x1 + 6, y - 27, y + 9
+    tint = np.array(MARKER[color], np.float32) / 255.0
+    page[y0:y1, x0:x1] = (page[y0:y1, x0:x1].astype(np.float32) * tint).astype(np.uint8)
+
+
+def build_reading_steps(corners=None) -> Dict[str, np.ndarray]:
+    """Named camera frames of the reading being marked up, for the editor demo and the tests."""
+    page = reading_page()
+    steps = {"blank": desk_scene(page, corners=corners)}
+    draw_reading_underline(page)
+    steps["underline"] = desk_scene(page, corners=corners)
+    draw_box(page)
+    steps["box"] = desk_scene(page, corners=corners)
+    draw_circle(page)
+    steps["circle"] = desk_scene(page, corners=corners)
+    draw_reading_highlight(page)
+    steps["highlight"] = desk_scene(page, corners=corners)
+    draw_margin_line(page)
+    steps["margin"] = desk_scene(page, corners=corners)
+    return steps
+
+
 TILTED = [[640, 150], [1290, 95], [1420, 1010], [520, 960]]  # camera off to one side, sheet turned
 
 
@@ -151,6 +270,8 @@ def build_steps(corners=None) -> Dict[str, np.ndarray]:
     steps["highlights"] = desk_scene(page, corners=corners)
     draw_answer_with_check(page)
     steps["check"] = desk_scene(page, corners=corners)
+    draw_target(page)
+    steps["target"] = desk_scene(page, corners=corners)
     return steps
 
 
@@ -191,6 +312,10 @@ def sensor(scene: np.ndarray, rng: np.random.RandomState, noise: float = 4.0, fl
     return np.clip(scene.astype(np.float32) * gain + grain, 0, 255).astype(np.uint8)
 
 
-def demo_frames() -> List[np.ndarray]:
+def demo_frames(mode: str = "student") -> List[np.ndarray]:
+    """The demo for one mode: a worksheet for student mode, a page of reading for editor mode."""
+    if mode == "editor":
+        s = build_reading_steps()
+        return [s["blank"], s["underline"], s["box"], s["circle"], s["highlight"], s["margin"]]
     s = build_steps()
-    return [s["blank"], s["spark"], s["underline"], s["highlights"], s["check"]]
+    return [s["blank"], s["spark"], s["underline"], s["highlights"], s["check"], s["target"]]

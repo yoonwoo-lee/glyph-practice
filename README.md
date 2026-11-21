@@ -9,6 +9,20 @@ A study tutor that watches your paper through a camera. You never type: you draw
 | **Highlight** in yellow, green, pink or blue | Saves it. "End session" turns all highlights into a study guide |
 | Draw a **circled question mark** next to a passage | Explains it in plain language |
 | Draw a **check mark** next to your answer | Checks it: "Looks right" or "Not yet" and which step to look at again. Never the answer. |
+| Draw a **target** (a bullseye) next to a problem | Gives one new problem of the same kind |
+
+There are two modes, switched with the **Student | Editor** button at the top left of the page. The
+marks above are student mode, for solving problems. Editor mode is for reading and writing: it keeps
+the underline, the highlights and the circled question mark, and adds these.
+
+| In editor mode | Glyph does this |
+|---|---|
+| Draw a **box** around a word | Finds every other place the word appears and outlines them on the page |
+| Draw a **circle** around a word | Gives synonyms that fit the sentence |
+| Draw a **line down the margin** beside a passage | Summarizes that passage |
+
+Switching mode reads nothing and costs no request. `GLYPH_MODE=editor` in `.env` starts in editor mode.
+Which marks each mode uses is set in `symbols.json`.
 
 You write with any pen or pencil. Glyph works out which strokes are new by itself.
 
@@ -28,7 +42,9 @@ bash start.sh --demo        # works in Git Bash on Windows too; Command Prompt: 
 
 The first run takes about a minute to set up; after that it starts in a second and needs no internet
 to start. `--demo` needs no camera: it plays a simulated worksheet that gets a spark, an underline,
-two highlights and a checked answer, so you can see the whole thing work. A browser tab opens at http://127.0.0.1:8765.
+two highlights, a checked answer and a target, so you can see the whole thing work. Click **Editor** and
+it plays a page of reading instead. With a Gemini key in `.env`, add `--mock` to keep the demo from
+spending requests: `bash start.sh --demo --mock`. A browser tab opens at http://127.0.0.1:8765.
 Press Ctrl+C in Terminal to stop.
 
 On a Mac you can also double-click **Start Glyph.command** in this folder. It starts Glyph with the
@@ -162,10 +178,11 @@ python -m tests.test_tools
   sheet, model errors, the "keep going" card, the boxes on the camera view.
 - `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
   a tilted camera, sensor grain and flicker.
-- `test_tools` (43): model fallbacks and usage limits, choosing the camera, a wooden desk with a
+- `test_tools` (51): model fallbacks and usage limits, choosing the camera, a wooden desk with a
   shadow, gray clothing beside the sheet, a bare desk, a sliding or turned sheet, shadows, blank or
   dark views, a mark answered once and a second mark answered again, the check mark (verdict, a
-  second try, a tick already on the sheet), page numbers, study guide by
+  second try, a tick already on the sheet), the two modes (each mode's marks, switching, the editor
+  demo, found places, no "keep going" card in editor mode), page numbers, study guide by
   page, timing log, the tuning page, the name setting.
 
 Run them one after another, not at the same time: they are timed like a live camera, and a busy

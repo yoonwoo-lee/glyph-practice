@@ -115,6 +115,35 @@ class FrameListSource:
         pass
 
 
+class DemoSource(FrameListSource):
+    """The built-in demo: one sheet per mode, each marked up step by step.
+
+    Switching mode swaps the sheet under the "camera". A sheet's steps move on only while its
+    mode is on, so coming back to a mode shows its sheet as it was left.
+    """
+
+    def __init__(self, frames_by_mode: dict, mode: str, hold: float = 7.0) -> None:
+        mode = mode if mode in frames_by_mode else next(iter(frames_by_mode))
+        super().__init__(frames_by_mode[mode], hold=hold, label="demo")
+        self._by_mode = frames_by_mode
+        self._mode = mode
+        self._spent = {m: 0.0 for m in frames_by_mode}  # seconds each sheet has been on view
+        self._lock = threading.Lock()
+
+    def set_mode(self, mode: str) -> None:
+        with self._lock:
+            if mode not in self._by_mode or mode == self._mode:
+                return
+            now = time.time()
+            self._spent[self._mode] += now - self._t0
+            self._mode, self._t0, self.frames = mode, now, self._by_mode[mode]
+
+    def read(self) -> Optional[np.ndarray]:
+        with self._lock:
+            i = int((self._spent[self._mode] + time.time() - self._t0) / self.hold)
+            return self.frames[min(i, len(self.frames) - 1)]
+
+
 class VideoFileSource(CameraSource):
     """A recorded video played at normal speed, holding on the last frame."""
 

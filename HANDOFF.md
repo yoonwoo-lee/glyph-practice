@@ -14,6 +14,48 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-20 (23:50), Yoon Woo's Claude
+
+Yoon Woo ran checklist section 3c on the camera at about 22:00 and reported that every fix works
+("the product is working really well"). The session was not read back from the Mac. He then asked
+for features: the check mark, and student and editor modes. His answers to four questions: switch
+with a button on the page; box = find, circle = synonyms; a line down the margin = summary; the
+visualization mark is left for later. He asked for the switch to be clean, in the color scheme, with
+an animation that is "pretty cool" but "slightly minimalistic but techy".
+
+**Done** (`7fb0cad` check mark, then the modes commit; `main` and `camera-test`)
+- Check mark (student): `check` action. The model solves the problem in a `work` field first, then
+  gives a verdict. Card titled "Looks right" / "Not yet" / "Could not tell". Never the answer.
+- Target (student): `practice` action, one new problem of the same kind.
+- Modes in `symbols.json` (`modes`), `config.legend_for`, a prompt per mode, `POST /api/mode`,
+  `GLYPH_MODE`. Editor mode: box → `find` (other places outlined on the page from `box_2d`),
+  circle → `synonym`, margin line → `summarize`. No stuck nudge in editor mode.
+- First reads leave alone every mark on words and every check mark; "Read page now" answers them.
+- The page: Student | Editor switch beside the name, one switch animation (described under "Look" in
+  `CLAUDE.md`), marks list and bottom keys per mode, cards for the new answers.
+- Demo: the worksheet ends with a checked answer and a target; switching to Editor puts a page of
+  reading under the "camera" (`DemoSource`).
+- Checks: 77 pass (17 + 9 + 51).
+
+**Found**
+- With a key in `.env`, `--demo` sends the demo sheets to live Gemini (one request per mark). The
+  free one is `--demo --mock`. I had told him the plain demo was free, and corrected it.
+- In the demo, the old sheet's highlight outlines stayed on the new sheet for the three seconds
+  before it is taken in. Outlines are now hidden while the sheet on view cannot be matched to the
+  remembered one.
+
+**Not verified:** nothing built tonight has been sent to live Gemini or seen on the camera. The Mac
+could not be reached at the end; its clone is at `7fb0cad` (check mark only) and needs
+`git pull --ff-only origin camera-test`.
+
+`[open]` Yoon Woo's side: pull, then `docs/camera-test-checklist.md` section 3d (about 8 requests;
+the free key has about 10 a day). To see everything without a request: `bash start.sh --demo --mock`.
+`[open]` Skylar's side (business): the two modes need a line each in the demo story, and the names
+"Student" and "Editor" are Yoon Woo's working names: they are two strings in `symbols.json`.
+`[done]` (from 19:30) Section 3c: passed on the camera, by Yoon Woo's report.
+
+---
+
 ## 2026-11-20 (19:30), Yoon Woo's Claude
 
 Second camera run on live Gemini (`sessions/2026-11-20_175202` on the Mac, 8 looks, all answered by
