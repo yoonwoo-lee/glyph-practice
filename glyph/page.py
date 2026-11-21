@@ -108,7 +108,31 @@ PAPER_LEVELS = (0.38, 0.5, 0.62, 0.74)
 PAPER_SAT = 75  # paper is less colorful than this (0-255); wood and skin are well above
 
 
-def find_sheet(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int, float, bool]:
+def _paper_sat_in_view(sat: np.ndarray, val: np.ndarray, bright: float) -> Optional[float]:
+    """How colorful paper may be in this picture, when PAPER_SAT is too strict for it.
+
+    In a warm shadow (someone leaning over the sheet, so that only light bounced off a wooden
+    desk reaches it) white paper comes out beige: colorfulness 80 or so where PAPER_SAT allows
+    75, against 150 and more for the desk (Nov 21: the sheet was "not in view" while Yoon Woo
+    wrote on its last question). When the bright things in view fall into two clear groups by
+    colorfulness, the less colorful one being that kind of paper, the level halfway between the
+    two is returned. None when PAPER_SAT already fits, or when there is no such split (a bare
+    desk is one group, and must not be split into "paper" and "desk").
+    """
+    px = sat[val > PAPER_LEVELS[0] * bright]
+    if px.size < 2000:
+        return None
+    level, _ = cv2.threshold(px.reshape(-1, 1), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    low, high = px[px <= level], px[px > level]
+    if low.size < 0.08 * px.size or high.size < 0.08 * px.size:
+        return None
+    paper, desk = float(np.median(low)), float(np.median(high))
+    if desk - paper < 45 or paper > 110 or paper + 25 < PAPER_SAT:
+        return None
+    return min(135.0, 0.5 * (paper + desk))
+
+
+def find_sheet(frame: np.ndarray, info: Optional[dict] = None) -> Tuple[Optional[np.ndarray], bool, int, float, bool]:
     """Find the paper in the camera picture.
 
     Returns (corners, clean, touches, fill, cut_off). `clean` is False when something (a hand, a pen)
@@ -125,6 +149,9 @@ def find_sheet(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int, floa
     real edge of the paper: gray clothing or a gray laptop touching the sheet is otherwise taken
     for more paper (Nov 19: the page view included a sweatshirt and the hands in front of it).
     By brightness: the largest bright shape, which works on a dark desk in any light.
+
+    `info`, when given, receives "sat_limit": how colorful paper was allowed to be for the
+    answer (PAPER_SAT, or more for a sheet in a warm shadow; see _paper_sat_in_view).
     """
     h, w = frame.shape[:2]
     scale = 640.0 / w
@@ -133,28 +160,48 @@ def find_sheet(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int, floa
     hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
     sat, val = hsv[..., 1], hsv[..., 2]
     bright = float(np.percentile(val, 95))
-    best, rough = None, None
+    best, rough, rough_warm = None, None, None
     cut_off = False
-    for level in PAPER_LEVELS:
-        mask = ((sat < PAPER_SAT) & (val > level * bright)).astype(np.uint8) * 255
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
-        if level == PAPER_LEVELS[-1]:
-            cut_off = _runs_off_the_picture(mask)  # judged on paper alone, not on gray things beside it
-        quad, clean, touches, fill = _outline(mask, strict=False)
-        if quad is None:
-            continue
-        if rough is None:
-            rough = (quad, touches, fill)
-        if not clean or not _square_corners(quad):
-            continue
-        sides = _paper_edges(order_quad(quad), sat, val, bright, mask)
-        real = sum(1 for side in sides if side is True)
-        if real < 2 or any(side is False for side in sides):
-            continue
-        key = (real, cv2.contourArea(order_quad(quad)))  # most real edges, then the biggest
-        if best is None or key > best[0]:
-            best = (key, quad, touches, fill)
+    limits = [float(PAPER_SAT)]
+    warm = _paper_sat_in_view(sat, val, bright)
+    if warm is not None and warm > PAPER_SAT:
+        # Part or all of the sheet is in warm light. Look with both limits and take the bigger
+        # clean sheet: with the usual limit alone, the part still in white light can pass for
+        # a whole sheet (its fourth "edge" being where the shadow starts).
+        limits.append(warm)
+    used = limits[0]
+    for sat_limit in limits:
+        for level in PAPER_LEVELS:
+            mask = ((sat < sat_limit) & (val > level * bright)).astype(np.uint8) * 255
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
+            if level == PAPER_LEVELS[-1]:
+                cut_off = _runs_off_the_picture(mask)  # judged on paper alone, not on gray things beside it
+            quad, clean, touches, fill = _outline(mask, strict=False)
+            if quad is None:
+                continue
+            if rough is None:
+                rough = (quad, touches, fill)
+            if sat_limit != limits[0] and _sheet_like(quad, fill) and (rough_warm is None or cv2.contourArea(order_quad(quad)) > cv2.contourArea(order_quad(rough_warm[0]))):
+                rough_warm = (quad, touches, fill)
+            if not clean or not _square_corners(quad):
+                continue
+            sides = _paper_edges(order_quad(quad), sat, val, bright, mask, sat_limit)
+            real = sum(1 for side in sides if side is True)
+            if real < 2 or any(side is False for side in sides):
+                continue
+            key = (real, cv2.contourArea(order_quad(quad)))  # most real edges, then the biggest
+            if best is None or key > best[0]:
+                best, used = (key, quad, touches, fill), sat_limit
+    if rough_warm is not None and best is not None and cv2.contourArea(order_quad(rough_warm[0])) > 1.3 * best[0][1]:
+        # In warm light, with something on the sheet that spoils its outline (an arm): the part
+        # of the sheet still in white light is clean, but it is not the sheet. Say what is
+        # there, as unclear, so the outline that was trusted before stays in use.
+        if info is not None:
+            info["sat_limit"] = limits[-1]
+        return order_quad(rough_warm[0] / scale), False, rough_warm[1], rough_warm[2], cut_off
+    if info is not None:
+        info["sat_limit"] = used if best is not None else limits[-1]
     if best is not None:
         return order_quad(best[1] / scale), True, best[2], best[3], False
     by_light = _outline(_paper_by_brightness(small), strict=True)
@@ -167,6 +214,15 @@ def find_sheet(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool, int, floa
     else:
         return None, False, 0, 0.0, cut_off
     return order_quad(quad / scale), False, touches, fill, cut_off
+
+
+def _sheet_like(quad: np.ndarray, fill: float) -> bool:
+    """Roughly a sheet of paper, even with a hand or an arm reaching onto it: square corners,
+    the proportions of a sheet, most of the outline filled."""
+    o = order_quad(quad)
+    a = float(np.linalg.norm(o[1] - o[0]) + np.linalg.norm(o[2] - o[3]))
+    b = float(np.linalg.norm(o[3] - o[0]) + np.linalg.norm(o[2] - o[1]))
+    return fill >= 0.7 and _square_corners(quad) and 1.15 <= max(a, b) / max(min(a, b), 1.0) <= 1.6
 
 
 def _runs_off_the_picture(mask: np.ndarray) -> bool:
@@ -202,7 +258,7 @@ def _square_corners(quad: np.ndarray, low: float = 62.0, high: float = 118.0) ->
     return True
 
 
-def _paper_edges(o: np.ndarray, sat: np.ndarray, val: np.ndarray, bright: float, mask: np.ndarray) -> list:
+def _paper_edges(o: np.ndarray, sat: np.ndarray, val: np.ndarray, bright: float, mask: np.ndarray, sat_limit: float = PAPER_SAT) -> list:
     """For each side of an outline: True (a real edge of the paper), False, or "frame" when the
     side runs along the edge of the camera picture.
 
@@ -234,7 +290,7 @@ def _paper_edges(o: np.ndarray, sat: np.ndarray, val: np.ndarray, bright: float,
                 off += 1
                 continue
             total += 1
-            gray_outside = sat[yo, xo] < PAPER_SAT and val[yo, xo] > PAPER_LEVELS[0] * bright
+            gray_outside = sat[yo, xo] < sat_limit and val[yo, xo] > PAPER_LEVELS[0] * bright
             if mask[yi, xi] and (not gray_outside or float(val[yo, xo]) < 0.72 * float(val[yi, xi])):
                 good += 1
         if off >= 8:
@@ -688,6 +744,40 @@ def cover_mask(
     return remove_small(m, int(config.COVER_MIN_FRAC * m.size))
 
 
+def see_through(cover: np.ndarray, old_ink: np.ndarray, ink_now: np.ndarray, min_old: int = 300, share: float = 0.7, window: int = 81) -> np.ndarray:
+    """A cover mask without the parts through which the remembered print still shows.
+
+    A hand, an arm or a book hides what is printed under it. Light does not: a shadow that
+    changes the color of the paper as well as its brightness (someone leaning over a sheet on a
+    wooden desk leaves it lit by warm light off the wood) looks like an object to cover_mask,
+    by color, yet every printed word under it is still where it was.
+
+    Each connected piece of the mask is judged as a whole: with a fair amount of old ink under
+    it, most of it still to be seen, the piece is light. A piece of light is dropped, except
+    where the print under it has gone: that is a hand inside the shadow. Every other piece is
+    kept whole, edges included (over blank paper there is nothing to tell by, and the outline of
+    a fingertip must never pass for writing).
+    """
+    if cv2.countNonZero(cover) == 0:
+        return cover
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(cover, connectivity=8)
+    still = cv2.bitwise_and(old_ink, cv2.dilate(ink_now, np.ones((9, 9), np.uint8)))
+    old_in = np.bincount(labels[old_ink > 0], minlength=n)
+    still_in = np.bincount(labels[still > 0], minlength=n)
+    light = (old_in >= min_old) & (still_in >= share * old_in)
+    light[0] = False
+    if not light.any():
+        return cover
+    # Where, inside the light, has the print gone? Counted over a window a couple of lines high.
+    k = (window, window)
+    old_n = cv2.boxFilter((old_ink > 0).astype(np.float32), -1, k, normalize=False)
+    still_n = cv2.boxFilter((still > 0).astype(np.float32), -1, k, normalize=False)
+    hidden = (old_n >= 40) & (still_n < 0.5 * old_n)
+    out = cover.copy()
+    out[light[labels] & ~hidden] = 0
+    return remove_small(cv2.morphologyEx(out, cv2.MORPH_OPEN, _K15), int(config.COVER_MIN_FRAC * out.size)) if cv2.countNonZero(out) else out
+
+
 def remove_small(mask: np.ndarray, min_area: int) -> np.ndarray:
     """Drop specks smaller than min_area pixels without thinning real strokes."""
     n, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
@@ -707,6 +797,78 @@ def ink_groups(mask: np.ndarray, gap: int = 25) -> list:
     n, _, stats, _ = cv2.connectedComponentsWithStats(joined, connectivity=8)
     half = gap // 2
     return [(int(x) + half, int(y) + half, max(1, int(w) - 2 * half), max(1, int(h) - 2 * half)) for x, y, w, h, _ in stats[1:n]]
+
+
+def mark_pieces(fresh: np.ndarray, gap: int = 25) -> list:
+    """The separate things drawn in a mask of new ink, each as {"box": (x0, y0, x1, y1), "px",
+    "hole"}. `hole` is how much of its box the piece shuts in: a circle drawn round a word or a
+    letter shuts in most of it, a check mark or a spark nothing."""
+    if cv2.countNonZero(fresh) == 0:
+        return []
+    joined = cv2.dilate(fresh, np.ones((gap, gap), np.uint8))
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(joined, connectivity=8)
+    out = []
+    for i in range(1, n):
+        x, y, w, h = (int(v) for v in stats[i][:4])
+        own = ((labels[y : y + h, x : x + w] == i) & (fresh[y : y + h, x : x + w] > 0)).astype(np.uint8) * 255
+        pts = cv2.findNonZero(own)
+        if pts is None:
+            continue
+        bx, by, bw, bh = cv2.boundingRect(pts)
+        tight = own[by : by + bh, bx : bx + bw]
+        # Close the little gap where a loop's stroke starts and ends, then see what cannot be
+        # reached from outside the box.
+        shut = cv2.copyMakeBorder(cv2.morphologyEx(tight, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8)), 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+        cv2.floodFill(shut, None, (0, 0), 255)
+        inside = shut.size - cv2.countNonZero(shut)
+        out.append({"box": (x + bx, y + by, x + bx + bw, y + by + bh), "px": int(cv2.countNonZero(tight)), "hole": inside / float(max(1, bw * bh))})
+    return out
+
+
+def pick_mark(fresh: np.ndarray, action: str) -> Optional[Tuple[int, int, int, int]]:
+    """Which of the things just drawn is the mark that was answered: its box (x0, y0, x1, y1).
+
+    One look often holds more than one thing: the letter a student circled and the check mark
+    drawn after it, a line of working and a spark. The model says what the mark means, not
+    where it is, so the mark is picked by its shape: a check mark and a spark are open strokes
+    about as tall as wide, a target and a circled question mark are closed rings, an underline
+    is long and flat, a box or a circle round a word shuts the word in. None when there is no
+    new ink; the box of everything when nothing fits.
+    """
+    pieces = [p for p in mark_pieces(fresh) if max(p["box"][2] - p["box"][0], p["box"][3] - p["box"][1]) >= 10]
+    if not pieces:
+        return mask_bbox(fresh)
+
+    def size(p):
+        x0, y0, x1, y1 = p["box"]
+        return x1 - x0, y1 - y0
+
+    def symbol_sized(p):
+        w, h = size(p)
+        return 14 <= max(w, h) <= 220 and min(w, h) >= 10 and max(w, h) <= 3 * min(w, h)
+
+    def biggest(ps):
+        return max(ps, key=lambda p: float(np.hypot(*size(p))))["box"]
+
+    ring = [p for p in pieces if p["hole"] >= 0.2]
+    open_ = [p for p in pieces if p["hole"] < 0.2]
+    if action in ("check", "hint"):
+        fit = [p for p in open_ if symbol_sized(p)]
+    elif action in ("practice", "explain"):
+        fit = [p for p in ring if symbol_sized(p)]
+    elif action == "define":
+        fit = [p for p in open_ if size(p)[0] >= 3 * size(p)[1]]
+    elif action in ("find", "synonym"):
+        fit = ring
+    elif action == "summarize":
+        fit = [p for p in open_ if size(p)[1] >= 3 * size(p)[0]]
+    else:
+        fit = []
+    if fit:
+        return biggest(fit)
+    if len(pieces) == 1:
+        return pieces[0]["box"]
+    return mask_bbox(fresh)
 
 
 def marks_only(mask: np.ndarray, gap: int = 25, min_side: int = 14, min_px: int = 30, edge: int = 16) -> np.ndarray:

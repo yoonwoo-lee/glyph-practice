@@ -69,7 +69,8 @@ with fake answers so everything else can still be tested.
    pick 0.5x. All four corners should show, with some desk around them, and the text should be sharp.
 4. In the browser, click **Camera**. The sheet should have a white outline with a pink dot on each
    corner. Click **Page**: you should see the sheet flat, with blue corner brackets once it is locked
-   on. If the text is sideways or upside down, click **Rotate** until it is upright.
+   on. If the text is sideways or upside down, click **Rotate** until it is upright
+   (Glyph remembers the turn for the next start).
 5. A new sheet is read once in full as soon as it is steady, so marks already on it get answered.
    Then try each mark from the table above. **Lift your hand off the sheet** after drawing. A pink
    frame labelled "Reading" closes on the mark and a pink bar sweeps the page; the frame turns blue
@@ -178,10 +179,11 @@ python -m tests.test_tools
   sheet, model errors, the "keep going" card, the boxes on the camera view.
 - `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
   a tilted camera, sensor grain and flicker.
-- `test_tools` (51): model fallbacks and usage limits, choosing the camera, a wooden desk with a
+- `test_tools` (57): model fallbacks and usage limits, choosing the camera, a wooden desk with a
   shadow, gray clothing beside the sheet, a bare desk, a sliding or turned sheet, shadows, blank or
   dark views, a mark answered once and a second mark answered again, the check mark (verdict, a
-  second try, a tick already on the sheet), the two modes (each mode's marks, switching, the editor
+  second try, a check drawn before the sheet was taken in, a sheet covered in ticks), a sheet in a
+  warm shadow, the close picture of the mark on the card, the two modes (each mode's marks, switching, the editor
   demo, found places, no "keep going" card in editor mode), page numbers, study guide by
   page, timing log, the tuning page, the name setting.
 

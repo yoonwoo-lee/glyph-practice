@@ -230,11 +230,14 @@ def build_reading_steps(corners=None) -> Dict[str, np.ndarray]:
 TILTED = [[640, 150], [1290, 95], [1420, 1010], [520, 960]]  # camera off to one side, sheet turned
 
 
-def desk_scene(page: np.ndarray, shift=(0, 0), size=(1920, 1080), corners=None) -> np.ndarray:
-    """Put the sheet on a dark desk, seen slightly from the side."""
+WOOD = (70, 130, 200)  # a wooden desk under a lamp, as on Yoon Woo's camera: bright and orange
+
+
+def desk_scene(page: np.ndarray, shift=(0, 0), size=(1920, 1080), corners=None, desk_color=(52, 66, 84)) -> np.ndarray:
+    """Put the sheet on a desk (a dark one unless a color is given), seen slightly from the side."""
     w, h = size
     desk = np.zeros((h, w, 3), np.uint8)
-    desk[:] = (52, 66, 84)
+    desk[:] = desk_color
     grain = np.random.RandomState(7).randint(-6, 7, (h, w, 1)).astype(np.int16)
     desk = np.clip(desk.astype(np.int16) + grain, 0, 255).astype(np.uint8)
     sx, sy = shift
@@ -247,10 +250,18 @@ def desk_scene(page: np.ndarray, shift=(0, 0), size=(1920, 1080), corners=None) 
     return desk
 
 
-def add_hand(scene: np.ndarray) -> np.ndarray:
+def warm_shadow(page: np.ndarray, top: int = 0) -> np.ndarray:
+    """The flat sheet with a warm shadow over it from `top` down: darker, and beige where it was
+    white. What a sheet looks like when someone leans over it and only light bounced off a
+    wooden desk reaches the paper (Nov 21: colorfulness 82 where blank paper has about 30)."""
+    out = page.copy()
+    out[top:] = np.clip(out[top:].astype(np.float32) * np.array([0.49, 0.61, 0.72], np.float32), 0, 255).astype(np.uint8)
+    return out
+
+
+def add_hand(scene: np.ndarray, skin=(128, 160, 208)) -> np.ndarray:
     """A forearm and hand reaching over the lower half of the sheet."""
     out = scene.copy()
-    skin = (128, 160, 208)
     cv2.line(out, (1900, 1070), (1080, 720), skin, 170, cv2.LINE_AA)
     cv2.ellipse(out, (1000, 690), (170, 120), 20, 0, 360, skin, -1, cv2.LINE_AA)
     cv2.line(out, (1500, 950), (1900, 1075), (70, 60, 60), 180, cv2.LINE_AA)  # sleeve

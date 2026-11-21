@@ -75,13 +75,20 @@ def build_system_prompt(legend: dict) -> str:
     mark_lines = "\n".join(f'- "{k}": {config.MARKS[k]} -> action "{v}"' for k, v in marks.items())
     actions = config.actions_of(dict(legend, marks=marks))
     checks = "check" in actions
-    # A sheet seen for the first time: only symbols that ask about the page are answered. Marks on
-    # words, and ticks, were drawn some other day (Yoon Woo, Nov 20), unless the student asks.
+    # A sheet seen for the first time: symbols are answered. Marks on words were drawn some other
+    # day (Yoon Woo, Nov 20), unless the student asks.
     first = [s["name"] for s in legend.get("symbols", []) if s["action"] != "check"]
-    left = list(marks) + (["check mark"] if checks else [])
+    left = list(marks)
     first_look = "Report only these hand-drawn symbols, where you can see them clearly: {}.".format(
         ", ".join(first) if first else "(none)"
     )
+    if checks:
+        # Nov 21: a check drawn in the first seconds, before the sheet had been taken in, got no
+        # answer. A sheet covered in ticks is another matter: those are a teacher's.
+        first_look += (
+            "\nCheck marks on a first look: when there are three or fewer on the sheet, the student has just drawn\n"
+            "them, so answer each one. More than three means the sheet was marked before: report none of them."
+        )
     if left:
         first_look += (
             "\nLeave these alone on a first look, because they were drawn before: {}. The one exception is when the note\n"
@@ -346,9 +353,16 @@ class Brain:
         ready = [m for m in self.models if self._resting.get(m, 0.0) <= now]
         if self.models and not ready:
             raise self._quota_error(now)
+        slow = 0
         for attempt in range(2):
             again = []
             for model in ready:
+                if slow >= 2:
+                    # Two models in a row gave no answer in time: that is the connection, or
+                    # Gemini as a whole, not the models. Asking the others would cost two more
+                    # requests and twenty more seconds (Nov 21: four timeouts, 39 s). They go
+                    # first on the next try, since the slow ones have been moved to the back.
+                    break
                 hint = None
                 try:
                     answer = ask(model)
@@ -374,10 +388,12 @@ class Brain:
                     self._quota_hits[model] = hits
                     rest = hint if hint else 60.0 * 2 ** (hits - 1)
                     self._resting[model] = time.time() + max(5.0, min(900.0, rest))
-                elif kind == "slow" and model in self.models and len(self.models) > 1:
-                    # Too slow right now: try it last from here on, so it stops holding up answers.
-                    self.models.remove(model)
-                    self.models.append(model)
+                elif kind == "slow":
+                    slow += 1
+                    if model in self.models and len(self.models) > 1:
+                        # Too slow right now: try it last from here on, so it stops holding up answers.
+                        self.models.remove(model)
+                        self.models.append(model)
                 elif kind == "busy":
                     again.append(model)
             if not again:

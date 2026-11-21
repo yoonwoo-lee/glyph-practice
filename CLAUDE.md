@@ -81,7 +81,7 @@ Walk Skylar through these in order, checking each one works before moving on.
    demo sheets to live Gemini and spends requests: `--demo --mock` is the free one.)
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 17 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 77 checks in total.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 83 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -188,12 +188,29 @@ All fixed on Nov 19 and none of them came back on Nov 20.
 **Nov 20, about 22:00:** Yoon Woo ran section 3c of the checklist on the camera and reported that all
 the fixes work ("the product is working really well"). The session was not read back from the Mac.
 
-**Built and covered by the checks (77 pass: 17 + 9 + 51), but not yet seen on the real camera or
+**Nov 21, 00:20, the check mark on the camera with live Gemini** (the Mac was still on the check-mark
+commit, without the modes): two checks answered in 2 to 3 s, both verdicts right ("Looks right" for
+Q12, "Not yet" for Q13, with sound working in the saved `looks/*_check.txt`). Two got no answer, and
+the cause of each was found in the saved pictures and fixed the same night (replayed, not yet re-run
+on the camera):
+- Q11: drawn in the first 25 seconds, with his hand on the sheet, before the sheet had been taken
+  in. Checks already on a sheet were left alone then. Now up to three are answered on a first look.
+- Q14, the last question: he leaned over the sheet to write at the bottom of the page, and his
+  shadow turned the paper beige (colorfulness 32 → 82; blank paper had to be under 75). "No sheet in
+  view", and when the sheet was found again the new marks counted as old. Now a sheet in a warm
+  shadow is still found, the shadow is not taken for an object, and the marks are read.
+- The picture on the card showed everything between his circled letter and the check, older checks
+  included. Now it is a close picture of the one mark.
+- A second start at 00:25: the first read timed out on all four models (39 s, four requests). Now
+  two timeouts in a row end the round. That start also had the page on its side: the turn made with
+  Rotate is now kept for the next start (`sessions/view.json`).
+
+**Built and covered by the checks (83 pass: 17 + 9 + 57), but not yet seen on the real camera or
 answered by live Gemini:**
-- Everything built Nov 20 night: the check mark, the target, the two modes, box / circle / margin
-  line, the places a boxed word was found drawn on the page. The prompts for these have never been
-  sent to Gemini. The riskiest are find (it relies on the model returning `box_2d` positions for
-  words in small print) and check (a wrong "Looks right" is worse than no answer).
+- The Nov 21 fixes above.
+- From Nov 20 night: the target, the two modes, box / circle / margin line, the places a boxed word
+  was found drawn on the page. The prompts for these have never been sent to Gemini. The riskiest is
+  find (it relies on the model returning `box_2d` positions for words in small print).
 - Whether a small check mark alone is enough ink for a look (a look needs 120 px; a spark has about
   twice the strokes of a tick the same size), and whether a box or circle drawn tight round print
   counts as new ink.
@@ -234,7 +251,13 @@ answered by live Gemini:**
 - A full page of small print at 0.5x and 1080p is near the limit of what the camera resolves.
 - Glare directly on a highlight splits or hides it.
 - The page view updates a few times a second (each frame is analysed); the camera view is smooth.
-- Text orientation is not detected: the user clicks Rotate.
+- Text orientation is not detected: the user clicks Rotate (once: the turn is kept between runs).
+- Marks drawn while Glyph is not following the sheet (taken off the desk and written on, or lost
+  from view for some other reason) are part of the page when it comes back, and are not answered.
+  Only the first look at a new sheet answers marks that were already there.
+- On Yoon Woo's desk the sheet nearly fills the camera picture top to bottom (940 of 1080 pixels on
+  Nov 21, and one corner 20 pixels outside it) and the laptop takes the left third. It works, but a
+  nudge puts the sheet "off edge". More room around the sheet would help.
 
 ## Stack
 
@@ -270,14 +293,27 @@ answered by live Gemini:**
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
+- (Nov 21) Paper in a warm shadow. `find_sheet` looks a second time with a higher colorfulness limit
+  when the bright things in view fall into two clear groups (paper around 80, a wooden desk around
+  160) and takes the bigger clean sheet; a bare desk is one group and is never split. The part of a
+  shaded sheet still in white light is not taken for the sheet. `see_through` drops from the "covered"
+  mask whatever the old print still shows through (light), and keeps what hides it (a hand, also a
+  hand inside the shadow). New highlights wait while such light is on the sheet: it throws the color
+  balance, and print in the white part passed for pale blue highlighter.
+- (Nov 21) The picture on a card is a close 3:2 view of the one mark that was answered, picked from
+  the new ink by its shape (`pick_mark`): open strokes for a check or a spark, a closed ring for a
+  target or a circled question mark, long and flat for an underline. The margin line keeps a wide view.
+- (Nov 21) Two timeouts in a row end a round of model calls; the models not yet asked go first next time.
 - (Nov 20 night) The model is told only about the marks of the mode that is on, and anything else
   it returns is dropped (`config.legend_for`, `clean_result`). A look carries the mode it was sent in.
 - A check: the model first writes its own solution in a `work` field (thinking is off, so this is
   where it reasons), then a verdict. `work` is saved in `sessions/<ts>/looks/NNN_check.txt` and never
   sent to the web page. No clear verdict counts as "unsure", never as right.
-- Marks on words (underline, box, circle, margin line) and check marks already on a sheet when it
-  comes into view are left alone; the prompt says so and the engine drops them. "Read page now"
-  answers them (the note sent with the pictures says the student asked).
+- Marks on words (underline, box, circle, margin line) already on a sheet when it comes into view
+  are left alone; the prompt says so and the engine drops them. "Read page now" answers them (the
+  note sent with the pictures says the student asked). Check marks: up to three on a first look are
+  answered (they were drawn just now, perhaps before the sheet was taken in); more than three is a
+  marked sheet, and none are.
 - A second spark, question mark, check or target by the same problem is answered again; a mark on a
   word is answered once.
 - Find: the model returns `places` as `box_2d` [ymin, xmin, ymax, xmax] on a 0 to 1000 scale of the
@@ -323,9 +359,10 @@ Key design choices:
    later"; a concept map of boxes and arrows drawn by the page from the model's list was the
    suggestion), and whatever the "and more" in his message was (ask).
 
-1. **Camera run on live Gemini of the Nov 20 night features** (`docs/camera-test-checklist.md`,
-   section 3d, about 8 requests). The four fixes of section 3c passed on the camera (his report).
-   Also still unseen on the camera: the study guide, the nudge.
+1. **Camera run on live Gemini of the Nov 20 night features and the Nov 21 fixes**
+   (`docs/camera-test-checklist.md`, section 3d, about 10 requests). The check mark has answered on
+   the camera (Nov 21); the target and everything in editor mode have not. The four fixes of section
+   3c passed on the camera (his report). Also still unseen on the camera: the study guide, the nudge.
 2. **Stuck nudge** — built Nov 19 (no writing for `GLYPH_STUCK_SECONDS`, 90 by default → one "keep going"
    card, no model call). Still open from the idea: noticing the student pick up their phone.
 3. **Mistake catcher + mistake log/calendar** — spot errors in written work, keep a running log over time.

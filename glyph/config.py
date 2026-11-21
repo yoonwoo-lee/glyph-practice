@@ -160,6 +160,28 @@ MARKS = {
 START_MODE = (os.getenv("GLYPH_MODE") or "student").strip().lower()
 
 
+# How the page view was last turned with the Rotate button, kept between runs: the camera and the
+# desk stay where they are, so a restart should not put the page on its side again.
+VIEW_FILE = ROOT / "sessions" / "view.json"
+
+
+def saved_rotation() -> int:
+    """Degrees (0, 90, 180, 270) the page view was turned by when Rotate was last clicked."""
+    try:
+        turn = int(json.loads(VIEW_FILE.read_text(encoding="utf-8")).get("rotate", 0))
+    except (OSError, ValueError, AttributeError, TypeError):
+        return 0
+    return turn if turn in (0, 90, 180, 270) else 0
+
+
+def save_rotation(degrees: int) -> None:
+    try:
+        VIEW_FILE.parent.mkdir(parents=True, exist_ok=True)
+        VIEW_FILE.write_text(json.dumps({"rotate": int(degrees) % 360}), encoding="utf-8")
+    except OSError:
+        pass
+
+
 def load_legend() -> dict:
     """symbols.json maps each symbol, mark and highlight color to what it does, and says which
     of them each mode uses."""

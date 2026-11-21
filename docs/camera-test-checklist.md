@@ -104,6 +104,15 @@ Student mode (a sheet with a problem you have solved on it):
 - [ ] Draw a **target** (a small circle inside a bigger one) next to the problem: a new problem of
       the same kind, with no solution.
 
+Added Nov 21 (what went wrong in that night's run):
+- [ ] Start Glyph and draw a check next to an answer straight away, before "Watching" appears: it is
+      answered when the sheet has been taken in.
+- [ ] Lean over the sheet so that your shadow falls across it, and draw a check near the bottom of
+      the page. The status must not say "No sheet in view", and the check is answered when you lift
+      your hand.
+- [ ] The picture on each card shows the one mark, close up, not the marks around it.
+- [ ] Stop Glyph and start it again: the page is the same way up as before, without clicking Rotate.
+
 Click **Editor** at the top left (the switch itself costs nothing), and put down a page of print:
 - [ ] Draw a **box** round a word that appears several times: the other places are outlined on the
       page view, and the card says how many. Check the outlines sit on the right words.

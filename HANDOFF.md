@@ -14,6 +14,48 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-21 (01:10), Yoon Woo's Claude
+
+Yoon Woo tested the check mark on the camera with live Gemini at 00:20 (`sessions/2026-11-21_002011`
+and `_002520` on the Mac). His Mac was on `7fb0cad` (check mark, no modes), which is why he saw no
+Editor switch. He reported: the check worked at first and "stopped working on the last question",
+one question got nothing, the picture on the card showed several marks, it "only reads and responds
+sometimes".
+
+**Found (logs and pictures)**
+- Two checks answered by `gemini-3.5-flash-lite` in 2.0 and 3.0 s, both verdicts right, with sound
+  working in `looks/*_check.txt`. The check prompt works.
+- Q11: its check was drawn at 0:19 with his hand on the sheet; the sheet was taken in at 0:25 and
+  the first full read left check marks alone (my rule of the evening before).
+- Q14: from 1:19 the paper's colorfulness was 82 (32 before) and its brightness 160 to 180 (211):
+  his shadow, with warm light off the wooden desk. `find_sheet` needs under 75, so "No sheet in
+  view"; the sheet was found again later as a returning sheet, and its new marks were old ink.
+  He drew four checks for Q14 in all.
+- The card's picture was a window at least half the page wide round all the new ink.
+- Second start: all four models timed out on the first read (39 s, four requests). Page on its side.
+- The sheet fills the camera picture: 940 of 1080 pixels high, one corner 20 px outside it.
+
+**Done** (one commit after `fc69b27`; `main` and `camera-test`)
+- `find_sheet`: second colorfulness limit from the picture itself when paper and desk form two
+  groups; bigger clean sheet wins; the white part of a shaded sheet is not the sheet.
+- `see_through`: light (old print still showing) is not a cover; a hand in the shadow still is.
+- Highlights wait while colored light is on the sheet.
+- First look: up to three check marks are answered; more than three, none.
+- `pick_mark` and a close 3:2 picture of the one mark on the card.
+- Two timeouts in a row end the round. Rotate's turn is kept in `sessions/view.json`.
+- Replay of the saved pictures of that session: all four questions get a look and an answer.
+- Checks: 83 pass (17 + 9 + 57).
+
+**Not verified:** none of this on the camera. Editor mode and the target still have never been sent
+to live Gemini.
+
+`[open]` Yoon Woo's side: restart Glyph (the Mac is pulled), then the Nov 21 lines and the editor
+lines of `docs/camera-test-checklist.md` section 3d. More desk around the sheet in the camera
+picture would make it steadier.
+`[done]` (from 23:50) Pull the modes onto the Mac.
+
+---
+
 ## 2026-11-20 (23:50), Yoon Woo's Claude
 
 Yoon Woo ran checklist section 3c on the camera at about 22:00 and reported that every fix works

@@ -43,8 +43,10 @@ from .page import (
     strength_to_mask,
     make_focus_crop,
     mask_bbox,
+    pick_mark,
     page_gray,
     page_saturation,
+    see_through,
     remove_small,
     short_underline,
     page_matrix,
@@ -73,6 +75,7 @@ NAMED = {"define": "Definition", "find": "Find", "synonym": "Synonyms"}  # title
 # A second mark by the same problem or passage may be answered again: a stronger hint, another
 # try at the answer, one more practice problem. A mark on a word is answered once.
 REPEATABLE = ("hint", "explain", "check", "practice")
+FIRST_LOOK_CHECKS = 3  # check marks already on a sheet when it is first seen: this many are answered
 
 # Shown when the student has not written anything for a while. Never an answer, no model call.
 NUDGES = [
@@ -182,6 +185,8 @@ class Engine:
         self._outline_held_since: Optional[float] = None  # since when a moved outline has been held back
         self._check_alignment = False
         self._hl = None  # (highlights found, their mask) from the last time they were looked for
+        self._hl_clean = None  # the same, from the last time the sheet was in ordinary light
+        self._tinted_until = 0.0  # colored light (a warm shadow) lies on the sheet until then
         self._recent_frames: deque = deque(maxlen=8)  # the last second of camera pictures
         self._bursts_saved = 0
         self._hl_age = 0
@@ -315,6 +320,12 @@ class Engine:
                 log.exception("tick failed")
             time.sleep(max(0.01, self.settings.tick - (time.time() - t0)))
 
+    def _calm_highlights(self, page: np.ndarray):
+        """The highlights as they were found the last time the sheet was in ordinary light."""
+        if self._hl_clean is not None and self._hl_clean[1].shape == page.shape[:2]:
+            return self._hl_clean
+        return [], np.zeros(page.shape[:2], np.uint8)
+
     def _reset_page(self) -> None:
         self.baseline = None
         self.base_strength = None
@@ -330,6 +341,7 @@ class Engine:
         self._page_unnamed = True
         self._in_place = "same"
         self._found = None
+        self._hl_clean = None
         self.store.new_page()
 
     def _forget_sheet(self) -> None:
@@ -359,7 +371,8 @@ class Engine:
         stable = stable_for >= s.settle
         self._recent_frames.append(frame)
 
-        quad, clean, touches, fill, cut_off = find_sheet(frame)
+        seen: dict = {}
+        quad, clean, touches, fill, cut_off = find_sheet(frame, seen)
         outline_unsure = False
         if stable_for == 0.0:
             self._quads.clear()  # the picture moved: corners seen before no longer apply
@@ -450,7 +463,10 @@ class Engine:
         if quad is not None and clean:
             papery = True
         else:
-            papery = paper_share(page, self._paper_sat) >= (0.45 if self.quad is not None else 0.8)
+            # (In a warm shadow the paper is more colorful than usual: go by what the picture as a
+            # whole says paper looks like just now. Only for a sheet already being followed.)
+            limit = max(self._paper_sat, float(seen.get("sat_limit", PAPER_SAT))) if self.baseline is not None else self._paper_sat
+            papery = paper_share(page, limit) >= (0.45 if self.quad is not None else 0.8)
         if papery:
             self._no_sheet_since = None
         elif self._no_sheet_since is None:
@@ -484,6 +500,14 @@ class Engine:
         else:
             hl_new = False
         regions, hl_mask = self._hl
+        # Colored light on part of the sheet (a warm shadow) throws the color balance, and print in
+        # the part still in white light then passes for pale blue highlighter. While such light is
+        # on the sheet, go by the highlights found before it came; new ones wait until it has gone.
+        if float(seen.get("sat_limit", PAPER_SAT)) > PAPER_SAT:
+            self._tinted_until = max(self._tinted_until, now + 1.0)
+        tinted = now < self._tinted_until
+        if tinted:
+            regions, hl_mask = self._calm_highlights(page)
         strength_now = ink_strength(page)
         if self._check_alignment:
             self._check_alignment = False
@@ -521,6 +545,17 @@ class Engine:
             # Anything wide lying on the sheet? Ignore the ink around it.
             sat_now = page_saturation(page)
             cover = cover_mask(page_gray(page), self.base_gray, hl_mask, sat_now, self.base_sat)
+            # Light of another color (a warm shadow) passes for an object by its color, but the
+            # print under it can still be read. An object hides the print.
+            solid = cv2.countNonZero(cover)
+            cover = see_through(cover, self.baseline, ink)
+            if solid - cv2.countNonZero(cover) > 0.04 * cover.size:
+                self._tinted_until = now + 1.5
+                if not tinted:  # it has just arrived: what was found in this picture cannot be trusted
+                    tinted = True
+                    regions, hl_mask = self._calm_highlights(page)
+            elif not tinted and hl_new:
+                self._hl_clean = self._hl
             covered = cv2.countNonZero(cover) > 0
             # Ignore ink for a good finger's width around whatever lies on the sheet: the edge of a
             # hand and the shadow right under it are not writing.
@@ -912,6 +947,11 @@ class Engine:
             if result.get("triggers"):
                 self._answer_times.append(timing["total_s"])
             shown = 0
+            # More than three check marks on a sheet seen for the first time: it was marked before
+            # (by a teacher, or last week). Up to three were drawn just now, perhaps in the seconds
+            # before the sheet was taken in, and are answered (Nov 21: the first check of a
+            # session got no answer).
+            old_ticks = job["full"] and sum(1 for t in result.get("triggers", []) if t["action"] == "check") > FIRST_LOOK_CHECKS
             for t in result.get("triggers", []):
                 key = (t["action"], _norm(t["target"]))
                 page_no = job.get("page_no") or 0
@@ -919,10 +959,9 @@ class Engine:
                     # A sheet that comes into view with underlines on it was underlined some other
                     # day: those are left alone (Yoon Woo, Nov 20). Symbols on it are answered, and
                     # so is everything when the student asks for the sheet to be read.
-                    # The same goes for every mark on words (a box, a circle, a margin line) and
-                    # for check marks: a tick may be a teacher's, and checking every tick on a
-                    # marked sheet is a long answer.
-                    if (t.get("kind", "symbol") != "symbol" or t["action"] == "check") and job["reason"] != "you asked":
+                    # The same goes for every mark on words (a box, a circle, a margin line), and
+                    # for the check marks of a sheet that is covered in them.
+                    if (t.get("kind", "symbol") != "symbol" or (t["action"] == "check" and old_ticks)) and job["reason"] != "you asked":
                         continue
                     # Reading a whole sheet finds every mark on it, old ones too. One that was
                     # answered before, on any sheet, is the same mark seen again.
@@ -971,7 +1010,7 @@ class Engine:
                             pass
                 self.session.add_event(
                     t["action"], title, body, target=t["target"], symbol=t.get("symbol"),
-                    seconds=timing["total_s"], model_seconds=timing["model_s"], snip=self._snip(job),
+                    seconds=timing["total_s"], model_seconds=timing["model_s"], snip=self._snip(job, t["action"]),
                     page=job.get("page_no"), **extra
                 )
                 shown += 1
@@ -1006,38 +1045,38 @@ class Engine:
                 # in case it was a symbol caught half-drawn.
                 self.pending.append((job["fresh"], now, job["strength"]))
 
-    def _snip(self, job: dict) -> Optional[int]:
-        """The piece of paper around the mark that was just answered.
+    def _snip(self, job: dict, action: str = "") -> Optional[int]:
+        """A close picture of the one mark that was just answered, for its card.
 
-        A 3:2 window that always contains the mark and is slid, within that
-        limit, to take in as much nearby writing as possible, so a spark drawn
-        in the margin is shown next to the problem it belongs to.
+        A 3:2 window drawn close round that mark (Yoon Woo, Nov 21: the picture took in his
+        circled letter, the check after it and two older checks; he asked for it to show just
+        the one). An underline is shown with the word above it. A line down the margin is the
+        exception: it means the passage beside it, so that picture stays wide.
         """
         box = job.get("box")
         if box is None:
             return None
-        page, ink = job["page"], job["ink"]
+        page, fresh = job["page"], job.get("fresh")
         ph, pw = page.shape[:2]
-        x0, y0, x1, y1 = box
-        w = int(min(max(x1 - x0, 1.5 * (y1 - y0), 0.5 * pw), pw, ph * 1.5))
-        h = int(w / 1.5)
-
-        def best(lo: int, hi: int, weight: np.ndarray, size: int) -> int:
-            lo, hi = max(0, lo), min(hi, len(weight) - size)
-            if hi <= lo:
-                return max(0, min(lo, len(weight) - size))
-            run = np.concatenate([[0.0], np.cumsum(weight)])
-            starts = np.arange(lo, hi + 1)
-            return int(starts[np.argmax(run[starts + size] - run[starts])])
-
-        top = best(y1 - h, y0, ink.sum(axis=1, dtype=np.float64), h)
-        left = best(x1 - w, x0, ink[top : top + h].sum(axis=0, dtype=np.float64), w)
-        cut = page[top : top + h, left : left + w]
+        mark = pick_mark(fresh, action) if fresh is not None else None
+        if mark is None or action == "summarize":
+            x0, y0, x1, y1 = box if mark is None or action != "summarize" else (0, mark[1] - 20, pw, mark[3] + 20)
+            w = float(min(max(x1 - x0, 1.5 * (y1 - y0), 0.5 * pw), pw, ph * 1.5))
+        else:
+            x0, y0, x1, y1 = mark
+            if action == "define":
+                y0 -= 38  # the underlined word stands above its line
+            pad = min(60.0, max(22.0, 0.45 * max(x1 - x0, y1 - y0)))
+            w = float(min(max(x1 - x0 + 2 * pad, 1.5 * (y1 - y0 + 2 * pad), 170.0), pw, ph * 1.5))
+        h = w / 1.5
+        left = int(round(min(max(0.0, 0.5 * (x0 + x1) - 0.5 * w), pw - w)))
+        top = int(round(min(max(0.0, 0.5 * (y0 + y1) - 0.5 * h), ph - h)))
+        cut = page[top : top + int(h), left : left + int(w)]
         if cut.size == 0:
             return None
-        if cut.shape[1] > 540:
-            cut = cv2.resize(cut, (540, 360), interpolation=cv2.INTER_AREA)
-        return self.session.save_snip(_jpg(cut, 86))
+        if cut.shape[1] != 540:
+            cut = cv2.resize(cut, (540, 360), interpolation=cv2.INTER_AREA if cut.shape[1] > 540 else cv2.INTER_CUBIC)
+        return self.session.save_snip(_jpg(cut, 88))
 
     def _already_answered(self, key: Tuple[str, str], page_no: Optional[int] = None) -> bool:
         """Was this action already taken about these words (on this page, if one is given)?"""

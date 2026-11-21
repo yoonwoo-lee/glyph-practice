@@ -30,7 +30,7 @@ def main() -> int:
     ap.add_argument("--source", help="video file, image, or folder of images to replay")
     ap.add_argument("--hold", type=float, default=7.0, help="seconds per image for --demo / image folders")
     ap.add_argument("--mock", action="store_true", help="fake answers instead of the vision model")
-    ap.add_argument("--rotate", type=int, default=0, choices=[0, 90, 180, 270], help="turn the page view")
+    ap.add_argument("--rotate", type=int, default=None, choices=[0, 90, 180, 270], help="turn the page view (default: as it was last turned with the Rotate button)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
     args = ap.parse_args()
@@ -88,7 +88,12 @@ def main() -> int:
         brain = MockBrain(legend, demo=args.demo)
 
     session = Session(config.ROOT / "sessions")
-    engine = Engine(source, brain, session, legend, rotate=args.rotate // 90)
+    turn = args.rotate
+    if turn is None:
+        turn = 0 if (args.demo or args.source) else config.saved_rotation()
+        if turn:
+            print(f"[glyph] page view turned {turn} degrees, as last time (the Rotate button changes it)")
+    engine = Engine(source, brain, session, legend, rotate=turn // 90)
     source.start()
     engine.start()
 

@@ -89,7 +89,10 @@ def create_app(engine: Engine) -> FastAPI:
 
     @app.post("/api/rotate")
     def rotate():
-        return {"ok": True, "degrees": engine.rotate()}
+        degrees = engine.rotate()
+        if str(getattr(engine.source, "label", "")).startswith("camera"):
+            config.save_rotation(degrees)  # the next start with the camera shows the page the same way up
+        return {"ok": True, "degrees": degrees}
 
     @app.post("/api/page")
     def page(body: dict = Body(...)):

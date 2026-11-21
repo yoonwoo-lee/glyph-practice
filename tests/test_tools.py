@@ -229,6 +229,30 @@ def test_busy_model_gets_one_more_try_and_a_slow_one_does_not():
     assert b._client.models.asked == ["slow", "busy", "busy"], b._client.models.asked
 
 
+def test_two_timeouts_in_a_row_end_the_round():
+    """Nov 21: all four models timed out one after another: 39 seconds and four requests for
+    nothing. Two in a row is the connection; the other two are asked first next time."""
+    from glyph import brain as brain_mod
+
+    down = [True]
+
+    def behave(model, cfg, n):
+        if down[0]:
+            raise TimeoutError("timed out")
+        return OK
+
+    b = _brain_with(["a", "b", "c", "d"], behave)
+    try:
+        b.analyze(b"jpg")
+        raise AssertionError("expected an error")
+    except brain_mod.BrainError as e:
+        assert str(e).count("too slow") == 2, str(e)
+    assert b._client.models.asked == ["a", "b"] and b.models == ["c", "d", "a", "b"], (b._client.models.asked, b.models)
+    down[0] = False
+    b.analyze(b"jpg")
+    assert b.last_model == "c", b.last_model
+
+
 def test_model_that_refuses_the_thinking_setting_is_asked_again_without_it():
     seen = []
 
@@ -626,8 +650,9 @@ def test_a_second_check_by_the_same_problem_is_answered_again():
     assert "verdict wrong" in brain.calls[-1]["context"], brain.calls[-1]["context"]  # the model is told what it said before
 
 
-def test_a_check_already_on_a_sheet_is_left_alone():
-    """A sheet that arrives with ticks on it (a teacher's, or last week's): nothing until asked for."""
+def test_a_check_drawn_before_the_sheet_was_taken_in_is_answered():
+    """Nov 21: the first check of the session was drawn while Glyph was still getting a steady
+    view of the sheet, and got no answer."""
     page = demo.base_page()
     demo.draw_answer_with_check(page)
     marked = demo.desk_scene(page)
@@ -635,11 +660,25 @@ def test_a_check_already_on_a_sheet_is_left_alone():
     engine.brain.script = lambda n, crop, shape: {"occluded": False, "triggers": [_check()]}
     show(marked, 4)
     assert [c["full"] for c in engine.brain.calls] == [True], engine.brain.calls
+    assert kinds(session) == ["check"], kinds(session)
+    show(marked, 6)
+    assert kinds(session) == ["check"] and len(engine.brain.calls) == 1, "answered once, and not looked at again"
+
+
+def test_a_sheet_covered_in_ticks_is_left_alone():
+    """A marked sheet (a teacher's ticks): nothing until the student asks for it to be read."""
+    page = demo.base_page()
+    demo.draw_answer_with_check(page)
+    marked = demo.desk_scene(page)
+    engine, session, show = _stepper(read_first_page=True)
+    about = ["the block on the incline", "the pulley", "momentum of the cart", "energy at the top"]
+    engine.brain.script = lambda n, crop, shape: {"occluded": False, "triggers": [_check(target=t) for t in about]}
+    show(marked, 4)
     assert kinds(session) == [], kinds(session)
     assert "asked for the whole page" not in engine.brain.calls[0]["context"]
     engine.look_now()  # the student asks for the whole sheet to be read
     show(marked, 3)
-    assert kinds(session) == ["check"], kinds(session)
+    assert kinds(session) == ["check"] * 4, kinds(session)
     assert "asked for the whole page" in engine.brain.calls[-1]["context"]
 
 
@@ -757,6 +796,97 @@ def test_rotate_keeps_the_page_number():
     assert engine.status()["view"]["page_size"] == [demo.PAGE_H, demo.PAGE_W] or engine._shape[0] < engine._shape[1], engine._shape
     assert engine.store.page_no == 1 and engine.store.pages() == [1], engine.store.pages()
     assert len(engine.brain.calls) == 1, "the same sheet is not read in full a second time"
+
+
+# ---- Nov 21: a sheet in a warm shadow, and the picture of the mark on the card ---------------------
+
+
+def test_a_sheet_in_a_warm_shadow_is_still_a_sheet():
+    from glyph.page import PAPER_SAT, find_sheet
+
+    page = demo.base_page()
+    clear, info = demo.desk_scene(page, desk_color=demo.WOOD), {}
+    quad, clean = find_sheet(clear, info)[:2]
+    assert clean and info["sat_limit"] == PAPER_SAT, info  # in ordinary light nothing changes
+    for top in (0, 360):  # the whole sheet in shadow, and the lower two thirds
+        info = {}
+        shaded, is_clean = find_sheet(demo.desk_scene(demo.warm_shadow(page, top), desk_color=demo.WOOD), info)[:2]
+        assert is_clean and info["sat_limit"] > PAPER_SAT, (top, is_clean, info)
+        assert float(np.abs(shaded - quad).max()) < 12, (top, shaded, quad)  # and it is the same outline
+    # A bare wooden desk is not split into "paper" and "desk".
+    bare, info = demo.desk_scene(page, desk_color=demo.WOOD, corners=[[3000, 3000], [3100, 3000], [3100, 3100], [3000, 3100]]), {}
+    assert not find_sheet(bare, info)[1] and info["sat_limit"] == PAPER_SAT, info
+
+
+def test_a_mark_drawn_in_a_warm_shadow_is_read():
+    """Nov 21: leaning over the sheet to write on its last question turned the paper beige. The
+    sheet was "not in view", and when it was found again the new check marks counted as old."""
+    for top in (0, 450):  # the whole sheet in shadow, and the part below the working
+        page = demo.base_page()
+        clear = demo.desk_scene(page, desk_color=demo.WOOD)
+        demo.draw_spark(page)
+        shaded = demo.desk_scene(demo.warm_shadow(page, top), desk_color=demo.WOOD)
+        engine, session, show = _stepper()
+        show(clear, 3)
+        show(shaded, 5)
+        status = engine.status()
+        assert kinds(session) == ["hint"], (top, kinds(session), status["text"])
+        assert status["view"]["phase"] == "watching" and status["page_no"] == 1, (top, status["text"])
+        # A forearm across the shaded sheet (skin, as dark and warm as that light makes it) is
+        # still an object: the print under it is hidden.
+        show(demo.add_hand(shaded, skin=(70, 105, 160)), 3)
+        assert engine.status()["view"]["covers"], (top, engine.status()["text"])
+
+
+def test_the_card_shows_the_one_mark_that_was_answered():
+    """Nov 21: the picture took in the circled letter, the check mark and two older checks."""
+    from glyph.page import ink_mask, pick_mark
+
+    blank = np.full((1100, 850, 3), 244, np.uint8)
+
+    def drawn(*draw):
+        sheet = blank.copy()
+        for d in draw:
+            d(sheet)
+        return ink_mask(sheet)
+
+    circle = lambda im: cv2.ellipse(im, (150, 400), (30, 24), 0, 0, 360, demo.PEN, 3, cv2.LINE_AA)
+    check = lambda im: demo.draw_check(im, (640, 520), 60)
+    spark = lambda im: demo.draw_spark(im, (600, 300), 28)
+    words = lambda im: demo.draw_handwriting(im, "a = F / m", (120, 300))
+    under = lambda im: cv2.line(im, (300, 700), (400, 701), demo.PEN, 3, cv2.LINE_AA)
+    box = lambda im: cv2.rectangle(im, (500, 800), (600, 840), demo.PEN, 3, cv2.LINE_AA)
+
+    def inside(found, x, y):
+        return found[0] <= x <= found[2] and found[1] <= y <= found[3]
+
+    both = drawn(circle, check)
+    got = pick_mark(both, "check")
+    assert inside(got, 650, 500) and not inside(got, 150, 400), got  # the check, not the circled letter
+    got = pick_mark(both, "synonym")
+    assert inside(got, 150, 400) and not inside(got, 650, 500), got  # asked about a circle: the circle
+    got = pick_mark(drawn(words, spark), "hint")
+    assert inside(got, 600, 300) and got[0] > 450, got  # the spark, not the line of working
+    got = pick_mark(drawn(circle, under), "define")
+    assert inside(got, 350, 700) and got[3] - got[1] < 20, got
+    got = pick_mark(drawn(check, box), "find")
+    assert inside(got, 550, 820) and not inside(got, 650, 500), got
+    assert pick_mark(np.zeros((1100, 850), np.uint8), "check") is None
+
+    # End to end: a circled letter far to the left and a check mark far to the right. The picture
+    # saved for the card is a close one of the check: no circle in it, and the tick fills a good part.
+    page = demo.base_page()
+    scene0 = demo.desk_scene(page)
+    cv2.ellipse(page, (120, 900), (30, 22), 0, 0, 360, demo.PEN, 3, cv2.LINE_AA)  # in the blank foot of the sheet
+    demo.draw_check(page, (650, 960), 60)
+    engine, brain, session = run([scene0, demo.desk_scene(page)], hold=1.8, script=lambda n, crop, shape: {"occluded": False, "triggers": [_check()] if crop is not None else []})
+    events = session.events_of("check")
+    assert len(events) == 1 and events[0]["meta"].get("snip"), kinds(session)
+    snip = cv2.imread(str(session.dir / "snips" / "{}.jpg".format(events[0]["meta"]["snip"])), cv2.IMREAD_GRAYSCALE)
+    dark = snip < 140
+    assert snip.shape == (360, 540) and dark[:, 180:400].sum() > 300, dark.sum()
+    cols = np.where(dark.any(axis=0))[0]
+    assert cols.max() - cols.min() > 100 and cols.min() > 60, (cols.min(), cols.max())  # one mark, large, with clear paper round it
 
 
 # ---- student mode and editor mode --------------------------------------------------------------
@@ -893,6 +1023,29 @@ def test_demo_puts_the_other_sheet_under_the_camera_and_comes_back_where_it_was(
     assert src.read() is b1
     src.set_mode("student")
     assert src.read() is a1, "the first sheet is shown as it was left, not from the start"
+
+
+def test_the_turn_of_the_page_view_is_kept_for_the_next_start():
+    """Nov 21: after a restart the page was on its side again, and was read that way."""
+    from fastapi.testclient import TestClient
+    from glyph.app import create_app
+
+    was = config.VIEW_FILE
+    config.VIEW_FILE = Path(tempfile.mkdtemp(prefix="glyph_view_")) / "view.json"
+    try:
+        assert config.saved_rotation() == 0  # nothing saved yet
+        s = demo.build_steps()
+        engine, brain, session = run([s["blank"]], hold=1.0)
+        client = TestClient(create_app(engine))
+        assert client.post("/api/rotate").json()["degrees"] == 90
+        assert config.saved_rotation() == 0, "pictures from a file or the demo are not the camera: nothing is kept"
+        engine.source.label = "camera 0"
+        assert client.post("/api/rotate").json()["degrees"] == 180
+        assert config.saved_rotation() == 180
+        config.VIEW_FILE.write_text("not json")
+        assert config.saved_rotation() == 0
+    finally:
+        config.VIEW_FILE = was
 
 
 def test_web_page_switches_mode():
