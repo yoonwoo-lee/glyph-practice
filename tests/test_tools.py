@@ -447,6 +447,30 @@ def test_close_up_shows_the_new_ink_in_pink_and_nothing_else():
     assert (cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) < 90).sum() > 500, "the writing above the underline was faded out"
 
 
+def test_a_small_spark_stays_a_spark_in_the_close_up():
+    """A spark a few millimetres across, as the camera sees it: pink arms, not a pink blob."""
+    import math
+
+    from glyph import page as P
+
+    before = _page("blank")
+    big = cv2.resize(before, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+    cx, cy = 4 * 640, 4 * 310
+    for i in range(4):  # eight arms, 12 px long and under 2 px wide once shrunk back
+        dx, dy = math.cos(i * math.pi / 4) * 48, math.sin(i * math.pi / 4) * 48
+        cv2.line(big, (int(cx - dx), int(cy - dy)), (int(cx + dx), int(cy + dy)), (40, 36, 34), 6, cv2.LINE_AA)
+    after = cv2.GaussianBlur(cv2.resize(big, (before.shape[1], before.shape[0]), interpolation=cv2.INTER_AREA), (3, 3), 0)
+    old, now = P.ink_strength(before), P.ink_strength(after)
+    fresh = P.marks_only(P.remove_small(P.new_ink(now, old), 8))
+    assert cv2.countNonZero(fresh) > 0
+    crop, box = P.make_focus_crop(after, fresh, ink=P.strength_to_mask(now), old=P.strength_to_mask(old))
+    pink = cv2.inRange(crop, np.array(P.NEW_INK_COLOR) - 40, np.array(P.NEW_INK_COLOR) + 40)
+    x, y, w, h = cv2.boundingRect(cv2.findNonZero(pink))
+    filled = cv2.countNonZero(pink) / float(w * h)
+    assert w > 40 and h > 40, (w, h)
+    assert 0.08 < filled < 0.5, "the spark came out as a solid patch of pink: %.2f of its box" % filled
+
+
 def test_marks_only_drops_specks_and_what_comes_in_from_the_edge():
     from glyph import page as P
 

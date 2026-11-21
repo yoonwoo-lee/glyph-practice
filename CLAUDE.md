@@ -66,7 +66,7 @@ Walk Skylar through these in order, checking each one works before moving on.
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 17 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 58 checks in total.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 59 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -146,7 +146,7 @@ Symbol → action mapping lives in `symbols.json`, so new symbols are a config c
   one sheet taken away and brought back counted as a new page (numbers ran up to 18); a gray hoodie
   merged into the sheet's outline; the bare desk was read as a page and saved as highlights.
 
-**Built and covered by the checks (58 pass: 17 + 9 + 32), but not yet run on the real camera or
+**Built and covered by the checks (59 pass: 17 + 9 + 33), but not yet run on the real camera or
 against live Gemini:**
 - The Nov 19 fixes: new strokes recolored pink in the close-up and the model told to answer only
   those; nothing sent until the remembered page lines up with the page now; specks and edge slivers
@@ -218,6 +218,8 @@ against live Gemini:**
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
+- (Nov 20: the pink goes on the ink itself, by darkness, after the close-up is enlarged. Painting the
+  whole new-ink area turned a small spark into a solid pink blob and live Gemini answered nothing.)
 - In the close-up sent to the model, the **new** strokes are recolored hot pink and nothing is faded;
   the prompt says to answer only the pink strokes. Fading the old ink left the model little to read
   around an underline on print (the likely cause of the Nov 19 misses; not yet confirmed against live

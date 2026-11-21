@@ -161,7 +161,7 @@ python -m tests.test_tools
   sheet, model errors, the "keep going" card, the boxes on the camera view.
 - `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
   a tilted camera, sensor grain and flicker.
-- `test_tools` (32): model fallbacks and usage limits, choosing the camera, a wooden desk with a
+- `test_tools` (33): model fallbacks and usage limits, choosing the camera, a wooden desk with a
   shadow, gray clothing beside the sheet, a bare desk, a sliding or turned sheet, shadows, blank or
   dark views, a mark answered once and a second mark answered again, page numbers, study guide by
   page, timing log, the tuning page, the name setting.

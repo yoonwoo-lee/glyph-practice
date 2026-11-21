@@ -727,6 +727,11 @@ def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70, ink: Opt
     The vision model is told that only the pink strokes are new. Fading the older writing, as
     this used to do, did not stop the model answering an old symbol again, and it made the words
     above a new underline hard to read. A stroke in a color no pen has is hard to mistake.
+
+    The pink goes on the ink itself, by how dark each spot is, after the close-up is enlarged.
+    Painting the whole "new ink" area instead turned a small spark into a solid pink blob (its
+    arms are a pixel or two apart, so the area has no gaps), and the model saw no symbol in it
+    (camera run of Nov 20).
     Returns (image, (x0, y0, x1, y1)) or (None, None) if there is no new ink.
     """
     box = mask_bbox(fresh)
@@ -737,12 +742,27 @@ def make_focus_crop(page: np.ndarray, fresh: np.ndarray, pad: int = 70, ink: Opt
     x0, y0 = max(0, tx0 - pad), max(0, ty0 - pad)
     x1, y1 = min(w, tx1 + pad), min(h, ty1 + pad)
     out = page[y0:y1, x0:x1].copy()
-    strokes = cv2.dilate(whole_strokes(fresh, ink, old)[y0:y1, x0:x1], np.ones((3, 3), np.uint8))
-    out[strokes > 0] = NEW_INK_COLOR
+    strokes = whole_strokes(fresh, ink, old)[y0:y1, x0:x1]
     longest = max(out.shape[:2])
-    if longest < 900:
-        f = min(2.5, 900.0 / longest)
+    f = min(4.0, 900.0 / longest) if longest < 900 else 1.0
+    if f > 1.0:
         out = cv2.resize(out, None, fx=f, fy=f, interpolation=cv2.INTER_CUBIC)
+        strokes = cv2.threshold(cv2.resize(strokes, (out.shape[1], out.shape[0]), interpolation=cv2.INTER_LINEAR), 60, 255, cv2.THRESH_BINARY)[1]
+    r = max(1, int(round(1.5 * f)))
+    near = cv2.dilate(strokes, np.ones((2 * r + 1, 2 * r + 1), np.uint8)) > 0
+    # How dark each spot is against the paper right around it: the ink, without the gaps between strokes.
+    v = cv2.max(cv2.max(out[:, :, 0], out[:, :, 1]), out[:, :, 2])
+    k = int(15 * f) | 1
+    paper = cv2.morphologyEx(v, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
+    dark = cv2.subtract(paper, v).astype(np.float32)
+    amount = np.zeros(dark.shape, np.float32)
+    if near.any():
+        top = max(24.0, float(np.percentile(dark[near], 92)))
+        amount = np.clip((dark - 0.22 * top) / (0.45 * top), 0.0, 1.0) * near
+    if float((amount > 0.5).sum()) < 0.08 * max(1, int((strokes > 0).sum())):
+        amount = (strokes > 0).astype(np.float32)  # a filled shape or very broad stroke: color all of it
+    amount = amount[:, :, None]
+    out = (out.astype(np.float32) * (1.0 - amount) + np.array(NEW_INK_COLOR, np.float32) * amount).astype(np.uint8)
     return np.ascontiguousarray(out), (x0, y0, x1, y1)
 
 

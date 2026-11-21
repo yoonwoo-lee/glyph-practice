@@ -14,6 +14,33 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-20 (16:40), Yoon Woo's Claude
+
+First camera run on live Gemini with the Nov 19 changes (`sessions/2026-11-20_161627` on the Mac,
+free-tier key in a new project, about 10 requests a day). Yoon Woo: the page and tracking look right,
+but no answer appeared.
+
+**Found**
+- Gemini did answer, both times with no marks: look 1 (full read, 2.2 s, correct: nothing drawn yet)
+  and look 2 (new ink, 8.2 s) after he drew a small spark next to problem 7.
+- Cause of look 2: `looks/002_new_ink.jpg` shows the spark as a **solid pink blob**. The spark was
+  about 22 px across on the page; its arms are a pixel or two apart, so the new-ink area has no gaps,
+  and `make_focus_crop` painted that whole area pink. The model was shown a blob, not a symbol.
+- Sheet outline was "not sure" in the 8 pictures saved at look 1 (`find_page` gives a corner at
+  (1767, 0)): pale floor is in view to the right of the desk and a black object touches the top right
+  corner. It read anyway in the real run. Not fixed.
+
+**Done** (this commit, on `main` and `camera-test`; Mac pulled)
+- `make_focus_crop`: enlarge first (up to 4x, was 2.5x), then put the pink on the ink itself by how
+  dark each spot is against the paper around it. Replaying his picture gives a pink eight-armed
+  spark. A filled shape still gets colored whole. New check with a camera-sized spark (fails on the
+  old code). 59 pass (17 + 9 + 33).
+
+**Not verified:** the new close-up against live Gemini (sandbox cannot reach it; his key has about
+8 requests left today). `[open]` Yoon Woo's side: restart Glyph, draw a new spark, say what came back.
+
+---
+
 ## 2026-11-20 (00:20), Yoon Woo's Claude
 
 - Yoon Woo said "check the session". The newest folder in `sessions/` on his Mac is still
