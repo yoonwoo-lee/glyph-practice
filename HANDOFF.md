@@ -14,7 +14,7 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
-## 2026-11-21 (15:10), Yoon Woo's Claude
+## 2026-11-21 (14:45), Yoon Woo's Claude
 
 Yoon Woo ran Glyph at a different desk (a light gray table by a window) and a spark got no answer.
 
