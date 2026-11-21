@@ -150,7 +150,12 @@
 
   .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 34px 26px; scrollbar-width: thin; scrollbar-color: var(--sky-line) transparent; }
   .label { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: var(--soft); display: flex; align-items: center; gap: 10px; }
-  .label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .label::after { content: ""; flex: 1; height: 1px; background: var(--line); order: 1; }
+  .label .count { font-weight: 600; color: var(--faint); margin-left: -4px; }
+  /* The newest answer has its own heading. "Reading your mark" sits at the end of that line, in a
+     place kept free for it, so nothing below moves when a read starts or ends. */
+  .nowhead { min-height: 36px; margin-bottom: 6px; }
+  .nowhead .reading { order: 2; margin: 0; }
 
   /* ---- first screen: the marks ---- */
   .intro h1 { font-size: clamp(34px, 3.7vw, 54px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 10px 0 16px; padding-bottom: .06em; width: fit-content;
@@ -171,9 +176,9 @@
   .markrow span { color: var(--soft); font-size: 15px; line-height: 1.4; }
 
   /* ---- reading right now ---- */
-  .reading { display: flex; width: fit-content; align-items: center; gap: 9px; padding: 6px 16px 6px 7px; margin-bottom: 14px; background: linear-gradient(100deg, var(--sky-deep) 0%, #1A93CE 100%); color: var(--white); border-radius: 999px; font-size: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 12px 22px -14px rgba(11,127,176,.95); }
+  .reading { display: flex; width: fit-content; align-items: center; gap: 9px; padding: 6px 16px 6px 7px; background: linear-gradient(100deg, var(--sky-deep) 0%, #1A93CE 100%); color: var(--white); border-radius: 999px; font-size: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 12px 22px -14px rgba(11,127,176,.95); }
   .reading > * { position: relative; z-index: 1; }
-  .intro:not(.done) + .reading { margin-top: 18px; }
+  .intro:not(.done) + .nowhead { margin-top: 18px; }
   .reading:not(.hide) { animation: arrive .35s cubic-bezier(.2,.8,.2,1) both; }
   .reading .dot { width: 24px; height: 24px; border-radius: 50%; background: var(--white); display: grid; place-items: center; flex: none; }
   .reading svg { font-size: 15px; color: var(--pink); animation: turn 2.2s linear infinite; }
@@ -186,7 +191,6 @@
     background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(125deg, var(--sky) 0%, #A996DD 50%, var(--pink) 100%) border-box;
     box-shadow: -22px 26px 50px -34px rgba(69,182,236,.95), 22px 26px 50px -34px rgba(216,57,149,.85); }
   .now.error { background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(var(--bad), var(--bad)) border-box; box-shadow: none; }
-  .now::after { content: ""; display: block; clear: both; }
   .now.fresh { animation: arrive .4s cubic-bezier(.2,.8,.2,1) both; }
   @keyframes arrive { from { opacity: 0; transform: translateY(12px); } }
   .meta { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
@@ -195,16 +199,22 @@
   .tag.error { background: var(--bad); }
   .took { font-size: 13px; font-stretch: 90%; font-weight: 600; color: var(--soft); }
   .took b { color: var(--ink); }
-  .snip { float: right; width: 36%; min-width: 160px; max-width: 250px; margin: 0 0 12px 22px; }
+  /* The answer and the picture of the mark stand side by side in two columns: the text keeps one
+     left edge and one line length, whatever its length. Longer answers are set a step smaller. */
+  .now .body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 26px; align-items: start; }
+  .now .body.pic { grid-template-columns: minmax(0, 1fr) clamp(168px, 33%, 236px); }
+  .snip { margin: 4px 0 0; }
   .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--white); border: 2px solid var(--sky-line); border-radius: 10px; }
   .snip figcaption { margin-top: 5px; font-size: 12px; font-stretch: 85%; font-weight: 600; color: var(--sky-deep); }
   .words { font-size: clamp(23px, 2.15vw, 33px); font-weight: 500; line-height: 1.22; letter-spacing: -0.012em; margin: 0; text-wrap: pretty; }
   .words mark { color: inherit; background: linear-gradient(90deg, #F9D3E8, #D2ECF7) no-repeat 0 92% / 100% 42%; padding: 0 .05em; margin: 0 -.05em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .now.fresh .words mark { animation: swipe .7s .2s cubic-bezier(.3,.7,.2,1) both; }
   @keyframes swipe { from { background-size: 0% 42%; } }
+  .words.mid { font-size: clamp(21px, 1.9vw, 29px); }
+  .words.long { font-size: clamp(19px, 1.65vw, 25px); line-height: 1.26; }
   .words .term { display: block; font-size: 1.2em; font-weight: 800; font-stretch: 112%; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: .3em; width: fit-content; color: var(--pink); }
   .words .term mark { background: none; }
-  .about { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--soft); display: flex; gap: 8px; clear: both; }
+  .about { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--soft); display: flex; gap: 8px; }
   .about b { color: var(--ink); font-weight: 700; flex: none; }
   .now.error .words { font-size: 17px; line-height: 1.5; font-weight: 500; }
 
@@ -219,7 +229,7 @@
 
   /* ---- earlier answers, newest first ---- */
   .past { list-style: none; margin: 0; padding: 0; }
-  .past li { position: relative; display: grid; grid-template-columns: 30px 1fr auto; gap: 0 12px; padding: 0 0 20px; }
+  .past li { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr) 78px; gap: 0 14px; padding: 0 0 20px; }
   .past li::before { content: ""; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: linear-gradient(var(--sky-line), var(--pink-soft)); opacity: .8; }
   .past li:last-child { padding-bottom: 0; } .past li:last-child::before { display: none; }
   .past .dot { width: 30px; height: 30px; border-radius: 9px; background: var(--sky-pale); display: grid; place-items: center; font-size: 15px; color: var(--sky-deep); }
@@ -227,7 +237,13 @@
   .past .head b { font-size: 15px; }
   .past .head span { font-size: 12px; color: var(--faint); font-weight: 600; }
   .past p { margin: 3px 0 0; color: var(--soft); line-height: 1.5; max-width: 34em; }
-  .past .thumb { width: 78px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 8px; border: 1px solid var(--sky-line); background: var(--white); margin-top: 4px; }
+  .past .on { margin: 1px 0 0; font-size: 13px; font-weight: 600; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .past .thumb { grid-column: 3; width: 78px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 8px; border: 1px solid var(--sky-line); background: var(--white); margin-top: 4px; }
+  /* Answers from another sheet start under that sheet's number. */
+  .past li.pg { display: flex; align-items: center; gap: 8px; padding: 2px 0 14px; font-size: 12px; font-weight: 700; color: var(--soft); }
+  .past li.pg::before { display: none; }
+  .past li.pg b { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 7px; border: 2px solid var(--sky-line); background: var(--white); color: var(--sky-deep); font-size: 12px; line-height: 18px; text-align: center; }
+  .past li:has(+ li.pg)::before { display: none; }
   .past li.error .dot { color: var(--bad); background: #FBE9E7; }
 
   /* ---- study guide ---- */
@@ -264,6 +280,7 @@
   .c-yellow { background: var(--yellow); } .c-green { background: var(--green); } .c-blue { background: var(--blue); } .c-pink { background: var(--hl-pink); }
 
   @media (max-width: 1360px) { .key .d { display: none; } .read { grid-template-columns: repeat(3, minmax(0, 1fr)); } .read div:nth-child(4) { border-left: 0; } .read div:nth-child(n+4) { border-top: 1px solid var(--line); } }
+  @media (max-width: 620px) { .now .body.pic { grid-template-columns: minmax(0, 1fr); } .now .snip { max-width: 240px; margin-top: 14px; } }
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; height: auto; }
     .eye { height: 78vh; } .say { min-height: 80vh; margin: 0 10px 10px; } .bar, .pane, .foot { padding-left: 18px; padding-right: 18px; }
@@ -365,10 +382,12 @@
         </div>
       </div></div>
       </div>
-      <div class="reading hide" id="reading"><span class="dot"><svg class="g"><use href="#g-spark"/></svg></span><span>Reading your mark</span></div>
+      <div class="label nowhead hide" id="nowHead"><span id="nowWord">Latest answer</span>
+        <div class="reading hide" id="reading"><span class="dot"><svg class="g"><use href="#g-spark"/></svg></span><span>Reading your mark</span></div>
+      </div>
       <article class="now hide" id="now" aria-live="polite"></article>
-      <section class="shelf hide" id="shelf"><h4 class="label">Saved for your study guide</h4><div id="groups"></div></section>
-      <section class="hide" id="earlier"><h4 class="label">Earlier</h4><ol class="past" id="rows"></ol></section>
+      <section class="shelf hide" id="shelf"><h4 class="label"><span>Saved for your study guide</span><span class="count num" id="sCount"></span></h4><div id="groups"></div></section>
+      <section class="hide" id="earlier"><h4 class="label"><span>Earlier</span><span class="count num" id="eCount"></span></h4><ol class="past" id="rows"></ol></section>
     </div>
 
     <div class="pane hide" id="guide">
@@ -489,6 +508,8 @@ function showStatus(s) {
   $('stateText').textContent = s.busy ? 'Reading your mark' : s.text;
   $('stage').classList.toggle('scanning', !!s.busy && big === 'page');
   $('reading').classList.toggle('hide', !s.busy);
+  $('nowHead').classList.toggle('hide', !(seen || s.busy));
+  $('nowWord').textContent = current ? 'Latest answer' : 'First answer';
   $('introTop').classList.toggle('gone', seen || !!s.busy);   // the headline steps aside as soon as a read starts
   $('empty').classList.toggle('hide', !(v.phase === 'none' && big === 'page'));
   $('clock').textContent = clock(s.session_seconds || 0);
@@ -558,19 +579,20 @@ function showNow(e, fresh) {
   tag.append(icon(ICON[e.kind] || 'spark'), KIND[e.kind] || e.title); meta.append(tag);
   if (m.seconds != null) { const t = el('span', 'took num'); t.append('answered in ', el('b', '', secs(m.seconds))); if (m.page) t.append(' on page ', el('b', '', String(m.page))); meta.append(t); }
   n.append(meta);
-  if (m.snip) {
-    const f = el('figure', 'snip'), img = el('img'); img.alt = 'The part of your page that was read';
-    img.onerror = () => f.remove(); img.src = '/api/snip/' + m.snip + '.jpg';
-    f.append(img, el('figcaption', '', 'Your mark')); n.append(f);
-  }
-  const w = el('p', 'words');
+  const body = el('div', 'body'), w = el('p', 'words' + (e.body.length > 170 ? ' long' : e.body.length > 90 ? ' mid' : ''));
+  n.append(body);
   if (e.kind === 'error') w.textContent = e.body;
   else if (e.kind === 'define' && m.target) { const t = el('span', 'term'); t.append(el('mark', '', m.target)); w.append(t, e.body); }
   else { // a pink stripe runs under the first sentence
     const s = e.body.match(/^(.+?[.?!])(\s+[\s\S]*)?$/);
     if (s && s[2]) w.append(el('mark', '', s[1]), s[2]); else w.append(el('mark', '', e.body));
   }
-  n.append(w);
+  body.append(w);
+  if (m.snip) {
+    const f = el('figure', 'snip'), img = el('img'); img.alt = 'The part of your page that was read';
+    img.onerror = () => { f.remove(); body.classList.remove('pic'); }; img.src = '/api/snip/' + m.snip + '.jpg';
+    f.append(img, el('figcaption', '', 'Your mark')); body.append(f); body.classList.add('pic');
+  }
   let a = null;
   if (e.kind === 'error') { a = el('div', 'about'); a.append('It will try again by itself. If this keeps happening, check the key in .env and your connection.'); n.append(a); }
   else if (m.target && e.kind !== 'define') { a = el('div', 'about'); a.append(el('b', '', 'About'), m.target); n.append(a); }
@@ -623,10 +645,28 @@ function typeOut(roots, maxMs) {
 function pastRow(e) {
   const m = e.meta || {}, li = el('li', e.kind), dot = el('span', 'dot'); dot.append(icon(ICON[e.kind] || 'spark'));
   const body = el('div'), head = el('div', 'head');
-  head.append(el('b', '', e.kind === 'define' && m.target ? m.target : (KIND[e.kind] || e.title)), el('span', 'num', clock(e.at || 0) + (m.page ? ', page ' + m.page : '')));
-  body.append(head, el('p', '', e.body)); li.append(dot, body);
+  head.append(el('b', '', e.kind === 'define' && m.target ? m.target : (KIND[e.kind] || e.title)), el('span', 'num', clock(e.at || 0)));
+  body.append(head);
+  if (m.target && e.kind !== 'define') body.append(el('div', 'on', 'About ' + m.target));   // which problem a hint was for
+  body.append(el('p', '', e.body)); li.append(dot, body);
   if (m.snip) { const img = el('img', 'thumb'); img.alt = ''; img.onerror = () => img.remove(); img.src = '/api/snip/' + m.snip + '.jpg'; li.append(img); }
   return li;
+}
+
+/* Earlier answers, newest first. When the answers of a session come from more than one sheet, each
+   run of answers from the same sheet starts under that sheet's number. */
+const past = [];
+function showPast() {
+  const rows = $('rows'); rows.textContent = '';
+  const pageOf = e => (e.meta || {}).page || 0, several = new Set(past.concat(current || []).map(pageOf).filter(Boolean)).size > 1;
+  let was = null;
+  past.forEach(e => {
+    const p = pageOf(e);
+    if (several && p && p !== was) { const h = el('li', 'pg'); h.append('Page', el('b', '', String(p))); rows.append(h); }
+    was = p; rows.append(pastRow(e));
+  });
+  $('earlier').classList.toggle('hide', !past.length);
+  $('eCount').textContent = past.length || '';
 }
 
 /* ---------- highlights, grouped by color ---------- */
@@ -641,14 +681,15 @@ function showShelf() {
     row.append(el('i', 'c-' + color), name, crops); box.append(row);
   });
   $('shelf').classList.toggle('hide', !total);
+  $('sCount').textContent = total || '';
   $('tCount').textContent = total; $('tCount').classList.toggle('hide', !total);
 }
 
 function addEvent(e, fresh) {
   seen = true; $('introTop').classList.add('gone'); $('introMarks').classList.add('gone'); $('intro').classList.add('done');
   if (ANSWERS.includes(e.kind)) {
-    if (current) { $('rows').prepend(pastRow(current)); $('earlier').classList.remove('hide'); }
-    current = e; $('now').classList.remove('hide'); showNow(e, fresh);
+    if (current) past.unshift(current);
+    current = e; showPast(); $('now').classList.remove('hide'); $('nowHead').classList.remove('hide'); $('nowWord').textContent = 'Latest answer'; showNow(e, fresh);
     if (e.kind !== 'error') { answers++; $('aCount').textContent = answers; $('aCount').classList.remove('hide'); }
     if (fresh) $('feed').scrollTo({ top: 0, behavior: 'smooth' });
   } else if (e.kind === 'highlight') {
