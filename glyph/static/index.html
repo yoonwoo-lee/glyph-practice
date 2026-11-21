@@ -36,9 +36,9 @@
   @property --sky-mid { syntax: '<color>'; inherits: true; initial-value: #2CA5DE; }
   @property --sky-deep { syntax: '<color>'; inherits: true; initial-value: #0B7FB0; }
   @property --sky-far { syntax: '<color>'; inherits: true; initial-value: #8FD6F6; }
-  @property --sky-shade { syntax: '<color>'; inherits: true; initial-value: rgba(5,147,198,.62); }
+  @property --sky-shade { syntax: '<color>'; inherits: true; initial-value: rgba(5,147,198,.42); }
   @property --sky-light { syntax: '<color>'; inherits: true; initial-value: rgba(222,244,254,.88); }
-  :root { --sky-far: #8FD6F6; --sky-shade: rgba(5,147,198,.62); --sky-light: rgba(222,244,254,.88);
+  :root { --sky-far: #8FD6F6; --sky-shade: rgba(5,147,198,.42); --sky-light: rgba(222,244,254,.88);
     transition: --sky .9s ease, --sky-mid .9s ease, --sky-deep .9s ease, --sky-far .9s ease, --sky-shade .9s ease, --sky-light .9s ease; }
   :root[data-mode="editor"] { --sky: #F4A98C; --sky-mid: #EF9A7A; --sky-deep: #B4532F; --sky-soft: #F9CFBD; --sky-pale: #FDEEE6; --sky-line: #F6D3C4;
     --sky-far: #F8C9AE; --sky-shade: rgba(226,120,84,.5); --sky-light: rgba(255,241,230,.88); }
@@ -49,7 +49,8 @@
      (several stronger ones read as blotches); light at the top; deep blue in the top left corner. */
   .app::before { content: ""; position: absolute; inset: -14%; z-index: -2; pointer-events: none;
     background:
-      radial-gradient(48% 40% at 10% 92%, rgba(229,107,174,.72), rgba(229,107,174,.30) 46%, rgba(229,107,174,0) 78%),
+      radial-gradient(54% 50% at 9% 90%, rgba(229,107,174,.74), rgba(229,107,174,.34) 46%, rgba(229,107,174,0) 80%),
+      radial-gradient(34% 50% at 11% 50%, rgba(236,140,192,.44), rgba(236,140,192,0) 78%),
       radial-gradient(26% 26% at 90% 93%, rgba(229,107,174,.30), rgba(229,107,174,0) 74%),
       radial-gradient(46% 40% at 56% 3%, var(--sky-light), transparent 72%),
       radial-gradient(34% 32% at 5% 6%, var(--sky-shade), transparent 72%);

@@ -74,6 +74,10 @@ The README covers how to run it; this file covers the why and the plan.
   still work without a button: `/tune` by its address, a full read by `POST /api/look` (where these
   notes say "Read page now", that is what is meant). The page no longer says when answers are
   practice ones (`--mock`).
+  **Nov 21, 15:21 ("little too much blue on the left just add a bit more pink and then perfect"):**
+  the pink glow in the bottom left is a little larger and a second, fainter wash of it climbs the
+  left edge beside the page; the deep blue in the top left corner is eased. Still one soft field,
+  no separate blooms. This is the one time he asked for more pink: do not add further.
   **Toned down after outside feedback (Nov 19, 19:20):** the pink in the background is one soft glow in
   the bottom left corner (several strong blooms read as "blotches"), and the scan is a thin line
   passing slowly down the page with a faint glow, not a tall fast pink bar. Don't turn either back up.

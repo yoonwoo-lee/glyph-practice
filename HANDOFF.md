@@ -43,6 +43,8 @@ line under it, plus a trial row of small marks under the line ("I'll probably wa
 **15:20:** at his request the "Read page now" and "Tune" buttons and the model name are off the page
 (`/tune` and `POST /api/look` still work). He is about to test the gray-desk fix on the camera.
 
+**15:25:** a bit more pink on the left of the background, at his request ("and then perfect").
+
 ## 2026-11-21 (14:30), Yoon Woo's Claude
 
 Yoon Woo asked for a cleaner right side and a color change between the modes, and chose the color
