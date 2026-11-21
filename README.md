@@ -97,7 +97,7 @@ highlight colors behave under your lamp. `docs/camera-test-checklist.md` has a f
 
 ## Tune it to your desk
 
-Open http://127.0.0.1:8765/tune while Glyph is running (or click **Tune**).
+Open http://127.0.0.1:8765/tune while Glyph is running (there is no button for it on the page any more).
 
 - **Ink** view: your writing should be painted dark blue and blank paper should stay clean. Move
   "Ink sensitivity" until that is true.
@@ -133,9 +133,9 @@ To tune from a photo instead of the live camera: `bash start.sh --source photo.j
 | "Part of the sheet is outside the camera's view" | Slide the sheet back. Glyph holds the last good view until it is whole again. |
 | "Gemini's usage limit for this key is used up for now" | Free keys get a small allowance per minute and per day. Glyph waits and tries again by itself. Turning on billing for the key in Google AI Studio lifts the limit. |
 | The launcher finds only one camera | The iPhone is not connected as a camera: lock it, keep it still, Wi-Fi and Bluetooth on, or plug it in. Check that it appears in Photo Booth's Camera menu. |
-| A symbol gets no answer | Draw it bigger and with a thicker pen. Look in `sessions/<latest>/looks/` to see exactly what was sent to the model. Click **Read page now** to force a full read. |
-| Highlights are not picked up | Open **Tune**, press "Pick from page" for that color and click the stroke. Glare (a lamp reflecting straight off the paper) washes color out: move the lamp. |
-| Glyph reacts to nothing, or to everything | Open **Tune** and move "Ink sensitivity": lower catches fainter ink, higher ignores more. |
+| A symbol gets no answer | Draw it bigger and with a thicker pen. Look in `sessions/<latest>/looks/` to see exactly what was sent to the model. To force a full read: `curl -X POST http://127.0.0.1:8765/api/look` (the button for it was taken off the page). |
+| Highlights are not picked up | Open `/tune`, press "Pick from page" for that color and click the stroke. Glare (a lamp reflecting straight off the paper) washes color out: move the lamp. |
+| Glyph reacts to nothing, or to everything | Open `/tune` and move "Ink sensitivity": lower catches fainter ink, higher ignores more. |
 | "Paused: reached the calls-per-minute limit" | Raise `GLYPH_MAX_CALLS_PER_MIN` in `.env` if your key allows it. |
 | A dashed dark box on the page view | Glyph thinks something is lying on the sheet there (a hand, a pen) and ignores ink next to it. A shadow alone does not count. |
 | "No sheet in view" | Glyph sees the desk and no paper. It reads nothing and saves no highlights until a sheet is back. |

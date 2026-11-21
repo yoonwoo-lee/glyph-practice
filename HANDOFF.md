@@ -40,6 +40,9 @@ Yoon Woo ran Glyph at a different desk (a light gray table by a window) and a sp
 line under it, plus a trial row of small marks under the line ("I'll probably want to delete it":
 `#hints` in `index.html`). Only `index.html` and notes changed; 85 checks pass. He kept the row ("this is good") and asked for the line fainter and slightly italic: done at 15:00.
 
+**15:20:** at his request the "Read page now" and "Tune" buttons and the model name are off the page
+(`/tune` and `POST /api/look` still work). He is about to test the gray-desk fix on the camera.
+
 ## 2026-11-21 (14:30), Yoon Woo's Claude
 
 Yoon Woo asked for a cleaner right side and a color change between the modes, and chose the color

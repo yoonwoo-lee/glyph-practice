@@ -69,6 +69,11 @@ The README covers how to run it; this file covers the why and the plan.
   little above dead center, with the faded line under it (his wording). 14:57: the line fainter still and leaning slightly ("italicizing them a lil bit"). Under the line, as a trial he
   expects to delete, the mode's marks as a row of small quiet pictures that open the Legend tab
   (`#hints`; everything for it is marked "hints" in `index.html`).
+  **Nov 21, 15:16:** he had the "Read page now" and "Tune" buttons and the model name taken off the
+  page. Under the page view there are the Sheet and Page readouts and Rotate, nothing else. Both
+  still work without a button: `/tune` by its address, a full read by `POST /api/look` (where these
+  notes say "Read page now", that is what is meant). The page no longer says when answers are
+  practice ones (`--mock`).
   **Toned down after outside feedback (Nov 19, 19:20):** the pink in the background is one soft glow in
   the bottom left corner (several strong blooms read as "blotches"), and the scan is a thin line
   passing slowly down the page with a faint glow, not a tall fast pink bar. Don't turn either back up.
