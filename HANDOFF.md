@@ -38,7 +38,7 @@ Yoon Woo ran Glyph at a different desk (a light gray table by a window) and a sp
 
 **Later, 14:55:** opening screen, his pick: the logo centered a little above the middle with the faded
 line under it, plus a trial row of small marks under the line ("I'll probably want to delete it":
-`#hints` in `index.html`). Only `index.html` and notes changed; 85 checks pass.
+`#hints` in `index.html`). Only `index.html` and notes changed; 85 checks pass. He kept the row ("this is good") and asked for the line fainter and slightly italic: done at 15:00.
 
 ## 2026-11-21 (14:30), Yoon Woo's Claude
 

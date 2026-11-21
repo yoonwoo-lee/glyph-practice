@@ -66,7 +66,7 @@ The README covers how to run it; this file covers the why and the plan.
   `:root[data-mode="editor"]`, and the colors are registered with `@property` so the field turns in
   0.9 s. The pink glow, the white sheet and the pale pink buttons are the same in both modes.
   **Nov 21, 14:50 (the right side felt "so empty"):** the logo stands in the middle of the sheet, a
-  little above dead center, with the faded line under it (his wording). Under the line, as a trial he
+  little above dead center, with the faded line under it (his wording). 14:57: the line fainter still and leaning slightly ("italicizing them a lil bit"). Under the line, as a trial he
   expects to delete, the mode's marks as a row of small quiet pictures that open the Legend tab
   (`#hints`; everything for it is marked "hints" in `index.html`).
   **Toned down after outside feedback (Nov 19, 19:20):** the pink in the background is one soft glow in
