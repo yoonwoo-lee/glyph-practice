@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from glyph import config, demo, tune  # noqa: E402
 from glyph import engine as engine_mod  # noqa: E402
 from glyph.page import find_page_quad, normalize_light, warp_page  # noqa: E402
-from tests.test_pipeline import kinds, run  # noqa: E402
+from tests.test_pipeline import _stepper, kinds, run  # noqa: E402
 
 
 def _page(step="highlights", change=None):
@@ -28,6 +28,11 @@ def _page(step="highlights", change=None):
         f = change(f)
     quad, _ = find_page_quad(f)
     return warp_page(f, quad)
+
+
+def _page_of(scene):
+    quad, _ = find_page_quad(scene)
+    return warp_page(scene, quad)
 
 
 def test_timing_log_has_a_row_per_look():
@@ -535,6 +540,95 @@ def test_a_second_spark_by_the_same_problem_gets_a_second_hint():
     assert kinds(session) == ["hint", "hint"], kinds(session)
 
 
+def _answers_everything(n, crop, shape):
+    """A model that reports a spark and an underline every time it is asked."""
+    return {"occluded": False, "triggers": [
+        {"kind": "symbol", "symbol": "spark", "action": "hint", "target": "Problem 1", "response": "hint number %d" % n},
+        {"kind": "underline", "symbol": None, "action": "define", "target": "inertia", "response": "resistance to change in motion"},
+    ]}
+
+
+def test_a_spark_the_first_read_answered_is_not_answered_again():
+    """Camera run of Nov 20: a spark drawn while the first read of the sheet was still waiting.
+
+    The read went out with the spark in its picture and gave a hint. The spark was not part of
+    the remembered page, so it then counted as new ink and got a second hint.
+    """
+    page = demo.base_page()
+    blank = demo.desk_scene(page)
+    demo.draw_spark(page)
+    spark = demo.desk_scene(page)
+    engine, session, show = _stepper(read_first_page=True)
+    engine.brain.script = lambda n, crop, shape: {"occluded": False, "triggers": _answers_everything(n, crop, shape)["triggers"][:1]}
+    engine._backoff_until = 1000.0 + 4.0  # the first read has to wait a few seconds
+    show(blank, 3)
+    assert engine.brain.calls == [] and engine.baseline is not None
+    show(spark, 9)
+    assert [c["full"] for c in engine.brain.calls] == [True], engine.brain.calls
+    assert kinds(session) == ["hint"], kinds(session)
+
+
+def test_underlines_already_on_a_sheet_are_left_alone():
+    """A sheet that arrives with underlines from another day: no definitions until asked for."""
+    page = demo.base_page()
+    demo.draw_underline(page)
+    demo.draw_spark(page)
+    marked = demo.desk_scene(page)
+    engine, session, show = _stepper(read_first_page=True)
+    engine.brain.script = _answers_everything
+    show(marked, 4)
+    assert [c["full"] for c in engine.brain.calls] == [True], engine.brain.calls
+    assert kinds(session) == ["hint"], kinds(session)  # the spark, not the old underline
+    engine.look_now()  # the student asks for the whole sheet to be read
+    show(marked, 3)
+    assert kinds(session) == ["hint", "define"], kinds(session)
+
+
+def test_a_short_underline_right_under_a_small_word_is_looked_at():
+    """Camera run of Nov 20: "ball" in small print, underlined close to the letters, got no look.
+
+    Ink within a few pixels of print is never counted as new, so what was left of the line was
+    under the size at which a look is sent.
+    """
+    from glyph import page as P
+
+    page = demo.base_page()
+    blank = demo.desk_scene(page)
+    x0, x1, y = demo._word_span(1, "net")
+    cv2.line(page, (x0, y + 7), (x0 + 24, y + 7), demo.PEN, 2, cv2.LINE_AA)
+    lined = demo.desk_scene(page)
+    new = P.remove_small(P.new_ink(P.ink_strength(_page_of(lined)), P.ink_strength(_page_of(blank))), 8)
+    assert 0 < cv2.countNonZero(new) < config.MIN_NEW_INK_PX, cv2.countNonZero(new)  # too little for the old rule
+    engine, brain, session = run([blank, lined], hold=1.8)
+    assert len(brain.calls) == 1 and not brain.calls[0]["full"], brain.calls
+    assert kinds(session) == ["define"], kinds(session)
+
+
+def test_a_pale_thin_highlight_over_small_print_is_found():
+    """Camera run of Nov 20: one line of small print in pale green highlighter was not saved.
+
+    The stroke was 13 pixels tall, broken up by the letters, and half of it was paler than the
+    color range allows. Paler parts now count when they are joined to a part that is in range.
+    """
+    from glyph.highlights import detect_highlights
+
+    page = np.full((demo.PAGE_H, demo.PAGE_W, 3), 236, np.uint8)
+    x0, x1, y0, y1 = 140, 580, 500, 513
+    fade = np.linspace(0.0, 1.0, x1 - x0, dtype=np.float32)[None, :, None]
+    strong, pale = np.array([0.74, 1.0, 0.80], np.float32), np.array([0.87, 1.0, 0.91], np.float32)
+    page[y0:y1, x0:x1] = (page[y0:y1, x0:x1].astype(np.float32) * (strong * (1 - fade) + pale * fade)).astype(np.uint8)
+    for i, line in enumerate(["A ball is thrown and follows the parabolic path shown above. Air friction", "point on the path. Points P and R are the same height above the ground."]):
+        cv2.putText(page, line, (144, 510 + 17 * i), demo.FONT, 0.36, demo.INK, 1, cv2.LINE_AA)
+    page = cv2.GaussianBlur(page, (3, 3), 0)
+    regions, mask = detect_highlights(page)
+    assert [r["color"] for r in regions] == ["green"], regions
+    x, y, w, h = regions[0]["bbox"]
+    assert x <= x0 + 12 and x + w >= x1 - 45 and h <= 22, regions  # nearly the whole stroke, pale end included
+    plain = np.full((demo.PAGE_H, demo.PAGE_W, 3), 236, np.uint8)
+    plain[:, :, 0] = 228  # paper under a warm lamp is not a highlight
+    assert detect_highlights(plain)[0] == []
+
+
 def test_pages_are_numbered_in_order_and_keep_their_number():
     from glyph import page as P
     from glyph.highlights import HighlightStore
@@ -556,7 +650,21 @@ def test_pages_are_numbered_in_order_and_keep_their_number():
     assert store.merge(2) == 3 and store.page_no == 2 and store.pages() == [1, 2]  # "this is page 2"
     store.turn()  # the view was turned a quarter turn: sheets are still recognised
     store.new_page()
-    assert store.identify(np.ascontiguousarray(np.rot90(first))) and store.page_no == 1
+    turned = P.page_signature(np.ascontiguousarray(np.rot90(_page("blank"))))  # the page as it is seen after Rotate
+    assert store.identify(turned) and store.page_no == 1
+
+
+def test_rotate_keeps_the_page_number():
+    """Camera run of Nov 20: the sheet became "page 2" when the view was turned upright."""
+    s = demo.build_steps()
+    engine, session, show = _stepper(read_first_page=True)
+    show(s["blank"], 3)
+    assert engine.store.page_no == 1 and len(engine.brain.calls) == 1, (engine.store.page_no, engine.brain.calls)
+    engine.rotate()
+    show(s["blank"], 4)
+    assert engine.status()["view"]["page_size"] == [demo.PAGE_H, demo.PAGE_W] or engine._shape[0] < engine._shape[1], engine._shape
+    assert engine.store.page_no == 1 and engine.store.pages() == [1], engine.store.pages()
+    assert len(engine.brain.calls) == 1, "the same sheet is not read in full a second time"
 
 
 def test_web_page_carries_the_name_and_the_page_numbers():

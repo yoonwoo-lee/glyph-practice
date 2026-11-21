@@ -29,12 +29,22 @@ def find_page_quad(frame: np.ndarray) -> Tuple[Optional[np.ndarray], bool]:
 def page_signature(page: np.ndarray) -> np.ndarray:
     """A small picture of the ink on a page, to tell one sheet from another.
 
-    Two pages of the same reading have their lines in the same places and differ only in the
-    words, so what a whole line has in common is taken out and the shapes of the words are kept.
+    It is kept as a plain picture, so that it can be turned when the page view is turned
+    (`HighlightStore.turn`). What is compared is worked out from it in `_words`.
     """
     small = cv2.resize(ink_strength(page), None, fx=1 / 3.0, fy=1 / 3.0, interpolation=cv2.INTER_AREA).astype(np.float32)
-    small = cv2.GaussianBlur(small, (3, 3), 0)
-    return small - cv2.blur(small, (31, 1))
+    return cv2.GaussianBlur(small, (3, 3), 0)
+
+
+def _words(signature: np.ndarray) -> np.ndarray:
+    """Two pages of the same reading have their lines in the same places and differ only in the
+    words, so what a whole line has in common is taken out and the shapes of the words are kept.
+
+    This works along the lines of text as the page is seen now, so it has to be done after any
+    turning, not before: a signature filtered first and turned afterwards matched the same sheet
+    at 0.43 where 0.6 is needed, and the sheet got a new page number on Rotate (Nov 20).
+    """
+    return signature - cv2.blur(signature, (31, 1))
 
 
 def same_page(a: np.ndarray, b: np.ndarray) -> float:
@@ -46,12 +56,14 @@ def same_page(a: np.ndarray, b: np.ndarray) -> float:
     """
     if a.shape != b.shape:
         return 0.0
+    a, b = _words(a), _words(b)
     return max(_alike(a, b), _alike(a, np.ascontiguousarray(b[::-1, ::-1])))
 
 
 def can_be_told_apart(signature: np.ndarray) -> bool:
     """False for a sheet with so little on it (blank, or a word or two) that it could not be
     recognised if it came back."""
+    signature = _words(signature)
     h, w = signature.shape[:2]
     written = 0
     for row in range(5):
@@ -557,11 +569,45 @@ def new_ink(steady: np.ndarray, old_strength: np.ndarray) -> np.ndarray:
     New ink has to be clearly darker than anything the old page had within a few pixels. A faint
     old stroke that drifts across the "is it ink" line is therefore not new, while a real pen
     stroke drawn next to faint old marks still is.
+
+    That rule alone refuses everything within four pixels of print, which is where an underline
+    under small type lies (see `_added_beside_print`).
     """
     nearby = cv2.dilate(old_strength, np.ones((9, 9), np.uint8))
     bar = cv2.addWeighted(nearby, 1.6, nearby, 0.0, 4.0)
     darker = cv2.compare(steady, bar, cv2.CMP_GT)
-    return cv2.bitwise_and(darker, strength_to_mask(steady))
+    new = cv2.bitwise_and(darker, strength_to_mask(steady))
+    return cv2.bitwise_or(new, _added_beside_print(steady, old_strength))
+
+
+SOLID_INK = 26  # a pen stroke is at least this much darker than the paper; faint pencil is not
+_K25 = (25, 25)
+
+
+def _added_beside_print(steady: np.ndarray, old_strength: np.ndarray) -> np.ndarray:
+    """Solid ink where the paper was clean, close beside older ink that has not itself moved.
+
+    Camera run of Nov 20: "ball" in small print, underlined a pixel or two below the letters with
+    a line seven pixels thick. Only a 35-pixel sliver of it was far enough from the letters to
+    count as new, and no look was sent.
+
+    Being close to old ink is exactly what old ink does when the sheet has slipped a few pixels,
+    which is why the main rule keeps its distance. The difference: when the sheet slips, the old
+    ink is no longer where it was. So ink this close to print counts only where the print around
+    it is still in place, spot for spot.
+    """
+    clean_before = cv2.compare(cv2.dilate(old_strength, np.ones((5, 5), np.uint8)), 6, cv2.CMP_LE)
+    solid = cv2.bitwise_and(cv2.compare(steady, SOLID_INK, cv2.CMP_GE), clean_before)
+    if cv2.countNonZero(solid) == 0:
+        return solid
+    old_mask = strength_to_mask(old_strength)
+    # Old ink that is gone, or much fainter, at its own spot (give or take a pixel).
+    still = cv2.compare(cv2.dilate(steady, np.ones((3, 3), np.uint8)), cv2.addWeighted(old_strength, 0.5, old_strength, 0.0, 0.0), cv2.CMP_GE)
+    gone = cv2.bitwise_and(old_mask, cv2.bitwise_not(still))
+    n_old = cv2.boxFilter(old_mask, cv2.CV_32F, _K25, normalize=False) / 255.0
+    n_gone = cv2.boxFilter(gone, cv2.CV_32F, _K25, normalize=False) / 255.0
+    in_place = (n_gone <= 0.1 * n_old + 2.0).astype(np.uint8) * 255
+    return cv2.bitwise_and(solid, in_place)
 
 
 _K15 = np.ones((15, 15), np.uint8)
@@ -688,6 +734,30 @@ def marks_only(mask: np.ndarray, gap: int = 25, min_side: int = 14, min_px: int 
         px = cv2.countNonZero(mask[y : y + h, x : x + w][labels[y : y + h, x : x + w] == i])
         keep[i] = max(x1 - x0, y1 - y0) >= min_side and px >= min_px
     return cv2.bitwise_and(mask, keep[labels].astype(np.uint8) * 255)
+
+
+def short_underline(fresh: np.ndarray, old: np.ndarray, min_len: int = 14) -> bool:
+    """Is some of the new ink a short flat stroke lying right under (or beside) older ink?
+
+    That is what an underline under a short word in small print comes to: "ball" in 10-point type
+    is 25 pixels wide on the flattened page, and the part of the line that stays clear of the
+    letters is a sliver of 30 to 80 pixels. It is too little to pass for writing by size alone, but
+    a flat stroke right against print is rarely anything other than an underline.
+    The stroke may run either way, for a sheet that is lying sideways.
+    """
+    if cv2.countNonZero(fresh) == 0:
+        return False
+    ph, pw = fresh.shape[:2]
+    for x, y, w, h in ink_groups(fresh, gap=9):
+        if w >= min_len and h <= max(6, w // 4):
+            if cv2.countNonZero(old[max(0, y - 14) : y, x : x + w]) >= 1.5 * w:
+                return True
+        elif h >= min_len and w <= max(6, h // 4):
+            left = cv2.countNonZero(old[y : y + h, max(0, x - 14) : x])
+            right = cv2.countNonZero(old[y : y + h, x + w : min(pw, x + w + 14)])
+            if max(left, right) >= 1.5 * h:
+                return True
+    return False
 
 
 def whole_strokes(fresh: np.ndarray, ink: Optional[np.ndarray] = None, old: Optional[np.ndarray] = None) -> np.ndarray:

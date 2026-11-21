@@ -46,6 +46,7 @@ from .page import (
     page_gray,
     page_saturation,
     remove_small,
+    short_underline,
     page_matrix,
     warp_page,
 )
@@ -514,7 +515,9 @@ class Engine:
                 # outline of a fingertip or a pen coming in over the edge of the paper.
                 fresh = marks_only(fresh)
                 fresh_px = cv2.countNonZero(fresh)
-            if (big or sprawl or self._in_place != "same" or fresh_px >= s.min_new_px) and stable and steady_ink and not outline_unsure:
+            # A short underline close under a word is far smaller than anything else worth a look.
+            small_mark = bool(fresh_px) and fresh_px < s.min_new_px and not big and not sprawl and short_underline(fresh, self.baseline)
+            if (big or sprawl or self._in_place != "same" or fresh_px >= s.min_new_px or small_mark) and stable and steady_ink and not outline_unsure:
                 # Before believing any of it, check that the remembered page still sits exactly on
                 # the page as it is now, and put it right if not. Nothing is sent to the model
                 # until a check has found the two in place. If they cannot be matched up at all,
@@ -600,7 +603,8 @@ class Engine:
                                 seen = cv2.bitwise_or(seen, item[0])
                             unread = cv2.bitwise_and(fresh, cv2.bitwise_not(cv2.dilate(seen, _K9)))
                             unread = remove_small(unread, 8)
-                        if cv2.countNonZero(unread) >= s.min_new_px and not self._wait_for_motion:
+                        enough = cv2.countNonZero(unread) >= s.min_new_px or (small_mark and short_underline(unread, self.baseline))
+                        if enough and not self._wait_for_motion:
                             text = self._try_look(now, page, ink, fresh, full=False, strength=strength_any) or text
         if not stable:
             self._wait_for_motion = False
@@ -742,6 +746,8 @@ class Engine:
             "fresh": None if fresh is None else fresh.copy(),
             "ink": ink.copy(),
             "strength": None if strength is None else strength.copy(),
+            # Whatever was lying on the sheet when the picture was taken (with a finger's width around it).
+            "cover": None if self._cover is None else cv2.dilate(self._cover, _K61),
             "context": self._context(page, box),
             "t_seen": self._fresh_since if (not full and self._fresh_since) else now,
             "t_sent": now,
@@ -860,6 +866,11 @@ class Engine:
                 key = (t["action"], _norm(t["target"]))
                 page_no = job.get("page_no") or 0
                 if job["full"]:
+                    # A sheet that comes into view with underlines on it was underlined some other
+                    # day: those are left alone (Yoon Woo, Nov 20). Symbols on it are answered, and
+                    # so is everything when the student asks for the sheet to be read.
+                    if t.get("kind") == "underline" and job["reason"] != "you asked":
+                        continue
                     # Reading a whole sheet finds every mark on it, old ones too. One that was
                     # answered before, on any sheet, is the same mark seen again.
                     if self._already_answered(key):
@@ -882,7 +893,24 @@ class Engine:
                 )
                 shown += 1
 
-            if job["full"] or not same_page:
+            if not same_page:
+                continue
+            if job["full"]:
+                if shown:
+                    # The marks in that picture have been answered, so the picture is the old page
+                    # now. The remembered page can be behind it: a spark drawn while the read was
+                    # waiting its turn was answered here and then again as "new ink" (Nov 20).
+                    # Not under a hand, though: what it hid has not been seen.
+                    seen, seen_strength = job["ink"], job.get("strength")
+                    if job.get("cover") is not None:
+                        clear = cv2.bitwise_not(job["cover"])
+                        seen = cv2.bitwise_and(seen, clear)
+                        seen_strength = None if seen_strength is None else cv2.bitwise_and(seen_strength, clear)
+                    if seen.shape == self.baseline.shape:
+                        self.baseline = cv2.bitwise_or(self.baseline, seen)
+                        if seen_strength is not None:
+                            self.base_strength = cv2.max(self.base_strength, seen_strength)
+                        self.pending = []
                 continue
             if shown:
                 # Answered: everything on the page at that moment is now old.

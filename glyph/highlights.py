@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 
 from . import config
-from .page import normalize_light
+from .page import ink_mask, normalize_light
 
 # Box colors (BGR) for drawing on the page view.
 DRAW_COLORS = {
@@ -20,37 +20,61 @@ DRAW_COLORS = {
     "pink": (170, 80, 230),
 }
 
-_K5 = np.ones((5, 5), np.uint8)
+_K3 = np.ones((3, 3), np.uint8)
+_K7 = np.ones((7, 7), np.uint8)
 _KCLOSE = cv2.getStructuringElement(cv2.MORPH_RECT, (31, 9))
 
 Box = Tuple[int, int, int, int]  # x, y, w, h
 
 
 def detect_highlights(page: np.ndarray):
-    """Return ([{color, bbox, area}], mask of all highlighted pixels)."""
+    """Return ([{color, bbox, area}], mask of all highlighted pixels).
+
+    A highlighter stroke is rarely one even color: it is strong where the pen started and pale
+    where it ran dry or was drawn fast (camera run of Nov 20: a green stroke over one line of
+    small print, half of it paler than the color range, was not found at all). So each color is
+    looked for twice: strictly, in its range from the settings, and loosely, a good deal paler.
+    A highlight is a loosely colored patch with enough strictly colored paint in it. Plain paper
+    is far below even the loose level once the lighting has been evened out.
+
+    What tells a highlight from colored pen strokes (blue ballpoint, out of focus, is pale blue) is
+    that it is a filled band: color and the letters under it together are solid for at least seven
+    pixels each way. Pen strokes are not, however many of them sit side by side.
+    """
     hsv = cv2.cvtColor(normalize_light(page), cv2.COLOR_BGR2HSV)
     union = np.zeros(page.shape[:2], np.uint8)
     regions: List[dict] = []
     min_area = int(page.shape[0] * page.shape[1] * config.HIGHLIGHT_MIN_FRAC)
+    core = max(40, min_area // 4)  # strictly colored pixels a highlight must contain
+    letters = ink_mask(page)
     for color, ranges in config.HIGHLIGHT_HSV.items():
-        mask = None
+        strict = loose = None
         for lo, hi in ranges:
             m = cv2.inRange(hsv, np.array(lo, np.uint8), np.array(hi, np.uint8))
-            mask = m if mask is None else cv2.bitwise_or(mask, m)
-        if mask is None or cv2.countNonZero(mask) < min_area:
+            paler = (lo[0], max(25, lo[1] - 30), max(60, lo[2] - 30))
+            wide = cv2.inRange(hsv, np.array(paler, np.uint8), np.array(hi, np.uint8))
+            strict = m if strict is None else cv2.bitwise_or(strict, m)
+            loose = wide if loose is None else cv2.bitwise_or(loose, wide)
+        if strict is None or cv2.countNonZero(strict) < core:
             continue
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, _K5)
-        # Letters inside a highlight break it into pieces; join them back up.
+        # A stroke over one line of small print is about a dozen pixels tall and cut up by the
+        # letters. Keep the color where it is part of a solid band (see above), clear away
+        # specks, then join the pieces back up.
+        band = cv2.dilate(cv2.morphologyEx(cv2.bitwise_or(loose, letters), cv2.MORPH_OPEN, _K7), _K3)
+        mask = cv2.morphologyEx(cv2.bitwise_and(loose, band), cv2.MORPH_OPEN, _K3)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, _KCLOSE)
         n, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
         for i in range(1, n):
             x, y, w, h, area = (int(v) for v in stats[i])
-            if area < min_area or min(w, h) < 12:
+            if area < min_area or min(w, h) < 9:
                 continue
             if area > 0.3 * page.shape[0] * page.shape[1]:
                 continue  # that is not a highlighter stroke: a colored desk, or tinted light
+            inside = labels[y : y + h, x : x + w] == i
+            if cv2.countNonZero(strict[y : y + h, x : x + w][inside]) < core:
+                continue
             regions.append({"color": color, "bbox": (x, y, w, h), "area": area})
-            union[y : y + h, x : x + w][labels[y : y + h, x : x + w] == i] = 255
+            union[y : y + h, x : x + w][inside] = 255
     return regions, union
 
 
