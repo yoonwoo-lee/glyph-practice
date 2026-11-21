@@ -78,6 +78,8 @@ The README covers how to run it; this file covers the why and the plan.
   the pink glow in the bottom left is a little larger and a second, fainter wash of it climbs the
   left edge beside the page; the deep blue in the top left corner is eased. Still one soft field,
   no separate blooms. This is the one time he asked for more pink: do not add further.
+  **Nov 21, 15:27:** the shadow under the page view is the mode's accent, at his request: purple (where
+  sky meets pink) in STEM, pink in Humanities (`--page-shadow`).
   **Toned down after outside feedback (Nov 19, 19:20):** the pink in the background is one soft glow in
   the bottom left corner (several strong blooms read as "blotches"), and the scan is a thin line
   passing slowly down the page with a faint glow, not a tall fast pink bar. Don't turn either back up.
@@ -111,8 +113,8 @@ Walk Skylar through these in order, checking each one works before moving on.
    "End session" for the study guide. Ctrl+C stops it. (With a key in `.env`, plain `--demo` sends the
    demo sheets to live Gemini and spends requests: `--demo --mock` is the free one.)
    Needs Python 3.9+.
-5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 17 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 85 checks in total.
+5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 18 should pass.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 86 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -251,11 +253,17 @@ no answer). The spark he drew by Q11 was never looked at, because the sheet was 
 - A picture that is all gray or white with nothing written on it (a ceiling, a bare table) is no
   longer read as a page: no request.
 
+**Nov 21, 15:11, the gray table again, with the fix, live Gemini** (five requests): the sheet was
+found and followed. A spark got its hint, two boxed answers their verdicts ("Not yet", then "Looks
+right" after he changed the answer), an underlined phrase its definition, each in 2 to 3 s. So the
+box as "check" and `_sheet_by_edges` have now worked on the camera. The first request was the first
+look at the clean sheet (7 s, nothing to answer); he took its "Reading your mark" for a bug, see below.
+
 **Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
 (a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
 prompt that answered on the camera is unchanged apart from "inside the box"; the answer prompt is new.
 
-**Built and covered by the checks (85 pass: 17 + 9 + 59), but not yet seen on the real camera or
+**Built and covered by the checks (86 pass: 18 + 9 + 59), but not yet seen on the real camera or
 answered by live Gemini:**
 - The Nov 21 fixes above.
 - From Nov 20 night: the target, the two modes, box / circle / margin line, the places a boxed word
@@ -345,6 +353,12 @@ answered by live Gemini:**
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
+- (Nov 21, his choice out of three: "Keep it, relabel it") The first look at a new sheet stays: one
+  request per sheet, so marks already on it are answered. But it is not shown as a mark being read.
+  The status carries `reading`: "page" for a read of the whole sheet, "mark" for a look at new ink.
+  For "page" the web page says "Taking in the page", a pale line passes down the sheet, and the
+  opening screen stays: no pink, no "Reading your mark", no "First answer" heading. (Skipping the
+  first look altogether was offered and not chosen.)
 - (Nov 21) A sheet on a light gray desk. When more than 60% of the picture is gray or white and the
   color way finds no clean sheet, `_sheet_by_edges` looks for it: next to the sheet, the desk has
   something brighter within 16 pixels (of the 640-wide picture), which makes a band of "lower

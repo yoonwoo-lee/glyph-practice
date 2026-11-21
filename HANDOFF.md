@@ -45,6 +45,14 @@ line under it, plus a trial row of small marks under the line ("I'll probably wa
 
 **15:25:** a bit more pink on the left of the background, at his request ("and then perfect").
 
+**15:45, after his camera test at 15:11 (gray table, live Gemini, five requests):** the fix works on
+the camera. Sheet found; spark → hint, two boxed answers → "Not yet" and "Looks right", an
+underlined phrase → definition, 2 to 3 s each. He reported one thing as a bug: Glyph "reading marks"
+at the very start with nothing on the paper. That was the first look at the new sheet. Asked, he
+chose to keep it and relabel it: the status now carries `reading` ("page" or "mark"), and for
+"page" the web page says "Taking in the page" and stays on the opening screen. Also at his
+request: the page view's shadow is purple in STEM and pink in Humanities. 86 checks pass (one new).
+
 ## 2026-11-21 (14:30), Yoon Woo's Claude
 
 Yoon Woo asked for a cleaner right side and a color change between the modes, and chose the color

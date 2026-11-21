@@ -37,11 +37,12 @@
   @property --sky-deep { syntax: '<color>'; inherits: true; initial-value: #0B7FB0; }
   @property --sky-far { syntax: '<color>'; inherits: true; initial-value: #8FD6F6; }
   @property --sky-shade { syntax: '<color>'; inherits: true; initial-value: rgba(5,147,198,.42); }
+  @property --page-shadow { syntax: '<color>'; inherits: true; initial-value: rgba(124,92,214,.78); }
   @property --sky-light { syntax: '<color>'; inherits: true; initial-value: rgba(222,244,254,.88); }
-  :root { --sky-far: #8FD6F6; --sky-shade: rgba(5,147,198,.42); --sky-light: rgba(222,244,254,.88);
-    transition: --sky .9s ease, --sky-mid .9s ease, --sky-deep .9s ease, --sky-far .9s ease, --sky-shade .9s ease, --sky-light .9s ease; }
+  :root { --sky-far: #8FD6F6; --sky-shade: rgba(5,147,198,.42); --sky-light: rgba(222,244,254,.88); --page-shadow: rgba(124,92,214,.78);
+    transition: --page-shadow .9s ease, --sky .9s ease, --sky-mid .9s ease, --sky-deep .9s ease, --sky-far .9s ease, --sky-shade .9s ease, --sky-light .9s ease; }
   :root[data-mode="editor"] { --sky: #F4A98C; --sky-mid: #EF9A7A; --sky-deep: #B4532F; --sky-soft: #F9CFBD; --sky-pale: #FDEEE6; --sky-line: #F6D3C4;
-    --sky-far: #F8C9AE; --sky-shade: rgba(226,120,84,.5); --sky-light: rgba(255,241,230,.88); }
+    --sky-far: #F8C9AE; --sky-shade: rgba(226,120,84,.5); --sky-light: rgba(255,241,230,.88); --page-shadow: rgba(222,84,160,.72); }
   .app { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 100vh; min-height: 620px;
     position: relative; isolation: isolate; overflow: hidden;
     background: linear-gradient(150deg, var(--sky-mid) 0%, var(--sky) 44%, var(--sky-far) 100%); }
@@ -109,7 +110,8 @@
   .stage::before { content: ""; position: absolute; inset: -9% -7%; pointer-events: none; opacity: 0; transition: opacity .7s ease;
     background: radial-gradient(48% 46% at 50% 54%, rgba(229,107,174,.40), rgba(229,107,174,.14) 55%, rgba(229,107,174,0) 74%); }
   .stage.scanning::before { opacity: 1; }
-  .fit { position: absolute; background: var(--white); box-shadow: 0 0 0 2px var(--white), 0 28px 56px -22px rgba(6,70,105,.6); transition: box-shadow .4s; }
+  /* The page's shadow is the mode's accent: purple (where sky meets pink) in STEM, pink in Humanities. */
+  .fit { position: absolute; background: var(--white); box-shadow: 0 0 0 2px var(--white), 0 30px 60px -18px var(--page-shadow), 0 10px 22px -12px var(--page-shadow); transition: box-shadow .4s; }
   .fit > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .fit > svg.hud { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 
@@ -117,8 +119,9 @@
      fine pink edge. Kept quiet on purpose: a tall, fast, glowing bar was too much. */
   .sweep { position: absolute; left: 0; right: 0; top: 0; height: 9%; opacity: 0; pointer-events: none;
     background: linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--sky) 8%, transparent) 55%, rgba(229,107,174,.14) 100%); border-bottom: 1.5px solid rgba(229,107,174,.7); }
-  .stage.scanning .sweep { opacity: 1; animation: sweep 2.8s cubic-bezier(.45,.05,.55,.95) infinite; }
-  .stage.scanning .fit { box-shadow: 0 0 0 2px var(--pink), 0 0 0 5px rgba(229,107,174,.14), 0 28px 56px -22px rgba(6,70,105,.6); }
+  .stage.scanning .sweep, .stage.taking .sweep { opacity: 1; animation: sweep 2.8s cubic-bezier(.45,.05,.55,.95) infinite; }
+  .stage.taking .sweep { filter: saturate(0) brightness(1.6); }  /* a pale line while a new sheet is taken in: nothing is being "read" */
+  .stage.scanning .fit { box-shadow: 0 0 0 2px var(--pink), 0 0 0 5px rgba(229,107,174,.14), 0 30px 60px -18px var(--page-shadow), 0 10px 22px -12px var(--page-shadow); }
   @keyframes sweep { from { transform: translateY(-100%); } to { transform: translateY(1112%); } }
   .fit .clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 
@@ -533,13 +536,17 @@ const SHEET = { none: 'None', settling: 'Locking', watching: 'Locked', reading: 
 function showStatus(s) {
   last = s; const v = s.view || {};
   const watching = s.text.startsWith('Watching');
-  $('state').className = 'state glass ' + (s.busy ? 'busy' : watching ? '' : 'wait');
-  $('stateText').textContent = s.busy ? 'Reading your mark' : s.text;
-  $('stage').classList.toggle('scanning', !!s.busy && big === 'page');
-  $('reading').classList.toggle('hide', !s.busy);
-  $('nowHead').classList.toggle('hide', !(seen || s.busy));
+  // A read of the whole sheet (the first look at a new one) is Glyph taking the page in. It is not
+  // a mark being read: no pink, and the opening screen stays.
+  const taking = !!s.busy && s.reading === 'page', marking = !!s.busy && !taking;
+  $('state').className = 'state glass ' + (marking ? 'busy' : (watching || taking) ? '' : 'wait');
+  $('stateText').textContent = marking ? 'Reading your mark' : taking ? 'Taking in the page' : s.text;
+  $('stage').classList.toggle('scanning', marking && big === 'page');
+  $('stage').classList.toggle('taking', taking && big === 'page');
+  $('reading').classList.toggle('hide', !marking);
+  $('nowHead').classList.toggle('hide', !(seen || marking));
   $('nowWord').textContent = current ? 'Latest answer' : 'First answer';
-  $('introTop').classList.toggle('gone', seen || !!s.busy);   // the headline steps aside as soon as a read starts
+  $('introTop').classList.toggle('gone', seen || marking);   // the headline steps aside as soon as a read starts
   $('empty').classList.toggle('hide', !(v.phase === 'none' && big === 'page'));
   $('clock').textContent = clock(s.session_seconds || 0);
   $('rSheet').textContent = SHEET[v.phase] || '–';

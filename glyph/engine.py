@@ -165,6 +165,7 @@ class Engine:
         self._pool = ThreadPoolExecutor(max_workers=1)
         self._results: "queue.Queue" = queue.Queue()
         self._busy = False
+        self._reading: Optional[str] = None  # what a running read is of: "page" (taking a sheet in) or "mark"
         self._last_call = 0.0
         self._call_times: deque = deque()
         self._backoff_until = 0.0
@@ -818,6 +819,10 @@ class Engine:
         reason = self._want_full if full else "new ink"
         self._want_full = None if full else self._want_full
         self._busy = True
+        # A read of the whole sheet is Glyph taking the page in, not a mark being read: the web
+        # page says so, and keeps its opening screen (Nov 21: "reading marks when the paper has
+        # nothing on it at the very start").
+        self._reading = "page" if full else "mark"
         self._last_call = now
         self._call_times.append(now)
         self._looks += 1
@@ -1280,5 +1285,6 @@ class Engine:
                 "page_found": self.quad is not None,
                 "stable": bool(stable),
                 "busy": self._busy,
+                "reading": self._reading if self._busy else None,
                 "view": overlay,
             }

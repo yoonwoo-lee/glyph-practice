@@ -255,6 +255,24 @@ def _stepper(**overrides):
     return engine, session, show
 
 
+def test_first_look_at_a_sheet_is_not_called_reading_a_mark():
+    """The web page says "Taking in the page" for the read of a new sheet, "Reading your mark" for a mark."""
+    s = demo.build_steps()
+    engine, session, show = _stepper(read_first_page=True)
+    said = []
+    plain = ScriptedBrain(engine.legend)
+
+    def script(n, crop, shape):
+        said.append(engine._reading)
+        return plain.analyze(b"", crop, shape_hint=shape)
+
+    engine.brain.script = script
+    show(s["blank"], 6)
+    show(s["spark"], 8)
+    assert said == ["page", "mark"], said
+    assert kinds(session) == ["hint"] and engine.status()["reading"] is None, (kinds(session), engine.status()["reading"])
+
+
 def test_stuck_nudge_once_per_pause():
     s = demo.build_steps()
     engine, session, show = _stepper(stuck_seconds=20)

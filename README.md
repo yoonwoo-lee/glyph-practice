@@ -176,7 +176,7 @@ python -m tests.test_rough
 python -m tests.test_tools
 ```
 
-- `test_pipeline` (17): the full flow, a half-drawn symbol, a hand on the page, a nudged sheet, a new
+- `test_pipeline` (18): the full flow, a half-drawn symbol, a hand on the page, a nudged sheet, a new
   sheet, model errors, the "keep going" card, the boxes on the camera view.
 - `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
   a tilted camera, sensor grain and flicker.
