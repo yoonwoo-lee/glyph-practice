@@ -94,6 +94,20 @@ def draw_handwriting(page: np.ndarray, text: str = "a = g sin(30)", org=(110, 46
     cv2.putText(page, text, org, HAND, 1.0, PEN, 2, cv2.LINE_AA)
 
 
+def draw_check(page: np.ndarray, at=(470, 462), size: int = 30) -> None:
+    """The check symbol: a short stroke down, then a longer one up to the right. `at` is its low point."""
+    x, y = at
+    pts = np.array([[x - size // 3, y - size // 3], [x, y], [x + int(size * 0.8), y - size]], np.int32)
+    cv2.polylines(page, [pts], False, PEN, 3, cv2.LINE_AA)
+
+
+def draw_answer_with_check(page: np.ndarray, text: str = "a = g sin(30) = 4.9", org=(110, 465)) -> None:
+    """The student writes the corrected line under the working and asks for it to be checked."""
+    draw_handwriting(page, text, org)
+    (width, _), _ = cv2.getTextSize(text, HAND, 1.0, 2)
+    draw_check(page, (org[0] + width + 34, org[1] - 3))
+
+
 TILTED = [[640, 150], [1290, 95], [1420, 1010], [520, 960]]  # camera off to one side, sheet turned
 
 
@@ -135,6 +149,8 @@ def build_steps(corners=None) -> Dict[str, np.ndarray]:
     draw_highlight(page, 0, "yellow")
     draw_highlight(page, 3, "green")
     steps["highlights"] = desk_scene(page, corners=corners)
+    draw_answer_with_check(page)
+    steps["check"] = desk_scene(page, corners=corners)
     return steps
 
 
@@ -177,4 +193,4 @@ def sensor(scene: np.ndarray, rng: np.random.RandomState, noise: float = 4.0, fl
 
 def demo_frames() -> List[np.ndarray]:
     s = build_steps()
-    return [s["blank"], s["spark"], s["underline"], s["highlights"]]
+    return [s["blank"], s["spark"], s["underline"], s["highlights"], s["check"]]

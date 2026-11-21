@@ -296,6 +296,7 @@
     <symbol id="g-spark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></g></symbol>
     <symbol id="g-underline" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v7a5 5 0 0 0 10 0V4"/><path d="M4 20.5h16"/></g></symbol>
     <symbol id="g-ask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.4a2.8 2.8 0 1 1 4.2 2.4c-.9.6-1.5 1.1-1.5 2.2"/><path d="M12 17.2v.1"/></g></symbol>
+    <symbol id="g-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13l5 5L19.5 6.5"/></g></symbol>
     <symbol id="g-nudge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></g></symbol>
     <symbol id="g-error" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 4v10M12 19v.1"/></g></symbol>
     <symbol id="g-pen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/></g></symbol>
@@ -368,6 +369,10 @@
             <b>A spark</b><span>One hint for the problem next to it. Never the answer.</span>
           </div>
           <div class="markrow">
+            <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BDE3F2"><rect x="8" y="14" width="46" height="5" rx="2.5"/><rect x="8" y="25" width="38" height="5" rx="2.5"/></g><rect x="8" y="36" width="44" height="5" rx="2.5" fill="#062A40"/><path d="M62 33l5 6 12-15" fill="none" stroke="#D83995" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <b>A check mark</b><span>Checks the answer next to it. Right or not yet, never the answer.</span>
+          </div>
+          <div class="markrow">
             <svg viewBox="0 0 92 54" aria-hidden="true"><g fill="#BDE3F2"><rect x="8" y="14" width="70" height="5" rx="2.5"/><rect x="8" y="26" width="20" height="5" rx="2.5"/><rect x="62" y="26" width="20" height="5" rx="2.5"/><rect x="8" y="40" width="52" height="5" rx="2.5"/></g><rect x="32" y="26" width="26" height="5" rx="2.5" fill="#062A40"/><path d="M31 35c8-2 18 1 28-1" fill="none" stroke="#D83995" stroke-width="2.6" stroke-linecap="round"/></svg>
             <b>An underline</b><span>What the word means on this page.</span>
           </div>
@@ -412,9 +417,14 @@
 <script>
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
-const ANSWERS = ['hint', 'explain', 'define', 'nudge', 'error'];
-const ICON = { hint: 'spark', define: 'underline', explain: 'ask', nudge: 'nudge', error: 'error' };
-const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', nudge: 'Keep going', error: 'Problem' };
+const ANSWERS = ['hint', 'explain', 'define', 'check', 'nudge', 'error'];
+const ICON = { hint: 'spark', define: 'underline', explain: 'ask', check: 'check', nudge: 'nudge', error: 'error' };
+const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', check: 'Check', nudge: 'Keep going', error: 'Problem' };
+/* A checked answer is named by its verdict (the title says "Looks right", "Not yet" or "Could not tell"),
+   and only "right" wears the tick: "not yet" gets the keep-going arrow. */
+const VERDICT_ICON = { right: 'check', wrong: 'nudge', unsure: 'ask' };
+const iconOf = e => e.kind === 'check' ? (VERDICT_ICON[(e.meta || {}).verdict] || 'ask') : (ICON[e.kind] || 'spark');
+const nameOf = e => e.kind === 'check' ? e.title : (KIND[e.kind] || e.title);
 const HL = { yellow: '#E0B800', green: '#2FA857', blue: '#1280CC', pink: '#E0489A' };
 let seen = false, polled = false, lastId = 0, legend = null, current = null, answers = 0, big = 'page', guideMd = '', last = null, shown = '', locked = false;
 const hl = {};   // color -> {label, ids: []}
@@ -558,9 +568,10 @@ function askSame(n, cur) {
 /* ---------- the marks, along the bottom ---------- */
 function showKeys(l) {
   const box = $('keys'); box.textContent = '';
-  const verb = { hint: 'for a hint', explain: 'for an explanation', define: 'for the meaning' };
+  const verb = { hint: 'for a hint', explain: 'for an explanation', define: 'for the meaning', check: 'to check an answer' };
+  const ic = { hint: 'spark', explain: 'ask', check: 'check' };
   const add = (ic, name, does) => { const k = el('span', 'key'), i = el('span', 'ic'); i.append(icon(ic)); k.title = name + ' ' + does; k.append(i, el('b', '', name), el('span', 'd', does)); box.append(k); };
-  (l.symbols || []).forEach(s => add(s.action === 'hint' ? 'spark' : 'ask', cap(s.name), verb[s.action] || s.action));
+  (l.symbols || []).forEach(s => add(ic[s.action] || 'ask', cap(s.name), verb[s.action] || s.action));
   if (l.marks && l.marks.underline) add('underline', 'Underline', verb[l.marks.underline] || l.marks.underline);
   const colors = Object.entries(l.highlight_colors || {});
   if (colors.length) {
@@ -576,7 +587,7 @@ function showNow(e, fresh) {
   const n = $('now'); n.textContent = ''; n.className = 'now ' + e.kind + (fresh ? ' fresh' : '');
   const m = e.meta || {};
   const meta = el('div', 'meta'), tag = el('span', 'tag ' + e.kind);
-  tag.append(icon(ICON[e.kind] || 'spark'), KIND[e.kind] || e.title); meta.append(tag);
+  tag.append(icon(iconOf(e)), nameOf(e)); meta.append(tag);
   if (m.seconds != null) { const t = el('span', 'took num'); t.append('answered in ', el('b', '', secs(m.seconds))); if (m.page) t.append(' on page ', el('b', '', String(m.page))); meta.append(t); }
   n.append(meta);
   const body = el('div', 'body'), w = el('p', 'words' + (e.body.length > 170 ? ' long' : e.body.length > 90 ? ' mid' : ''));
@@ -643,9 +654,9 @@ function typeOut(roots, maxMs) {
 }
 
 function pastRow(e) {
-  const m = e.meta || {}, li = el('li', e.kind), dot = el('span', 'dot'); dot.append(icon(ICON[e.kind] || 'spark'));
+  const m = e.meta || {}, li = el('li', e.kind), dot = el('span', 'dot'); dot.append(icon(iconOf(e)));
   const body = el('div'), head = el('div', 'head');
-  head.append(el('b', '', e.kind === 'define' && m.target ? m.target : (KIND[e.kind] || e.title)), el('span', 'num', clock(e.at || 0)));
+  head.append(el('b', '', e.kind === 'define' && m.target ? m.target : nameOf(e)), el('span', 'num', clock(e.at || 0)));
   body.append(head);
   if (m.target && e.kind !== 'define') body.append(el('div', 'on', 'About ' + m.target));   // which problem a hint was for
   body.append(el('p', '', e.body)); li.append(dot, body);

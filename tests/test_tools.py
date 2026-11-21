@@ -584,6 +584,96 @@ def test_underlines_already_on_a_sheet_are_left_alone():
     assert kinds(session) == ["hint", "define"], kinds(session)
 
 
+def _check(verdict="right", response="That is right. Splitting the weight was the step.", target="Problem 1"):
+    return {"kind": "symbol", "symbol": "check mark", "action": "check", "target": target,
+            "work": "a = g sin(30) = 4.9", "verdict": verdict, "response": response}
+
+
+def test_a_check_mark_gets_a_verdict_and_the_working_stays_off_the_page():
+    """A line of working with a check after it (the demo sheet's last step)."""
+    s = demo.build_steps()
+
+    def script(n, crop, shape):
+        w, h = shape or (0, 0)
+        return {"occluded": False, "triggers": [_check()] if crop is not None and w >= 4 * h and h > 30 else []}
+
+    engine, brain, session = run([s["highlights"], s["check"]], hold=1.8, script=script)
+    events = session.events_of("check")
+    assert len(events) == 1, kinds(session)
+    e = events[0]
+    assert e["title"] == "Looks right" and e["meta"]["verdict"] == "right", e
+    assert "work" not in e["meta"], "the model's own solution must not be sent to the web page"
+    kept = list((session.dir / "looks").glob("*_check.txt"))
+    assert len(kept) == 1 and "4.9" in kept[0].read_text(), kept
+    guide = engine.study_guide()
+    assert "Answers you checked" in guide and "**Looks right.**" in guide, guide
+
+
+def test_a_second_check_by_the_same_problem_is_answered_again():
+    """ "Not yet", the student tries again and draws another check: answered, even in the same words."""
+    page = demo.base_page()
+    blank = demo.desk_scene(page)
+    demo.draw_check(page, (640, 440))
+    one = demo.desk_scene(page)
+    demo.draw_check(page, (720, 462))
+    two = demo.desk_scene(page)
+
+    def script(n, crop, shape):
+        return {"occluded": False, "triggers": [_check("wrong", "Not right yet. Look at the second line again.")]}
+
+    engine, brain, session = run([blank, one, two], hold=1.8, script=script)
+    assert [e["title"] for e in session.events_of("check")] == ["Not yet", "Not yet"], kinds(session)
+    assert "verdict wrong" in brain.calls[-1]["context"], brain.calls[-1]["context"]  # the model is told what it said before
+
+
+def test_a_check_already_on_a_sheet_is_left_alone():
+    """A sheet that arrives with ticks on it (a teacher's, or last week's): nothing until asked for."""
+    page = demo.base_page()
+    demo.draw_answer_with_check(page)
+    marked = demo.desk_scene(page)
+    engine, session, show = _stepper(read_first_page=True)
+    engine.brain.script = lambda n, crop, shape: {"occluded": False, "triggers": [_check()]}
+    show(marked, 4)
+    assert [c["full"] for c in engine.brain.calls] == [True], engine.brain.calls
+    assert kinds(session) == [], kinds(session)
+    assert "asked for the whole page" not in engine.brain.calls[0]["context"]
+    engine.look_now()  # the student asks for the whole sheet to be read
+    show(marked, 3)
+    assert kinds(session) == ["check"], kinds(session)
+    assert "asked for the whole page" in engine.brain.calls[-1]["context"]
+
+
+def test_a_check_without_a_clear_verdict_is_never_right():
+    from glyph.brain import build_system_prompt, clean_result
+
+    legend = config.load_legend()
+
+    def one(legend=legend, **kw):
+        t = dict(kind="symbol", symbol="check mark", action="check", target="p1", response="ok")
+        t.update(kw)
+        return clean_result({"triggers": [t]}, legend)["triggers"]
+
+    assert one(verdict="Right")[0]["verdict"] == "right"
+    assert one(verdict="incorrect")[0]["verdict"] == "wrong"
+    assert one(verdict="probably")[0]["verdict"] == "unsure"
+    assert one()[0]["verdict"] == "unsure"
+    # With the check mark taken out of symbols.json, the action is not accepted and not asked for.
+    bare = dict(legend, symbols=[s for s in legend["symbols"] if s["action"] != "check"])
+    assert one(legend=bare, verdict="right") == []
+    assert '"verdict"' in build_system_prompt(legend) and '"verdict"' not in build_system_prompt(bare)
+
+
+def test_the_demo_ends_with_a_checked_answer():
+    from glyph.brain import MockBrain
+
+    engine, session, show = _stepper()
+    engine.brain = MockBrain(engine.legend, demo=True)
+    for frame in demo.demo_frames():
+        show(frame, 5)
+    assert kinds(session) == ["hint", "define", "highlight", "highlight", "check"], kinds(session)
+    assert session.events_of("check")[0]["title"] == "Looks right"
+
+
 def test_a_short_underline_right_under_a_small_word_is_looked_at():
     """Camera run of Nov 20: "ball" in small print, underlined close to the letters, got no look.
 

@@ -8,6 +8,7 @@ A study tutor that watches your paper through a camera. You never type: you draw
 | **Underline** a word | Defines it, in the context of the page |
 | **Highlight** in yellow, green, pink or blue | Saves it. "End session" turns all highlights into a study guide |
 | Draw a **circled question mark** next to a passage | Explains it in plain language |
+| Draw a **check mark** next to your answer | Checks it: "Looks right" or "Not yet" and which step to look at again. Never the answer. |
 
 You write with any pen or pencil. Glyph works out which strokes are new by itself.
 
@@ -26,8 +27,8 @@ bash start.sh --demo        # works in Git Bash on Windows too; Command Prompt: 
 ```
 
 The first run takes about a minute to set up; after that it starts in a second and needs no internet
-to start. `--demo` needs no camera: it plays a simulated worksheet that gets a spark, an underline and
-two highlights, so you can see the whole thing work. A browser tab opens at http://127.0.0.1:8765.
+to start. `--demo` needs no camera: it plays a simulated worksheet that gets a spark, an underline,
+two highlights and a checked answer, so you can see the whole thing work. A browser tab opens at http://127.0.0.1:8765.
 Press Ctrl+C in Terminal to stop.
 
 On a Mac you can also double-click **Start Glyph.command** in this folder. It starts Glyph with the
@@ -161,9 +162,10 @@ python -m tests.test_tools
   sheet, model errors, the "keep going" card, the boxes on the camera view.
 - `test_rough` (9): the same flow on a worse camera: lamp on one side, glare, soft focus, a dim room,
   a tilted camera, sensor grain and flicker.
-- `test_tools` (38): model fallbacks and usage limits, choosing the camera, a wooden desk with a
+- `test_tools` (43): model fallbacks and usage limits, choosing the camera, a wooden desk with a
   shadow, gray clothing beside the sheet, a bare desk, a sliding or turned sheet, shadows, blank or
-  dark views, a mark answered once and a second mark answered again, page numbers, study guide by
+  dark views, a mark answered once and a second mark answered again, the check mark (verdict, a
+  second try, a tick already on the sheet), page numbers, study guide by
   page, timing log, the tuning page, the name setting.
 
 Run them one after another, not at the same time: they are timed like a live camera, and a busy

@@ -111,6 +111,11 @@ DEFAULT_LEGEND = {
             "looks_like": "a question mark with a circle drawn around it",
             "action": "explain",
         },
+        {
+            "name": "check mark",
+            "looks_like": "a tick: a short stroke down, then a longer stroke up to the right",
+            "action": "check",
+        },
     ],
     "marks": {"underline": "define"},
     "highlight_colors": {
@@ -121,7 +126,8 @@ DEFAULT_LEGEND = {
     },
 }
 
-ACTIONS = ("hint", "explain", "define")
+ACTIONS = ("hint", "explain", "define", "check")
+VERDICTS = ("right", "wrong", "unsure")  # what a check says about the student's answer
 
 
 def load_legend() -> dict:

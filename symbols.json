@@ -9,6 +9,11 @@
       "name": "circled question mark",
       "looks_like": "a question mark with a circle drawn around it",
       "action": "explain"
+    },
+    {
+      "name": "check mark",
+      "looks_like": "a tick: a short stroke down, then a longer stroke up to the right",
+      "action": "check"
     }
   ],
   "marks": {

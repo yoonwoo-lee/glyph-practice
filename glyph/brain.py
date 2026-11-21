@@ -32,6 +32,42 @@ def build_system_prompt(legend: dict) -> str:
             f'- "underline": a pen line drawn under a word or short phrase -> action "{underline}". '
             "Fraction bars, equals signs, answer boxes and printed rules are not underlines."
         )
+    actions = [s["action"] for s in legend.get("symbols", [])] + ([underline] if mark_lines else [])
+    actions = [a for a in config.ACTIONS if a in actions]
+    checks = "check" in actions
+    first_look = (
+        "\nLeave check marks alone on a first look (they were drawn before, perhaps by a teacher), unless the note\n"
+        "with the images says the student asked for the whole page to be read."
+        if checks
+        else ""
+    )
+    how_check = (
+        """
+- check: the student wants the answer next to the check mark checked. Find that answer, the working above
+  it and the problem it belongs to. First solve the problem yourself in "work" (a few short steps, at
+  most 60 words; the student never sees it). Then set "verdict":
+  "right" when their final answer agrees with yours (rounding and equivalent forms count). Say so, and
+  name the step they got right.
+  "wrong" when it does not agree, or a line of their working does not follow. Say it is not right yet
+  and which line or step to look at again. Never state the correct answer or the corrected line.
+  "unsure" when there is no answer next to the mark, you cannot read it, or you cannot solve the
+  problem with confidence. Say what you need, for example the final answer written next to the check.
+  Never say "right" without having worked it out. At most 40 words."""
+        if checks
+        else ""
+    )
+    pink_check = (
+        "\n- A pink check mark often comes with pink writing: the answer the student wrote just before it. The\n"
+        "  check mark is the trigger and that writing is what to check."
+        if checks
+        else ""
+    )
+    check_keys = (
+        '\n"work": "<check only: your own solution, in brief>", "verdict": "<check only: right, wrong or unsure>",'
+        if checks
+        else ""
+    )
+    action_list = " or ".join('"{}"'.format(a) for a in actions) or '"hint"'
     return f"""You are {config.APP_NAME}, a study tutor that watches a student's sheet of paper through a camera above the desk.
 The student never types. They ask for help by drawing small marks on the paper.
 
@@ -51,10 +87,10 @@ has already been dealt with.
 - Pink strokes that are ordinary writing, working, a stray line, a dot, a smudge, a shadow, or part of a
   hand or pen are not a trigger. Most close-ups contain no trigger: return an empty list for those.
 - For a pink underline, the target is exactly the word or words sitting directly above the pink line, read
-  from the close-up, and nothing else. A pink line under two rows of text means both rows' underlined words.
+  from the close-up, and nothing else. A pink line under two rows of text means both rows' underlined words.{pink_check}
 If there is no image 2, the sheet is being seen for the first time. Report only hand-drawn symbols and
 hand-drawn underlines that you can see clearly. Printed text, printed rules and ordinary handwriting are
-not marks. A page of print with nothing drawn on it has no triggers. When unsure, report nothing.
+not marks. A page of print with nothing drawn on it has no triggers. When unsure, report nothing.{first_look}
 
 WHAT IS NOT A TRIGGER
 Ordinary handwriting, math working, doodles, crossed-out text and printed text. Only report a symbol that
@@ -68,12 +104,12 @@ HOW TO RESPOND
   already gave a hint for this problem (see "Earlier responses"), make this one a little more specific.
   At most 50 words.
 - explain: explain the idea or passage next to the mark in plain language. At most 70 words.
-- define: give the meaning of the underlined word or phrase as it is used on this page. At most 35 words.
+- define: give the meaning of the underlined word or phrase as it is used on this page. At most 35 words.{how_check}
 Write to the student directly. Plain sentences, no markdown, no LaTeX.
 
 Reply with JSON only, in this shape:
 {{"occluded": false, "triggers": [{{"kind": "symbol" or "underline", "symbol": "<legend name or null>",
-"action": "hint" or "explain" or "define", "target": "<short quote of the problem, passage or word the mark refers to>",
+"action": {action_list}, "target": "<short quote of the problem, passage or word the mark refers to>",{check_keys}
 "response": "<what you say to the student>"}}]}}
 Use an empty "triggers" list when there is nothing to respond to."""
 
@@ -102,6 +138,11 @@ def _parse_json(text: str) -> dict:
         raise
 
 
+# What a model may write for a verdict. Anything else counts as "unsure".
+_VERDICT_WORDS = {"right": "right", "correct": "right", "wrong": "wrong", "incorrect": "wrong", "not right": "wrong", "not yet": "wrong", "unsure": "unsure"}
+assert set(_VERDICT_WORDS.values()) == set(config.VERDICTS)
+
+
 def clean_result(data, legend: dict) -> dict:
     """Keep only well-formed triggers that use actions from the legend."""
     out = {"occluded": False, "triggers": []}
@@ -119,15 +160,19 @@ def clean_result(data, legend: dict) -> dict:
         ok = action == underline_action if kind == "underline" else action in allowed
         if not ok or action not in config.ACTIONS or not response:
             continue
-        out["triggers"].append(
-            {
-                "kind": kind,
-                "symbol": t.get("symbol") or None,
-                "action": action,
-                "target": str(t.get("target") or "").strip()[:300],
-                "response": response[:900],
-            }
-        )
+        kept = {
+            "kind": kind,
+            "symbol": t.get("symbol") or None,
+            "action": action,
+            "target": str(t.get("target") or "").strip()[:300],
+            "response": response[:900],
+        }
+        if action == "check":
+            # No clear verdict is "unsure": a check must never read as "right" by accident.
+            verdict = _VERDICT_WORDS.get(str(t.get("verdict") or "").strip().lower().rstrip("."), "unsure")
+            kept["verdict"] = verdict
+            kept["work"] = str(t.get("work") or "").strip()[:600]
+        out["triggers"].append(kept)
     return out
 
 
@@ -373,6 +418,21 @@ class MockBrain:
                         "response": "Check which part of gravity actually pulls the block along the slope. Draw the weight, then split it into one piece along the incline and one into it. Which trig function goes with each?"
                         if self.demo
                         else "Practice answer. With a Gemini key in .env, a hint for the problem next to your spark appears here.",
+                    }
+                ]
+            }
+        elif self.demo and w >= 4 * h and h > 30:
+            # The demo sheet's last step: a line of working with a check mark after it.
+            data = {
+                "triggers": [
+                    {
+                        "kind": "symbol",
+                        "symbol": "check mark",
+                        "action": "check",
+                        "target": "Problem 1, block on a frictionless incline",
+                        "work": "Along the incline only m g sin(30) acts. a = g sin(30) = 9.8 x 0.5 = 4.9 m/s^2.",
+                        "verdict": "right",
+                        "response": "That is right. Using the part of gravity along the slope, g sin(30), was the step that fixed it.",
                     }
                 ]
             }

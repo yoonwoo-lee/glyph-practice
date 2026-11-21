@@ -63,7 +63,9 @@ _K61 = np.ones((61, 61), np.uint8)
 CUT_OFF_TEXT = "Part of the sheet is outside the camera's view. Slide it back, or raise the phone."
 NO_SHEET_TEXT = "No sheet in view. Put your page under the camera."
 
-TITLES = {"hint": "Hint", "explain": "Explanation", "define": "Definition"}
+TITLES = {"hint": "Hint", "explain": "Explanation", "define": "Definition", "check": "Check"}
+VERDICT_TITLES = {"right": "Looks right", "wrong": "Not yet", "unsure": "Could not tell"}
+ANSWERS = ("hint", "explain", "define", "check")  # the kinds of event that answer a mark
 
 # Shown when the student has not written anything for a while. Never an answer, no model call.
 NUDGES = [
@@ -673,7 +675,7 @@ class Engine:
         self._paper_sat = max(float(PAPER_SAT), float(np.median(self.base_sat[::8, ::8])) + 40.0)
         if self._page_unnamed:
             self._page_unnamed = False
-            used = {e["meta"].get("page") for e in self.session.events_of("hint", "explain", "define")}
+            used = {e["meta"].get("page") for e in self.session.events_of(*ANSWERS)}
             self._page_known = self.store.identify(page_signature(page), used)
 
     def _merge_into(self, page_no: int) -> None:
@@ -748,7 +750,7 @@ class Engine:
             "strength": None if strength is None else strength.copy(),
             # Whatever was lying on the sheet when the picture was taken (with a finger's width around it).
             "cover": None if self._cover is None else cv2.dilate(self._cover, _K61),
-            "context": self._context(page, box),
+            "context": self._context(page, box, asked=reason == "you asked"),
             "t_seen": self._fresh_since if (not full and self._fresh_since) else now,
             "t_sent": now,
             "page_no": self.store.page_no,
@@ -779,8 +781,10 @@ class Engine:
 
         threading.Thread(target=write, daemon=True).start()
 
-    def _context(self, page: np.ndarray, box) -> str:
+    def _context(self, page: np.ndarray, box, asked: bool = False) -> str:
         lines = []
+        if asked:
+            lines.append("The student asked for the whole page to be read: report every mark on it, check marks included.")
         if box is not None:
             h, w = page.shape[:2]
             x0, y0, x1, y1 = box
@@ -789,11 +793,12 @@ class Engine:
                     100.0 * x0 / w, 100.0 * x1 / w, 100.0 * y0 / h, 100.0 * y1 / h
                 )
             )
-        earlier = self.session.events_of("hint", "explain", "define")[-5:]
+        earlier = self.session.events_of(*ANSWERS)[-5:]
         if earlier:
             lines.append("Earlier responses this session:")
             for e in earlier:
-                lines.append('- [{}] about "{}": {}'.format(e["kind"], e["meta"].get("target", ""), e["body"]))
+                kind = e["kind"] + (", verdict " + e["meta"]["verdict"] if e["meta"].get("verdict") else "")
+                lines.append('- [{}] about "{}": {}'.format(kind, e["meta"].get("target", ""), e["body"]))
         return "\n".join(lines)
 
     def _run_job(self, job: dict) -> None:
@@ -869,7 +874,9 @@ class Engine:
                     # A sheet that comes into view with underlines on it was underlined some other
                     # day: those are left alone (Yoon Woo, Nov 20). Symbols on it are answered, and
                     # so is everything when the student asks for the sheet to be read.
-                    if t.get("kind") == "underline" and job["reason"] != "you asked":
+                    # A check mark already on a sheet is left alone the same way: it may be a
+                    # teacher's, and checking every tick on a marked sheet is a long answer.
+                    if (t.get("kind") == "underline" or t["action"] == "check") and job["reason"] != "you asked":
                         continue
                     # Reading a whole sheet finds every mark on it, old ones too. One that was
                     # answered before, on any sheet, is the same mark seen again.
@@ -880,16 +887,31 @@ class Engine:
                     # is a second spark next to the same problem, to ask for a stronger hint, and
                     # then the new ink has the size of a symbol. Anything else is the model
                     # answering an old mark because something else on the page changed.
-                    if t["action"] == "define" or not job.get("symbol_sized") or self._said_before(t["response"]):
+                    # A second check by the same problem is the student trying again after "not
+                    # yet": that one is answered even when the answer is word for word the same.
+                    if t["action"] == "define" or not job.get("symbol_sized"):
+                        continue
+                    if t["action"] != "check" and self._said_before(t["response"]):
                         continue
                 self._handled.append(key + (page_no,))
                 title = TITLES.get(t["action"], t["action"].title())
                 if t["action"] == "define" and t["target"]:
                     title = "Definition: " + t["target"][:60]
+                extra = {}
+                if t["action"] == "check":
+                    extra["verdict"] = t.get("verdict") or "unsure"
+                    title = VERDICT_TITLES[extra["verdict"]]
+                    if t.get("work"):
+                        # The model's own solution: kept with the session for looking into a wrong
+                        # verdict, never sent to the web page.
+                        try:
+                            self.session.save_text("looks/{:03d}_check.txt".format(job["n"]), "{}\n\n{}\n".format(extra["verdict"], t["work"]))
+                        except OSError:
+                            pass
                 self.session.add_event(
                     t["action"], title, t["response"], target=t["target"], symbol=t.get("symbol"),
                     seconds=timing["total_s"], model_seconds=timing["model_s"], snip=self._snip(job),
-                    page=job.get("page_no"),
+                    page=job.get("page_no"), **extra
                 )
                 shown += 1
 
@@ -968,7 +990,7 @@ class Engine:
 
     def _said_before(self, response: str) -> bool:
         said = _norm(response)
-        return any(_norm(e["body"]) == said for e in self.session.events_of("hint", "explain", "define"))
+        return any(_norm(e["body"]) == said for e in self.session.events_of(*ANSWERS))
 
     # ---- highlights and study guide --------------------------------------------
 
@@ -991,15 +1013,18 @@ class Engine:
         """Build the end-of-session guide. Called from a web request.
 
         With one sheet it is a single list. With more than one, each sheet gets its own
-        "Page N" section holding its highlights, the words looked up on it and the hints given.
+        "Page N" section holding its highlights, the words looked up on it, the hints given and the
+        answers checked.
         """
         regions = self.store.all()
         order = list(self.legend.get("highlight_colors", {}).keys())
         regions.sort(key=lambda r: (order.index(r["color"]) if r["color"] in order else 99, r["id"]))
         defs = self.session.events_of("define")
         helped = self.session.events_of("hint", "explain")
+        checked = self.session.events_of("check")
         pages = sorted(
-            {r["page_no"] for r in regions} | {e["meta"].get("page") for e in defs + helped if e["meta"].get("page") is not None}
+            {r["page_no"] for r in regions}
+            | {e["meta"].get("page") for e in defs + helped + checked if e["meta"].get("page") is not None}
         )
         split = len(pages) > 1
         head = "###" if split else "##"
@@ -1030,6 +1055,10 @@ class Engine:
             if hints:
                 out += ["", head + " Where you asked for help"]
                 out += ["- {} ({})".format(e["meta"].get("target", "?"), e["body"]) for e in hints]
+            checks = [e for e in checked if mine(e)]
+            if checks:
+                out += ["", head + " Answers you checked"]
+                out += ["- {}: **{}.** {}".format(e["meta"].get("target", "?"), e["title"], e["body"]) for e in checks]
             return out
 
         parts = ["# Study guide", "", time.strftime("%A, %B %d, %Y")]
