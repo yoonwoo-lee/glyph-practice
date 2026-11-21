@@ -241,13 +241,35 @@ def desk_scene(page: np.ndarray, shift=(0, 0), size=(1920, 1080), corners=None, 
     grain = np.random.RandomState(7).randint(-6, 7, (h, w, 1)).astype(np.int16)
     desk = np.clip(desk.astype(np.int16) + grain, 0, 255).astype(np.uint8)
     sx, sy = shift
-    quad = np.array(corners or [[590, 50], [1330, 66], [1352, 1030], [566, 1012]], np.float32) + np.array([sx, sy], np.float32)
+    quad = np.array(corners or SHEET_CORNERS, np.float32) + np.array([sx, sy], np.float32)
     src = np.array([[0, 0], [PAGE_W - 1, 0], [PAGE_W - 1, PAGE_H - 1], [0, PAGE_H - 1]], np.float32)
     m = cv2.getPerspectiveTransform(src, quad)
     warped = cv2.warpPerspective(page, m, (w, h), flags=cv2.INTER_AREA)
     mask = cv2.warpPerspective(np.full((PAGE_H, PAGE_W), 255, np.uint8), m, (w, h))
     desk[mask > 127] = warped[mask > 127]
     return desk
+
+
+SHEET_CORNERS = [[590, 50], [1330, 66], [1352, 1030], [566, 1012]]  # where desk_scene puts the sheet
+
+
+def on_gray_desk(scene: np.ndarray, shift=(0, 0)) -> np.ndarray:
+    """The same picture on a light gray desk by a window (Nov 21): speckled, about two thirds
+    as bright as the paper, and nearly as bright as the paper towards one corner of the sheet.
+    Nothing in view is colorful or dark, so the sheet stands out by its edge only."""
+    h, w = scene.shape[:2]
+    quad = (np.array(SHEET_CORNERS, np.float32) + np.array(shift, np.float32)).astype(np.int32)
+    sheet = np.zeros((h, w), np.uint8)
+    cv2.fillConvexPoly(sheet, quad, 255)
+    ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
+    far = np.sqrt((xs - quad[0][0]) ** 2 + (ys - quad[0][1]) ** 2)
+    level = 160 + 58 * np.clip(1 - far / 700, 0, 1)  # the window is beyond the top left corner
+    level += np.random.RandomState(11).randint(-5, 6, (h, w))
+    desk = np.clip(np.dstack([level - 6, level - 2, level]), 0, 255).astype(np.uint8)  # a slightly warm gray
+    desk = cv2.GaussianBlur(desk, (3, 3), 0)
+    out = scene.copy()
+    out[sheet == 0] = desk[sheet == 0]
+    return out
 
 
 def warm_shadow(page: np.ndarray, top: int = 0) -> np.ndarray:

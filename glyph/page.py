@@ -150,8 +150,12 @@ def find_sheet(frame: np.ndarray, info: Optional[dict] = None) -> Tuple[Optional
     for more paper (Nov 19: the page view included a sweatshirt and the hands in front of it).
     By brightness: the largest bright shape, which works on a dark desk in any light.
 
+    On a light gray desk neither way can tell desk from paper. When the first way finds no
+    clean sheet there, it is found by the step in brightness round it (see _sheet_by_edges).
+
     `info`, when given, receives "sat_limit": how colorful paper was allowed to be for the
-    answer (PAPER_SAT, or more for a sheet in a warm shadow; see _paper_sat_in_view).
+    answer (PAPER_SAT, or more for a sheet in a warm shadow; see _paper_sat_in_view), and
+    "way": "edges" when a sheet was made out on a gray desk, clean or not.
     """
     h, w = frame.shape[:2]
     scale = 640.0 / w
@@ -193,6 +197,22 @@ def find_sheet(frame: np.ndarray, info: Optional[dict] = None) -> Tuple[Optional
             key = (real, cv2.contourArea(order_quad(quad)))  # most real edges, then the biggest
             if best is None or key > best[0]:
                 best, used = (key, quad, touches, fill), sat_limit
+    # On a light gray desk nearly everything in view is "neither colorful nor dark", and the
+    # desk can be almost as bright as the paper where the light falls on it. When no level of
+    # brightness gave a clean sheet there, it is found by its edge instead: the step in
+    # brightness all the way round it.
+    gray_all = (sat < PAPER_SAT) & (val > PAPER_LEVELS[0] * bright)
+    if best is None and float(gray_all.mean()) > GRAY_DESK:
+        by_edge = _sheet_by_edges(sat, val, bright)
+        cut_off = False  # the desk itself runs off the picture, and passes for paper here
+        if by_edge is not None:
+            quad, clean, touches, fill, piece = by_edge
+            if info is not None:
+                info["sat_limit"] = limits[-1]
+                info["way"] = "edges"
+            if clean:
+                return order_quad(quad / scale), True, touches, fill, False
+            return order_quad(quad / scale), False, touches, fill, _runs_off_the_picture(piece)
     if rough_warm is not None and best is not None and cv2.contourArea(order_quad(rough_warm[0])) > 1.3 * best[0][1]:
         # In warm light, with something on the sheet that spoils its outline (an arm): the part
         # of the sheet still in white light is clean, but it is not the sheet. Say what is
@@ -214,6 +234,98 @@ def find_sheet(frame: np.ndarray, info: Optional[dict] = None) -> Tuple[Optional
     else:
         return None, False, 0, 0.0, cut_off
     return order_quad(quad / scale), False, touches, fill, cut_off
+
+
+GRAY_DESK = 0.6  # more of the picture than this is gray or white: the desk is, not only the paper
+EDGE_STEP = 6    # the paper is at least this much brighter than a gray desk beside it (0-255)
+EDGE_BAND = 33   # ...and "beside" is within half this many pixels of the 640-wide picture
+
+
+def _sheet_by_edges(sat: np.ndarray, val: np.ndarray, bright: float):
+    """The sheet on a light gray desk (Nov 21: a gray table by a window; the desk was 0.65 to
+    0.9 times as bright as the paper, and no one brightness level split the two).
+
+    Next to the sheet, the desk has something brighter close by: the paper. That makes a band
+    of "lower ground" all round the sheet, wide enough that a few pixels of glare do not bridge
+    it (a thin wall where the brightness steps did break, at the corner nearest the window).
+    The gray and white things in view, cut apart by that band, are the pieces: the sheet is one
+    of them, the rest of the desk another. The sheet is the piece with four square corners that
+    is brighter than what lies beyond each of its sides. Returns (corners, clean, touches, fill,
+    piece) or None. When no piece is a clean sheet (a hand is on it), the brightest big piece
+    is given back as unclear.
+    """
+    sh, sw = val.shape[:2]
+    # Print and ruled lines are thin and dark with paper on both sides: paint them over first,
+    # or a line ruled near the edge of the sheet is taken for the edge.
+    val = cv2.morphologyEx(val, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    reach = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (EDGE_BAND, EDGE_BAND))
+    lower = cv2.subtract(cv2.dilate(val, reach), val) > max(EDGE_STEP, 0.03 * bright)
+    open_ground = ((sat < PAPER_SAT) & (val > 0.5 * bright) & ~lower).astype(np.uint8) * 255
+    open_ground = cv2.morphologyEx(open_ground, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(open_ground, connectivity=4)
+    best, unclear = None, None
+    for i in range(1, count):
+        if stats[i, cv2.CC_STAT_AREA] < 0.10 * sh * sw:
+            continue
+        piece = (labels == i).astype(np.uint8) * 255
+        level = float(val[piece > 0].mean())
+        piece = cv2.morphologyEx(piece, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))  # print and the walls round it
+        piece = cv2.dilate(piece, np.ones((3, 3), np.uint8))  # the rim of the sheet is a little darker, and was left out
+        quad, clean, touches, fill = _outline(piece, strict=False)
+        if quad is None:
+            continue
+        if clean and _square_corners(quad):
+            sides = _brighter_than_outside(order_quad(quad), sat, val, bright, piece)
+            real = sum(1 for side in sides if side is True)
+            if real >= 3 and not any(side is False for side in sides):
+                area = cv2.contourArea(order_quad(quad))
+                if best is None or area > best[0]:
+                    best = (area, quad, touches, fill, piece)
+                continue
+        if _sheet_like(quad, max(fill, 0.7)) and (unclear is None or level > unclear[0]):
+            unclear = (level, quad, touches, fill, piece)
+    if best is not None:
+        return best[1], True, best[2], best[3], best[4]
+    if unclear is not None:
+        return unclear[1], False, unclear[2], unclear[3], unclear[4]
+    return None
+
+
+def _brighter_than_outside(o: np.ndarray, sat: np.ndarray, val: np.ndarray, bright: float, piece: np.ndarray) -> list:
+    """Like _paper_edges, for a sheet on a gray desk: a side is a real edge when the paper just
+    inside it is brighter than the gray just outside, or what is outside is not gray at all."""
+    h, w = val.shape[:2]
+    center = o.mean(axis=0)
+    out = []
+    for i in range(4):
+        a, b = o[i], o[(i + 1) % 4]
+        d = b - a
+        length = float(np.linalg.norm(d))
+        if length < 8:
+            out.append(False)
+            continue
+        n = np.array([-d[1], d[0]], np.float32) / length
+        if float((center - a) @ n) < 0:
+            n = -n
+        good = total = off = 0
+        for t in np.linspace(0.12, 0.88, 19):
+            p = a + t * d
+            xi, yi = int(round(p[0] + 6 * n[0])), int(round(p[1] + 6 * n[1]))
+            xo, yo = int(round(p[0] - 5 * n[0])), int(round(p[1] - 5 * n[1]))
+            if not (0 <= xi < w and 0 <= yi < h):
+                continue
+            if not (1 <= xo < w - 1 and 1 <= yo < h - 1):
+                off += 1
+                continue
+            total += 1
+            gray_outside = sat[yo, xo] < PAPER_SAT and val[yo, xo] > PAPER_LEVELS[0] * bright
+            if piece[yi, xi] and (not gray_outside or float(val[yo, xo]) + EDGE_STEP < float(val[yi, xi])):
+                good += 1
+        if off >= 10:
+            out.append("frame")
+        else:
+            out.append(total > 0 and good >= 0.7 * total)
+    return out
 
 
 def _sheet_like(quad: np.ndarray, fill: float) -> bool:
@@ -308,6 +420,15 @@ def paper_share(page: np.ndarray, sat_limit: float = PAPER_SAT) -> float:
     sat, val = hsv[..., 1], hsv[..., 2]
     floor = max(90.0, 0.5 * float(np.percentile(val, 95)))
     return float(((sat < sat_limit) & (val > floor)).mean())
+
+
+def looks_written_on(page: np.ndarray, pieces: int = 25) -> bool:
+    """True when a picture has print or handwriting on it: many small dark pieces. A ceiling or
+    a bare table has a handful (Nov 21: the phone lay facing the ceiling, 7 pieces, and the
+    ceiling was read as page 1; a printed sheet has hundreds)."""
+    count, _, stats, _ = cv2.connectedComponentsWithStats(ink_mask(page), connectivity=8)
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    return int(((areas >= 6) & (areas <= 3000)).sum()) >= pieces
 
 
 def _paper_by_brightness(small: np.ndarray) -> np.ndarray:

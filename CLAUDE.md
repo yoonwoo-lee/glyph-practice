@@ -99,7 +99,7 @@ Walk Skylar through these in order, checking each one works before moving on.
    demo sheets to live Gemini and spends requests: `--demo --mock` is the free one.)
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 17 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 83 checks in total.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 85 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -226,11 +226,23 @@ on the camera):
   two timeouts in a row end the round. That start also had the page on its side: the turn made with
   Rotate is now kept for the next start (`sessions/view.json`).
 
+**Nov 21, 14:15, a different desk: a light gray table by a window** (live Gemini, four requests,
+no answer). The spark he drew by Q11 was never looked at, because the sheet was never found:
+- The table is "neither colorful nor dark", like paper, and near the window it is 0.9 times as
+  bright as the paper. No brightness level split the two, so there was no outline, and the whole
+  camera picture counted as "the page" (it was 80 to 90% gray and white). Three "new page" reads
+  were spent on it, the first on the ceiling while the phone lay face up; the one "new ink" look
+  sent a close-up of his jeans. Fixed the same afternoon (`_sheet_by_edges`, see the design
+  choices; replayed on the saved pictures: sheet found in all eight, the spark gets its look; not
+  yet re-run on the camera).
+- A picture that is all gray or white with nothing written on it (a ceiling, a bare table) is no
+  longer read as a page: no request.
+
 **Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
 (a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
 prompt that answered on the camera is unchanged apart from "inside the box"; the answer prompt is new.
 
-**Built and covered by the checks (83 pass: 17 + 9 + 57), but not yet seen on the real camera or
+**Built and covered by the checks (85 pass: 17 + 9 + 59), but not yet seen on the real camera or
 answered by live Gemini:**
 - The Nov 21 fixes above.
 - From Nov 20 night: the target, the two modes, box / circle / margin line, the places a boxed word
@@ -280,6 +292,8 @@ answered by live Gemini:**
 - Marks drawn while Glyph is not following the sheet (taken off the desk and written on, or lost
   from view for some other reason) are part of the page when it comes back, and are not answered.
   Only the first look at a new sheet answers marks that were already there.
+- A white desk is still the hard case: paper on white has no edge to find, and the whole picture is
+  read as the page.
 - On Yoon Woo's desk the sheet nearly fills the camera picture top to bottom (940 of 1080 pixels on
   Nov 21, and one corner 20 pixels outside it) and the laptop takes the left third. It works, but a
   nudge puts the sheet "off edge". More room around the sheet would help.
@@ -318,6 +332,18 @@ answered by live Gemini:**
 | `glyph/config.py` | Thresholds (settle time, ink sensitivity, highlight colors, rate limits); most can be overridden in `.env` |
 
 Key design choices:
+- (Nov 21) A sheet on a light gray desk. When more than 60% of the picture is gray or white and the
+  color way finds no clean sheet, `_sheet_by_edges` looks for it: next to the sheet, the desk has
+  something brighter within 16 pixels (of the 640-wide picture), which makes a band of "lower
+  ground" all round the paper; the gray and white pieces that band cuts apart are tried, and the
+  sheet is the one with four square corners that is brighter than what lies beyond at least three
+  of its sides. Thin dark things (print, a ruled line near the edge) are painted over first. A
+  thin wall where the brightness steps was tried first and broke at the corner nearest the window.
+  On such a desk "the paper runs off the picture" is judged on that piece only. On a wooden or dark
+  desk nothing changes (every saved camera picture from Nov 19 to 21 gives the same outline as before).
+- (Nov 21) The whole camera picture counts as the page (a white desk, a close-up) only when it has
+  writing on it: at least 25 small dark pieces (`looks_written_on`; a ceiling has 7, a printed
+  sheet hundreds), and never while a sheet can be made out on a gray desk with a hand on it.
 - (Nov 21) Paper in a warm shadow. `find_sheet` looks a second time with a higher colorfulness limit
   when the bright things in view fall into two clear groups (paper around 80, a wooden desk around
   160) and takes the bigger clean sheet; a bare desk is one group and is never split. The part of a

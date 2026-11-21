@@ -361,6 +361,42 @@ def test_sheet_is_found_on_a_wooden_desk_with_a_shadow_across_it():
     assert quad is not None and clean, "sheet not found"
     assert float(np.abs(quad - want).max()) < 12, np.abs(quad - want).max()
 
+def test_sheet_is_found_on_a_light_gray_desk():
+    """Nov 21: a gray table by a window. Desk and paper are both "not colorful, not dark", and
+    the desk is nearly as bright as the paper at one corner. The whole table was read as a page."""
+    from glyph.page import find_sheet
+
+    s = demo.build_steps()
+    want, _ = find_page_quad(s["blank"])
+    seen = {}
+    quad, clean, touches, fill, cut_off = find_sheet(demo.on_gray_desk(s["blank"]), seen)
+    assert quad is not None and clean and seen.get("way") == "edges", (clean, seen)
+    assert float(np.abs(quad - want).max()) < 12, np.abs(quad - want).max()
+    # with an arm across it the outline is unclear, but it is neither "out of view" nor gone
+    quad, clean, touches, fill, cut_off = find_sheet(demo.add_hand(demo.on_gray_desk(s["blank"])), seen)
+    assert quad is not None and not clean and not cut_off, (clean, cut_off)
+    # the bare table is not a sheet
+    bare = demo.on_gray_desk(np.zeros_like(s["blank"]))
+    bare = cv2.resize(bare[60:260, 600:1000], (1920, 1080))
+    assert not find_sheet(bare)[1]
+
+
+def test_spark_on_a_light_gray_desk_gets_a_hint():
+    s = demo.build_steps()
+    g = demo.on_gray_desk
+    engine, brain, session = run([g(s["blank"]), g(s["spark"])], hold=1.6)
+    assert kinds(session) == ["hint"], kinds(session)
+    assert engine.quad is not None, "the whole picture was taken for the page"
+    # a gray ceiling or a bare table, with a lamp at the edge, is not a page: no request
+    bare = cv2.resize(g(np.zeros_like(s["blank"]))[60:260, 600:1000], (1920, 1080))
+    cv2.circle(bare, (60, 1040), 220, (190, 235, 245), -1)
+    engine, brain, session = run([bare], hold=1.6)
+    assert not brain.calls and engine.baseline is None, (brain.calls,)
+    # starting with a hand on the sheet: nothing is read until the sheet is clear
+    engine, brain, session = run([demo.add_hand(g(s["blank"]))], hold=1.6)
+    assert not brain.calls and engine.baseline is None, (brain.calls,)
+
+
 def test_camera_is_chosen_by_what_it_sees():
     from glyph import camera
 

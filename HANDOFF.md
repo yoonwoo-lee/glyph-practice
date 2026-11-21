@@ -14,6 +14,28 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-21 (15:10), Yoon Woo's Claude
+
+Yoon Woo ran Glyph at a different desk (a light gray table by a window) and a spark got no answer.
+
+**Found** (read from `sessions/2026-11-21_141531` on his Mac)
+- The sheet was never found: the gray table passes for paper, and by the window it is 0.9 times as
+  bright as the paper. The whole camera picture was taken for the page. Four requests spent, none
+  on the spark: one on the ceiling (phone face up at the start), two on the whole table, one on a
+  close-up of his jeans.
+
+**Done** (one commit after `77bf705`; `main` and `camera-test`)
+- `glyph/page.py`: `_sheet_by_edges` finds a sheet on a gray desk by the step in brightness round
+  it, tried only when the usual way finds nothing and most of the picture is gray or white.
+  `looks_written_on`: an empty gray picture is not a page. `glyph/engine.py` uses both.
+- Replayed on his saved pictures: the sheet is found in all eight, the spark gets a look with the
+  right close-up, the ceiling costs nothing. All 71 older camera pictures give the same outline as
+  before. 85 checks pass (two new, on a made-up gray desk: `demo.on_gray_desk`).
+- Not re-run on the camera yet.
+
+**Need from the other side**
+- Nothing new. He finds the opening screen's right side too empty; suggestions were sent, waiting for his pick.
+
 ## 2026-11-21 (14:30), Yoon Woo's Claude
 
 Yoon Woo asked for a cleaner right side and a color change between the modes, and chose the color

@@ -36,6 +36,7 @@ from .page import (
     register,
     page_signature,
     full_frame_page,
+    looks_written_on,
     cover_mask,
     ink_strength,
     new_ink,
@@ -468,6 +469,13 @@ class Engine:
             # whole says paper looks like just now. Only for a sheet already being followed.)
             limit = max(self._paper_sat, float(seen.get("sat_limit", PAPER_SAT))) if self.baseline is not None else self._paper_sat
             papery = paper_share(page, limit) >= (0.45 if self.quad is not None else 0.8)
+            if papery and self.quad is None and self.baseline is None and not looks_written_on(page):
+                papery = False  # all gray or white with nothing on it: a ceiling, a wall, a bare table
+            if self.quad is None and seen.get("way") == "edges":
+                # A sheet on a light gray desk, its outline not clear yet (a hand on it). The
+                # whole picture is gray and white, but it is not a page: wait for the outline.
+                # (Nov 21: the desk, the chair and a pair of jeans were read as page 2.)
+                papery = False
         if papery:
             self._no_sheet_since = None
         elif self._no_sheet_since is None:
