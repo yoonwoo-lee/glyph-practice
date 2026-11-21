@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__NAME__</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='.15' stop-color='%2345B6EC'/%3E%3Cstop offset='1' stop-color='%23D83995'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cg stroke='%23FCFFFF' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M16 6v20M6 16h20M9 9l14 14M23 9L9 23'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FCFFFF'/%3E%3Cg fill='none' stroke-width='4.2' stroke-linecap='round'%3E%3Cpath d='M24.6 9.6A10.6 10.6 0 1 0 26.6 16' stroke='%23062A40'/%3E%3Cpath d='M26.6 16H17.4' stroke='%23E56BAE'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preload" href="/static/fonts/Archivo.woff2" as="font" type="font/woff2" crossorigin>
 <style>
   /* One family, three widths: wide for the name and the numbers, normal for reading, narrow for labels. */
@@ -14,8 +14,8 @@
      The paper and the answers float on it. Hot pink is whatever is being read right now. */
   :root {
     --sky: #45B6EC; --sky-deep: #0B7FB0; --sky-mid: #2CA5DE; --sky-soft: #A6DFF8; --sky-pale: #E6F6FD; --sky-line: #BFE6F7;
-    --pink: #D83995; --pink-deep: #B01F78; --pink-soft: #F3A3D0; --pink-pale: #FBE4F1;
-    --white: #FCFFFF; --ink: #062A40; --soft: #45667A; --faint: #7D99AA; --line: #D9E8EF; --bad: #C4281C;
+    --pink: #E56BAE; --pink-deep: #C24C8E; --pink-soft: #F3A3D0; --pink-pale: #FBE4F1;
+    --white: #FCFFFF; --ink: #062A40; --soft: #45667A; --faint: #5B7A8C; --line: #D9E8EF; --bad: #C4281C;
     --blend: linear-gradient(100deg, var(--sky) 0%, #A996DD 55%, var(--pink) 100%);
     --frost: rgba(252,255,255,.76);
     --yellow: #FFE234; --green: #5ED67E; --blue: #62BEFF; --hl-pink: #FF78BE;
@@ -37,15 +37,13 @@
      (several stronger ones read as blotches); light at the top; deep blue in the top left corner. */
   .app::before { content: ""; position: absolute; inset: -14%; z-index: -2; pointer-events: none;
     background:
-      radial-gradient(48% 40% at 10% 92%, rgba(216,57,149,.72), rgba(216,57,149,.30) 46%, rgba(216,57,149,0) 78%),
-      radial-gradient(26% 26% at 90% 93%, rgba(216,57,149,.30), rgba(216,57,149,0) 74%),
+      radial-gradient(48% 40% at 10% 92%, rgba(229,107,174,.72), rgba(229,107,174,.30) 46%, rgba(229,107,174,0) 78%),
+      radial-gradient(26% 26% at 90% 93%, rgba(229,107,174,.30), rgba(229,107,174,0) 74%),
       radial-gradient(46% 40% at 56% 3%, rgba(222,244,254,.88), rgba(222,244,254,0) 72%),
       radial-gradient(34% 32% at 5% 6%, rgba(5,147,198,.62), rgba(5,147,198,0) 72%);
     animation: drift 30s ease-in-out infinite alternate; will-change: transform; }
   @keyframes drift { from { transform: translate3d(-2%, 1.5%, 0) scale(1); } to { transform: translate3d(3%, -2.5%, 0) scale(1.08); } }
-  /* Fine vertical ribs over the color, like fluted glass. */
-  .app::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-    background: repeating-linear-gradient(90deg, rgba(255,255,255,.14) 0 1px, rgba(255,255,255,0) 1px 5px, rgba(4,90,130,.045) 5px 6px, rgba(255,255,255,0) 6px 10px); }
+
 
   /* ================= left: the scan bed ================= */
   .eye { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 22px 28px 20px; color: var(--ink); }
@@ -53,11 +51,11 @@
   .brand { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; row-gap: 10px; }
   .brand .logo { width: 36px; height: 36px; flex: none; border-radius: 11px; background: var(--white); display: grid; place-items: center; box-shadow: 0 10px 22px -10px rgba(6,70,105,.5); }
   .brand .logo svg { width: 22px; height: 22px; }
-  .brand .word { font-size: 30px; font-weight: 800; font-stretch: 125%; letter-spacing: -0.035em; line-height: 1; text-transform: lowercase; }
+  .brand .word { font-size: 30px; font-weight: 800; font-stretch: 125%; letter-spacing: -0.035em; line-height: 1; }
   .state { margin-left: auto; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 6px 15px 6px 12px; font-weight: 600; font-size: 14px; transition: background .3s, color .3s, box-shadow .3s; }
   .state .lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 0 3px rgba(69,182,236,.28); }
   .state.wait .lamp { background: var(--faint); box-shadow: none; }
-  .state.busy { background: var(--pink); border-color: rgba(255,255,255,.55); color: var(--white); box-shadow: 0 0 0 5px rgba(216,57,149,.28), 0 14px 30px -12px rgba(216,57,149,.9); }
+  .state.busy { background: var(--pink-pale); border-color: rgba(255,255,255,.8); color: var(--ink); box-shadow: 0 0 0 5px rgba(229,107,174,.28), 0 14px 30px -12px rgba(229,107,174,.9); }
   .state.busy .lamp { background: var(--white); box-shadow: none; animation: pulse .8s ease-in-out infinite; }
   .state.bad .lamp { background: var(--bad); }
   @keyframes pulse { 50% { transform: scale(1.7); opacity: .5; } }
@@ -76,7 +74,7 @@
   /* One thin line of light crosses the window when the mode changes, towards the side of the new
      mode, and what belongs to the mode is replaced behind it. Once, and quickly. */
   .msweep { position: absolute; top: 0; bottom: 0; left: 0; width: 9vw; z-index: 6; pointer-events: none; opacity: 0;
-    background: linear-gradient(90deg, rgba(69,182,236,0) 0%, rgba(69,182,236,.05) 60%, rgba(216,57,149,.08) 100%);
+    background: linear-gradient(90deg, rgba(69,182,236,0) 0%, rgba(69,182,236,.05) 60%, rgba(229,107,174,.08) 100%);
     border-right: 1.5px solid transparent; border-image: linear-gradient(to bottom, var(--sky) 0%, var(--white) 46%, var(--pink) 100%) 1; }
   .msweep.fwd { animation: msweep-f .8s cubic-bezier(.5,0,.25,1) both; }
   .msweep.back { animation: msweep-b .8s cubic-bezier(.5,0,.25,1) both; }
@@ -92,27 +90,22 @@
   .switch button { border: 0; background: transparent; color: var(--ink); padding: 4px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; }
   .switch button.on { background: var(--white); color: var(--ink); }
 
-  /* The bed: rulers along two sides, the picture fitted inside. */
+  /* The bed: the picture fitted inside. */
   .stage { position: relative; flex: 1; min-height: 0; }
   /* The pink gathers behind the paper while a mark is being read. */
   .stage::before { content: ""; position: absolute; inset: -9% -7%; pointer-events: none; opacity: 0; transition: opacity .7s ease;
-    background: radial-gradient(48% 46% at 50% 54%, rgba(216,57,149,.40), rgba(216,57,149,.14) 55%, rgba(216,57,149,0) 74%); }
+    background: radial-gradient(48% 46% at 50% 54%, rgba(229,107,174,.40), rgba(229,107,174,.14) 55%, rgba(229,107,174,0) 74%); }
   .stage.scanning::before { opacity: 1; }
   .fit { position: absolute; background: var(--white); box-shadow: 0 0 0 2px var(--white), 0 28px 56px -22px rgba(6,70,105,.6); transition: box-shadow .4s; }
   .fit > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .fit > svg.hud { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-  .rule { position: absolute; pointer-events: none; opacity: .95; }
-  .rule.top { left: 0; right: 0; top: -15px; height: 9px;
-    background: repeating-linear-gradient(90deg, var(--white) 0 1.5px, transparent 1.5px 10%), repeating-linear-gradient(90deg, rgba(255,255,255,.75) 0 1px, transparent 1px 2%); background-size: 100% 9px, 100% 5px; background-repeat: no-repeat; background-position: 0 0, 0 100%; }
-  .rule.left { top: 0; bottom: 0; left: -15px; width: 9px;
-    background: repeating-linear-gradient(0deg, var(--white) 0 1.5px, transparent 1.5px 10%), repeating-linear-gradient(0deg, rgba(255,255,255,.75) 0 1px, transparent 1px 2%); background-size: 9px 100%, 5px 100%; background-repeat: no-repeat; background-position: 0 0, 100% 0; }
 
   /* While a mark is being read: a thin line passes slowly down the picture, and the picture gets a
      fine pink edge. Kept quiet on purpose: a tall, fast, glowing bar was too much. */
   .sweep { position: absolute; left: 0; right: 0; top: 0; height: 9%; opacity: 0; pointer-events: none;
-    background: linear-gradient(to bottom, rgba(69,182,236,0) 0%, rgba(69,182,236,.08) 55%, rgba(216,57,149,.14) 100%); border-bottom: 1.5px solid rgba(216,57,149,.7); }
+    background: linear-gradient(to bottom, rgba(69,182,236,0) 0%, rgba(69,182,236,.08) 55%, rgba(229,107,174,.14) 100%); border-bottom: 1.5px solid rgba(229,107,174,.7); }
   .stage.scanning .sweep { opacity: 1; animation: sweep 2.8s cubic-bezier(.45,.05,.55,.95) infinite; }
-  .stage.scanning .fit { box-shadow: 0 0 0 2px var(--pink), 0 0 0 5px rgba(216,57,149,.14), 0 28px 56px -22px rgba(6,70,105,.6); }
+  .stage.scanning .fit { box-shadow: 0 0 0 2px var(--pink), 0 0 0 5px rgba(229,107,174,.14), 0 28px 56px -22px rgba(6,70,105,.6); }
   @keyframes sweep { from { transform: translateY(-100%); } to { transform: translateY(1112%); } }
   .fit .clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 
@@ -144,11 +137,11 @@
   .note { position: absolute; left: 12px; bottom: 12px; background: var(--white); color: var(--ink); font-weight: 600; font-size: 13px; padding: 8px 12px 8px 14px; border-radius: 10px; max-width: 60%; z-index: 3; box-shadow: inset 4px 0 0 var(--pink), 0 14px 26px -14px rgba(6,70,105,.5); }
 
   /* Readouts: measured by the app on every pass, shown as they are. */
-  .read { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; margin-top: 24px; border-radius: 16px; position: relative; }
+  .read { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: fit-content; min-width: 260px; gap: 0; margin-top: 24px; border-radius: 16px; position: relative; }
   .read div { padding: 10px 13px 11px; border-left: 1px solid rgba(6,42,64,.10); min-width: 0; }
   .read div:first-child { border-left: 0; }
   .read span { display: block; font-size: 12px; font-stretch: 82%; font-weight: 600; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .read b { display: block; font-size: 18px; font-stretch: 112%; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .read b { font-variant-numeric: tabular-nums; display: block; font-size: 18px; font-stretch: 112%; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .read b.live { color: var(--pink); }
   .tools { display: flex; gap: 8px; margin-top: 12px; }
   .tools button, .tools a { border-radius: 10px; padding: 7px 14px; font-size: 13px; font-weight: 700; text-decoration: none; transition: background .2s, transform .2s; }
@@ -158,22 +151,22 @@
 
   /* ================= right: what it says ================= */
   .say { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin: 14px 14px 14px 0; border-radius: 28px; overflow: hidden;
-    background: radial-gradient(70% 44% at 104% -4%, rgba(69,182,236,.17), rgba(69,182,236,0) 70%), radial-gradient(60% 40% at -6% 104%, rgba(216,57,149,.12), rgba(216,57,149,0) 70%), var(--white);
+    background: radial-gradient(70% 44% at 104% -4%, rgba(69,182,236,.17), rgba(69,182,236,0) 70%), radial-gradient(60% 40% at -6% 104%, rgba(229,107,174,.12), rgba(229,107,174,0) 70%), var(--white);
     box-shadow: 0 0 0 1px rgba(255,255,255,.6), 0 40px 80px -36px rgba(6,70,105,.6); }
   .bar { display: flex; align-items: center; gap: 16px; padding: 20px 34px 0; flex-wrap: wrap; }
   .seg { display: inline-flex; border-bottom: 2px solid var(--line); }
   .seg button { border: 0; background: none; padding: 6px 2px 9px; margin: 0 22px -2px 0; font-size: 16px; font-weight: 700; font-stretch: 105%; color: var(--faint); border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 8px; }
   .seg button:last-child { margin-right: 0; }
   .seg button.on { color: var(--ink); border-bottom-color: transparent; background: var(--blend) no-repeat 0 100% / 100% 3px; }
-  .seg .n { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--pink); color: var(--white); font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
+  .seg .n { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--pink-soft); color: var(--ink); font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
   .pages { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--soft); }
   .pages button { min-width: 28px; height: 28px; padding: 0 7px; border: 2px solid var(--sky-line); background: var(--white); color: var(--sky-deep); border-radius: 9px; font-weight: 700; font-size: 14px; }
-  .pages button.on { background: var(--pink); border-color: var(--pink); color: var(--white); cursor: default; box-shadow: 0 8px 16px -8px rgba(216,57,149,.9); }
+  .pages button.on { background: var(--pink-soft); border-color: var(--pink-soft); color: var(--ink); cursor: default; box-shadow: 0 8px 16px -8px rgba(229,107,174,.9); }
   .ask { display: flex; align-items: center; gap: 8px; width: 100%; background: linear-gradient(100deg, var(--sky-pale), var(--pink-pale)); border-radius: 12px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
-  .ask button { border: 0; border-radius: 6px; padding: 5px 12px; font-weight: 700; font-size: 13px; background: var(--ink); color: var(--white); }
+  .ask button { border: 0; border-radius: 4px; padding: 5px 12px; font-weight: 700; font-size: 13px; background: var(--ink); color: var(--white); }
   .ask button.no { background: transparent; color: var(--ink); }
   .clock { margin-left: auto; display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 600; color: var(--soft); }
-  .clock b { color: var(--ink); font-size: 18px; font-stretch: 112%; font-weight: 700; }
+  .clock b { font-variant-numeric: tabular-nums; color: var(--ink); font-size: 18px; font-stretch: 112%; font-weight: 700; }
 
   .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 34px 26px; scrollbar-width: thin; scrollbar-color: var(--sky-line) transparent; }
   .label { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: var(--soft); display: flex; align-items: center; gap: 10px; }
@@ -185,8 +178,7 @@
   .nowhead .reading { order: 2; margin: 0; }
 
   /* ---- first screen: the marks ---- */
-  .intro h1 { font-size: clamp(34px, 3.7vw, 54px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 10px 0 16px; padding-bottom: .06em; width: fit-content;
-    background: linear-gradient(105deg, #1A93CE 0%, var(--sky-mid) 34%, #A58FDB 64%, var(--pink) 94%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .intro h1 { font-size: clamp(32px, 3.2vw, 46px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 10px 0 16px; padding-bottom: .06em; color: var(--ink); text-wrap: balance; }
   .intro p { margin: 0 0 22px; font-size: 17px; color: var(--soft); max-width: 34em; }
   @media (max-height: 860px) { .intro h1 { font-size: clamp(30px, 3.1vw, 42px); margin: 2px 0 10px; } .intro p { margin-bottom: 14px; font-size: 16px; } .markrow { padding: 5px 0; } }
   /* Parts of the first screen fold away smoothly: the headline when a read starts, the list of marks
@@ -198,7 +190,7 @@
   .caret { display: inline-block; width: .075em; height: .95em; margin-left: .05em; vertical-align: -.12em; border-radius: 1px; background: var(--pink); animation: blink .8s steps(1) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
   .marks { border-top: 0; background: var(--blend) no-repeat 0 0 / 100% 3px; padding-top: 3px; }
-  .markrow { display: grid; grid-template-columns: 82px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .markrow { display: grid; grid-template-columns: 82px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 5px 0; border-bottom: 1px solid var(--line); }
   .markrow svg { width: 82px; height: 48px; display: block; background: linear-gradient(120deg, var(--sky-pale), #F3EAF6 130%); border-radius: 10px; }
   .markrow b { font-size: 18px; font-stretch: 108%; font-weight: 700; letter-spacing: -0.01em; }
   .markrow span { color: var(--soft); font-size: 15px; line-height: 1.4; }
@@ -217,7 +209,7 @@
   /* ---- the newest answer ---- */
   .now { border: 2px solid transparent; border-radius: 20px; padding: 24px 28px 26px; margin-bottom: 30px; position: relative;
     background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(125deg, var(--sky) 0%, #A996DD 50%, var(--pink) 100%) border-box;
-    box-shadow: -22px 26px 50px -34px rgba(69,182,236,.95), 22px 26px 50px -34px rgba(216,57,149,.85); }
+    box-shadow: -22px 26px 50px -34px rgba(69,182,236,.95), 22px 26px 50px -34px rgba(229,107,174,.85); }
   .now.error { background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(var(--bad), var(--bad)) border-box; box-shadow: none; }
   .now.fresh { animation: arrive .4s cubic-bezier(.2,.8,.2,1) both; }
   @keyframes arrive { from { opacity: 0; transform: translateY(12px); } }
@@ -225,7 +217,7 @@
   .tag { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(105deg, var(--sky-deep) 0%, #7559A8 58%, var(--pink-deep) 100%); color: var(--white); border-radius: 999px; padding: 5px 14px 5px 11px; font-size: 14px; font-weight: 700; }
   .tag svg { color: var(--white); font-size: 15px; }
   .tag.error { background: var(--bad); }
-  .took { font-size: 13px; font-stretch: 90%; font-weight: 600; color: var(--soft); }
+  .took { font-variant-numeric: tabular-nums; font-size: 13px; font-stretch: 90%; font-weight: 600; color: var(--soft); }
   .took b { color: var(--ink); }
   /* The answer and the picture of the mark stand side by side in two columns: the text keeps one
      left edge and one line length, whatever its length. Longer answers are set a step smaller. */
@@ -234,13 +226,13 @@
   .snip { margin: 4px 0 0; }
   .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--white); border: 2px solid var(--sky-line); border-radius: 10px; }
   .snip figcaption { margin-top: 5px; font-size: 12px; font-stretch: 85%; font-weight: 600; color: var(--sky-deep); }
-  .words { font-size: clamp(23px, 2.15vw, 33px); font-weight: 500; line-height: 1.22; letter-spacing: -0.012em; margin: 0; text-wrap: pretty; }
+  .words { white-space: pre-line; font-size: clamp(23px, 2.15vw, 33px); font-weight: 500; line-height: 1.22; letter-spacing: -0.012em; margin: 0; text-wrap: pretty; }
   .words mark { color: inherit; background: linear-gradient(90deg, #F9D3E8, #D2ECF7) no-repeat 0 92% / 100% 42%; padding: 0 .05em; margin: 0 -.05em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .now.fresh .words mark { animation: swipe .7s .2s cubic-bezier(.3,.7,.2,1) both; }
   @keyframes swipe { from { background-size: 0% 42%; } }
   .words.mid { font-size: clamp(21px, 1.9vw, 29px); }
   .words.long { font-size: clamp(19px, 1.65vw, 25px); line-height: 1.26; }
-  .words .term { display: block; font-size: 1.2em; font-weight: 800; font-stretch: 112%; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: .3em; width: fit-content; color: var(--pink); }
+  .words .term { display: block; font-size: 1.2em; font-weight: 800; font-stretch: 112%; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: .3em; width: fit-content; color: var(--pink-deep); }
   .words .term mark { background: none; }
   .about { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--soft); display: flex; gap: 8px; }
   .about b { color: var(--ink); font-weight: 700; flex: none; }
@@ -290,7 +282,7 @@
   #guideText li { position: relative; padding: 5px 0 5px 18px; font-size: 16px; line-height: 1.5; max-width: 36em; }
   #guideText li::before { content: ""; position: absolute; left: 2px; top: .95em; width: 7px; height: 2px; background: var(--pink); }
   #guideText p { margin: 4px 0; color: var(--soft); }
-  .blank h3 { font-size: clamp(32px, 3.4vw, 48px); font-weight: 800; font-stretch: 118%; letter-spacing: -0.04em; line-height: 1; margin: 12px 0 14px; }
+  .blank h3 { text-wrap: balance; font-size: clamp(32px, 3.4vw, 48px); font-weight: 800; font-stretch: 118%; letter-spacing: -0.04em; line-height: 1; margin: 12px 0 14px; }
   .blank p { margin: 0 0 22px; font-size: 16px; color: var(--soft); max-width: 30em; }
 
   /* ---- bottom bar ---- */
@@ -302,13 +294,13 @@
   .keyhead { align-self: center; font-size: 13px; font-weight: 700; color: var(--pink-deep); white-space: nowrap; min-width: 6.4em; }
   .key .sws { display: inline-flex; gap: 2px; padding-left: 2px; }
   .key .sws i { width: 8px; height: 16px; border-radius: 2px; }
-  .btn { flex: none; background: linear-gradient(105deg, #E65AAA 0%, var(--pink) 45%, var(--pink-deep) 100%); color: var(--white); border: 0; border-radius: 12px; padding: 11px 20px; font-weight: 700; font-size: 15px; box-shadow: 0 14px 26px -14px rgba(216,57,149,.95); transition: transform .2s, box-shadow .2s, filter .2s; }
-  .btn:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 18px 30px -14px rgba(216,57,149,1); }
+  .btn { flex: none; background: var(--pink-soft); color: var(--ink); border: 0; border-radius: 12px; padding: 11px 20px; font-weight: 700; font-size: 15px; box-shadow: 0 10px 20px -14px rgba(229,107,174,.9); transition: transform .2s, box-shadow .2s, filter .2s; }
+  .btn:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 18px 30px -14px rgba(229,107,174,1); }
   .btn:disabled { opacity: .6; cursor: default; }
   .foot .btn { margin-left: auto; }
   .c-yellow { background: var(--yellow); } .c-green { background: var(--green); } .c-blue { background: var(--blue); } .c-pink { background: var(--hl-pink); }
 
-  @media (max-width: 1360px) { .key .d { display: none; } .read { grid-template-columns: repeat(3, minmax(0, 1fr)); } .read div:nth-child(4) { border-left: 0; } .read div:nth-child(n+4) { border-top: 1px solid var(--line); } }
+  @media (max-width: 1360px) { .key .d { display: none; } }
   @media (max-width: 620px) { .now .body.pic { grid-template-columns: minmax(0, 1fr); } .now .snip { max-width: 240px; margin-top: 14px; } }
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; height: auto; }
@@ -322,17 +314,17 @@
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <symbol id="g-spark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></g></symbol>
-    <symbol id="g-underline" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v7a5 5 0 0 0 10 0V4"/><path d="M4 20.5h16"/></g></symbol>
-    <symbol id="g-ask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.4a2.8 2.8 0 1 1 4.2 2.4c-.9.6-1.5 1.1-1.5 2.2"/><path d="M12 17.2v.1"/></g></symbol>
-    <symbol id="g-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13l5 5L19.5 6.5"/></g></symbol>
-    <symbol id="g-target" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.4"/></g></symbol>
-    <symbol id="g-box" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.5"/><path d="M8 12h8"/></g></symbol>
-    <symbol id="g-circle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><ellipse cx="12" cy="12" rx="9.5" ry="6.2"/><path d="M8.5 12h7"/></g></symbol>
-    <symbol id="g-margin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M5 4v16" stroke-width="2.7"/><path d="M10 7h10M10 12h10M10 17h7" stroke-width="2"/></g></symbol>
-    <symbol id="g-nudge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></g></symbol>
-    <symbol id="g-error" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 4v10M12 19v.1"/></g></symbol>
-    <symbol id="g-pen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/></g></symbol>
+    <symbol id="g-spark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></g></symbol>
+    <symbol id="g-underline" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v7a5 5 0 0 0 10 0V4"/><path d="M4 20.5h16"/></g></symbol>
+    <symbol id="g-ask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.4a2.8 2.8 0 1 1 4.2 2.4c-.9.6-1.5 1.1-1.5 2.2"/><path d="M12 17.2v.1"/></g></symbol>
+    <symbol id="g-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13l5 5L19.5 6.5"/></g></symbol>
+    <symbol id="g-target" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.4"/></g></symbol>
+    <symbol id="g-box" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.5"/><path d="M8 12h8"/></g></symbol>
+    <symbol id="g-circle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><ellipse cx="12" cy="12" rx="9.5" ry="6.2"/><path d="M8.5 12h7"/></g></symbol>
+    <symbol id="g-margin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M5 4v16" stroke-width="2.4"/><path d="M10 7h10M10 12h10M10 17h7" stroke-width="2"/></g></symbol>
+    <symbol id="g-nudge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></g></symbol>
+    <symbol id="g-error" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4v10M12 19v.1"/></g></symbol>
+    <symbol id="g-pen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/></g></symbol>
   </defs>
 </svg>
 
@@ -341,20 +333,18 @@
   <!-- ============ left ============ -->
   <section class="eye" aria-label="What __NAME__ sees">
     <div class="brand">
-      <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="#D83995" stroke-width="4.6" stroke-linecap="round"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8L6.8 25.2"/></g></svg></span>
+      <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke-width="4.2" stroke-linecap="round"><path d="M24.6 9.6A10.6 10.6 0 1 0 26.6 16" stroke="#062A40"/><path d="M26.6 16H17.4" stroke="#E56BAE"/></g></svg></span>
       <span class="word">__NAME__</span>
       <div class="modes glass hide" id="modes" role="group" aria-label="Mode: which marks are in use"><span class="thumb"></span></div>
       <div class="state glass wait" id="state"><span class="lamp"></span><span id="stateText">Connecting</span></div>
     </div>
     <div class="seeing">
-      <h2 id="seeingLabel">Your page, flattened</h2>
       <div class="switch" role="group" aria-label="Which picture is large">
         <button id="vPage" class="on">Page</button><button id="vRaw">Camera</button>
       </div>
     </div>
     <div class="stage" id="stage">
       <div class="fit" id="fit">
-        <span class="rule top"></span><span class="rule left"></span>
         <img id="view" alt="Live view of the paper">
         <div class="clip"><div class="sweep"></div></div>
         <svg class="hud" id="hud" aria-hidden="true"></svg>
@@ -366,10 +356,6 @@
     <div class="read glass" aria-label="Live measurements">
       <div><span>Sheet</span><b id="rSheet">–</b></div>
       <div><span>Page</span><b id="rPage" class="num">–</b></div>
-      <div><span>Ink on page</span><b id="rInk" class="num">–</b></div>
-      <div><span>New ink</span><b id="rNew" class="num">–</b></div>
-      <div><span>Frame rate</span><b id="rRate" class="num">–</b></div>
-      <div><span>Last answer</span><b id="rLast" class="num">–</b></div>
     </div>
     <div class="tools">
       <button id="rotate" class="glass" title="Turn the page if the text is sideways">Rotate</button>
@@ -431,9 +417,9 @@
 <script>
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
-const ANSWERS = ['hint', 'explain', 'define', 'check', 'practice', 'find', 'synonym', 'summarize', 'nudge', 'error'];
-const ICON = { hint: 'spark', define: 'underline', explain: 'ask', check: 'check', practice: 'target', find: 'box', synonym: 'circle', summarize: 'margin', nudge: 'nudge', error: 'error' };
-const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', check: 'Check', practice: 'Try this one', find: 'Find', synonym: 'Synonyms', summarize: 'Summary', nudge: 'Keep going', error: 'Problem' };
+const ANSWERS = ['hint', 'explain', 'define', 'answer', 'check', 'practice', 'find', 'synonym', 'summarize', 'nudge', 'error'];
+const ICON = { hint: 'spark', define: 'underline', explain: 'ask', answer: 'check', check: 'box', practice: 'target', find: 'box', synonym: 'circle', summarize: 'margin', nudge: 'nudge', error: 'error' };
+const KIND = { hint: 'Hint', define: 'Definition', explain: 'Explanation', answer: 'Answer', check: 'Check', practice: 'Try this one', find: 'Find', synonym: 'Synonyms', summarize: 'Summary', nudge: 'Keep going', error: 'Problem' };
 const TERMED = ['define', 'find', 'synonym'];   // answers about one word: the word leads the card
 /* A checked answer is named by its verdict (the title says "Looks right", "Not yet" or "Could not tell"),
    and only "right" wears the tick: "not yet" gets the keep-going arrow. */
@@ -548,11 +534,6 @@ function showStatus(s) {
   $('rSheet').textContent = SHEET[v.phase] || '–';
   const pages = s.pages || [];
   $('rPage').textContent = s.page_no ? s.page_no + ' of ' + Math.max(pages.length, 1) : '–';
-  $('rInk').textContent = v.phase && v.phase !== 'none' ? (v.ink_pct || 0).toFixed(1) + '%' : '–';
-  $('rNew').textContent = v.phase && v.phase !== 'none' ? (v.new_px || 0) + ' px' : '–';
-  $('rNew').classList.toggle('live', (v.new_px || 0) > 0);
-  $('rRate').textContent = v.rate ? v.rate.toFixed(1) + '/s' : '–';
-  $('rLast').textContent = s.last_seconds == null ? '–' : secs(s.last_seconds);
   $('model').textContent = s.mode === 'mock' ? 'Practice answers' : (s.model || '');
   const notes = [];
   if (v.phase && v.phase !== 'none' && !s.page_found) notes.push('No sheet outline found, so the whole picture is being read. A darker desk helps.');
@@ -641,10 +622,11 @@ function askSame(n, cur) {
 /* ---------- the marks of the mode that is on: the list on the first screen, the keys along the bottom ---------- */
 const BARS = '<g fill="#BDE3F2"><rect x="8" y="14" width="42" height="5" rx="2.5"/><rect x="8" y="25" width="50" height="5" rx="2.5"/><rect x="8" y="36" width="34" height="5" rx="2.5"/></g>';
 const WORD = '<g fill="#BDE3F2"><rect x="8" y="14" width="70" height="5" rx="2.5"/><rect x="8" y="26" width="20" height="5" rx="2.5"/><rect x="62" y="26" width="20" height="5" rx="2.5"/><rect x="8" y="40" width="52" height="5" rx="2.5"/></g><rect x="32" y="26" width="26" height="5" rx="2.5" fill="#062A40"/>';
-const PINK = 'fill="none" stroke="#D83995" stroke-linecap="round" stroke-linejoin="round"';
+const PINK = 'fill="none" stroke="#E56BAE" stroke-linecap="round" stroke-linejoin="round"';
 const MARK = {   // action -> how its row reads, and the little picture of the mark
   hint: ['A spark', 'One hint for the problem next to it. Never the answer.', BARS + `<g ${PINK} stroke-width="2.6" transform="translate(73 27)"><path d="M0-10V10M-10 0H10M-7-7L7 7M7-7L-7 7"/></g>`],
-  check: ['A check mark', 'Checks the answer next to it. Right or not yet, never the answer.', '<g fill="#BDE3F2"><rect x="8" y="14" width="46" height="5" rx="2.5"/><rect x="8" y="25" width="38" height="5" rx="2.5"/></g><rect x="8" y="36" width="44" height="5" rx="2.5" fill="#062A40"/>' + `<path d="M62 33l5 6 12-15" ${PINK} stroke-width="2.6"/>`],
+  answer: ['A check mark', 'The worked answer to the problem next to it, step by step.', BARS + `<path d="M62 30l6 7 13-17" ${PINK} stroke-width="2.6"/>`],
+  check: ['A box round your answer', 'Checks it. Right or not yet, and which step to look at again.', '<g fill="#BDE3F2"><rect x="8" y="12" width="52" height="5" rx="2.5"/><rect x="8" y="22" width="40" height="5" rx="2.5"/></g><rect x="14" y="36.5" width="36" height="5" rx="2.5" fill="#062A40"/>' + `<rect x="8.5" y="31.5" width="47" height="15" rx="2" ${PINK} stroke-width="2.4"/>`],
   practice: ['A target', 'One new problem like the one next to it.', BARS + `<g ${PINK} stroke-width="2.4"><circle cx="72" cy="27" r="11.5"/><circle cx="72" cy="27" r="4"/></g>`],
   define: ['An underline', 'What the word means on this page.', WORD + `<path d="M31 35c8-2 18 1 28-1" ${PINK} stroke-width="2.6"/>`],
   find: ['A box', 'Every other place the word appears, outlined on the page.', WORD + `<rect x="27.5" y="20.5" width="35" height="16" rx="2" ${PINK} stroke-width="2.4"/><g fill="none" stroke="#0B7FB0" stroke-width="1.6"><rect x="5.5" y="11.5" width="20" height="10" rx="2"/><rect x="38.5" y="37.5" width="24" height="10" rx="2"/></g>`],
@@ -653,7 +635,7 @@ const MARK = {   // action -> how its row reads, and the little picture of the m
   explain: ['A circled question mark', 'The passage next to it, in plain words.', '<g fill="#BDE3F2"><rect x="8" y="14" width="40" height="5" rx="2.5"/><rect x="8" y="25" width="46" height="5" rx="2.5"/><rect x="8" y="36" width="30" height="5" rx="2.5"/></g>' + `<g ${PINK} stroke-width="2.4"><circle cx="72" cy="27" r="12"/><path d="M68.5 23.5a3.6 3.6 0 1 1 5.4 3.1c-1.2.8-1.9 1.4-1.9 2.8M72 33.6v.1"/></g>`],
   highlight: ['A highlight', 'Saved by color for your study guide. Costs no request.', '<rect x="6" y="11" width="80" height="12" rx="2" fill="#FFE234"/><rect x="6" y="31" width="56" height="12" rx="2" fill="#5ED67E"/><g fill="#062A40" opacity=".55"><rect x="10" y="14.5" width="70" height="5" rx="2.5"/><rect x="10" y="34.5" width="46" height="5" rx="2.5"/></g>'],
 };
-const VERB = { hint: 'hint', explain: 'explanation', define: 'meaning', check: 'checks your answer', practice: 'new problem', find: 'finds the word', synonym: 'synonyms', summarize: 'summary' };
+const VERB = { hint: 'hint', explain: 'explanation', define: 'meaning', answer: 'the answer', check: 'checks your answer', practice: 'new problem', find: 'finds the word', synonym: 'synonyms', summarize: 'summary' };
 const SHORT = { explain: 'Circled ?' };   // names that are too long for the bottom line
 function setLegend(l, moving) {
   legend = l; showRows(l, moving); showKeys(l, moving);
@@ -884,7 +866,6 @@ function view(which) {
   $('vPage').classList.toggle('on', which === 'page'); $('vRaw').classList.toggle('on', which === 'raw');
   feeds.view = which; feeds.pipImg = other;
   $('pipLabel').textContent = other === 'raw' ? 'Camera' : 'Page';
-  $('seeingLabel').textContent = which === 'page' ? 'Your page, flattened' : 'The camera, with what Glyph is tracking';
   shown = ''; if (last) showStatus(last);
 }
 async function build() {

@@ -96,11 +96,13 @@ Write a real physics problem with some working first. Lift your hand off the she
 None of these has been answered by live Gemini yet. Note for each: answered or not, right or wrong,
 and how many seconds.
 
-Student mode (a sheet with a problem you have solved on it):
-- [ ] Write your answer, then draw a **check mark** next to it, about as big as your spark: "Looks
-      right" or "Not yet" within about 10 seconds. It must not state the answer.
-- [ ] Change the answer to a wrong one and draw a second check: "Not yet", naming a step.
-- [ ] Draw a small check mark on its own next to an old answer (nothing else new): does it get a look?
+STEM mode (a sheet with a problem you have solved on it). Changed Nov 21: a box checks, a check mark
+gives the answer.
+- [ ] Write your answer and draw a **box** round it: "Looks right" or "Not yet" within about 10
+      seconds. It must not state the answer.
+- [ ] Change the answer to a wrong one and box it again: "Not yet", naming a step.
+- [ ] Draw a **check mark** next to a problem, about as big as your spark: the worked answer in a
+      few steps.
 - [ ] Draw a **target** (a small circle inside a bigger one) next to the problem: a new problem of
       the same kind, with no solution.
 

@@ -852,7 +852,9 @@ def pick_mark(fresh: np.ndarray, action: str) -> Optional[Tuple[int, int, int, i
 
     ring = [p for p in pieces if p["hole"] >= 0.2]
     open_ = [p for p in pieces if p["hole"] < 0.2]
-    if action in ("check", "hint"):
+    if action == "check":
+        fit = ring or [p for p in open_ if symbol_sized(p)]  # a box round an answer (a tick, in an older legend)
+    elif action in ("answer", "hint"):
         fit = [p for p in open_ if symbol_sized(p)]
     elif action in ("practice", "explain"):
         fit = [p for p in ring if symbol_sized(p)]

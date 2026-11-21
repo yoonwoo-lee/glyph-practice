@@ -28,7 +28,10 @@ HOW = {
   At most 50 words.""",
     "explain": "- explain: explain the idea or passage next to the mark in plain language. At most 70 words.",
     "define": "- define: give the meaning of the underlined word or phrase as it is used on this page. At most 35 words.",
-    "check": """- check: the student wants the answer next to the check mark checked. Find that answer, the working above
+    "answer": """- answer: the student is asking for the answer to the problem the check mark sits next to. Give the worked
+  solution in three to five short steps, each on its own line, ending with the final answer. At most
+  90 words.""",
+    "check": """- check: the student wants the answer they marked (inside the box) checked. Find that answer, the working above
   it and the problem it belongs to. First solve the problem yourself in "work" (a few short steps, at
   most 60 words; the student never sees it). Then set "verdict":
   "right" when their final answer agrees with yours (rounding and equivalent forms count). Say so, and
@@ -36,7 +39,7 @@ HOW = {
   "wrong" when it does not agree, or a line of their working does not follow. Say it is not right yet
   and which line or step to look at again. Never state the correct answer or the corrected line.
   "unsure" when there is no answer next to the mark, you cannot read it, or you cannot solve the
-  problem with confidence. Say what you need, for example the final answer written next to the check.
+  problem with confidence. Say what you need, for example the final answer written clearly inside the box.
   Never say "right" without having worked it out. At most 40 words.""",
     "practice": """- practice: write ONE new problem of the same kind as the problem the target sits next to: the same idea
   and difficulty, with different numbers or a different setting. Do not solve it and give no hint.
@@ -77,18 +80,20 @@ def build_system_prompt(legend: dict) -> str:
     checks = "check" in actions
     # A sheet seen for the first time: symbols are answered. Marks on words were drawn some other
     # day (Yoon Woo, Nov 20), unless the student asks.
-    first = [s["name"] for s in legend.get("symbols", []) if s["action"] != "check"]
-    left = list(marks)
+    asking = {"check": "checked", "answer": "answered"}  # marks a marked sheet may be covered in
+    counted = [k for k, v in list(marks.items()) + [(s["name"], s["action"]) for s in legend.get("symbols", [])] if v in asking]
+    first = [s["name"] for s in legend.get("symbols", []) if s["action"] not in asking]
+    left = [k for k, v in marks.items() if v not in asking]
     first_look = "Report only these hand-drawn symbols, where you can see them clearly: {}.".format(
         ", ".join(first) if first else "(none)"
     )
-    if checks:
+    if counted:
         # Nov 21: a check drawn in the first seconds, before the sheet had been taken in, got no
         # answer. A sheet covered in ticks is another matter: those are a teacher's.
         first_look += (
-            "\nCheck marks on a first look: when there are three or fewer on the sheet, the student has just drawn\n"
-            "them, so answer each one. More than three means the sheet was marked before: report none of them."
-        )
+            "\nOn a first look, also report these when there are three or fewer of a kind on the sheet (the student has\n"
+            "just drawn them): {}. More than three of a kind means the sheet was marked before: report none of that kind."
+        ).format(", ".join(counted))
     if left:
         first_look += (
             "\nLeave these alone on a first look, because they were drawn before: {}. The one exception is when the note\n"
@@ -97,8 +102,8 @@ def build_system_prompt(legend: dict) -> str:
     pink = "".join("\n" + PINK_TARGET[k] for k in marks)
     if checks:
         pink += (
-            "\n- A pink check mark often comes with pink writing: the answer the student wrote just before it. The\n"
-            "  check mark is the trigger and that writing is what to check."
+            "\n- A pink box often comes with pink writing inside it: the answer the student wrote just before drawing\n"
+            "  it. The box is the trigger and that writing is what to check."
         )
     how = "\n".join(HOW[a] for a in actions)
     extra_keys = ""
@@ -461,10 +466,14 @@ MOCK = {
         "demo": ("Problem 1, block on a frictionless incline", "A 3.0 kg crate slides down a frictionless ramp tilted at 20 degrees. Find its acceleration. Then find how long it takes to slide 2.0 m starting from rest."),
         "practice": ("the problem next to your target", "a new problem like the one next to your target"),
     },
-    "check": {
+    "answer": {
         "symbol": "check mark",
+        "demo": ("Problem 1, block on a frictionless incline", "Only gravity along the slope moves the block.\nThat part is m g sin(30).\na = g sin(30) = 9.8 x 0.5\na = 4.9 m/s^2"),
+        "practice": ("the problem next to your check mark", "the worked answer to the problem next to your check mark"),
+    },
+    "check": {
         "demo": ("Problem 1, block on a frictionless incline", "That is right. Using the part of gravity along the slope, g sin(30), was the step that fixed it."),
-        "practice": ("the answer next to your check mark", "whether the answer next to your check mark is right"),
+        "practice": ("the answer in your box", "whether the answer in your box is right"),
     },
     "define": {
         "demo": ("inertia", "How strongly an object resists any change in its motion. The more mass it has, the more inertia, and the harder it is to speed up, slow down or turn."),
@@ -534,10 +543,13 @@ class MockBrain:
         elif h >= 3 * w and h >= 90:
             pick = "summarize"  # a long upright stroke: a line down the margin
         elif self.demo and "check" in can and w >= 4 * h and h > 30:
-            pick = "check"  # the student demo sheet's line of working with a check mark after it
+            pick = "check"  # the demo worksheet's corrected line with a box drawn round it
         elif "hint" in can and 0.5 <= w / float(max(h, 1)) <= 2.0 and max(w, h) <= 160:
             # About as tall as wide: a spark, and after it (on the demo sheet) the target.
-            pick = "practice" if self.demo and (mode, "hint") in self._given else "hint"
+            # On the demo worksheet they come in a fixed order: spark, target, check mark.
+            pick = "hint"
+            if self.demo and (mode, "hint") in self._given:
+                pick = "answer" if (mode, "practice") in self._given else "practice"
         elif "hint" not in can and h <= 90 and w <= 420:
             # Something drawn round a word. On the demo reading the box comes first, then the circle.
             pick = "find" if self.demo and (mode, "find") not in self._given else "synonym"

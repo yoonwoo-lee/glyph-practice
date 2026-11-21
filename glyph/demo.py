@@ -101,11 +101,11 @@ def draw_check(page: np.ndarray, at=(470, 462), size: int = 30) -> None:
     cv2.polylines(page, [pts], False, PEN, 3, cv2.LINE_AA)
 
 
-def draw_answer_with_check(page: np.ndarray, text: str = "a = g sin(30) = 4.9", org=(110, 465)) -> None:
-    """The student writes the corrected line under the working and asks for it to be checked."""
+def draw_boxed_answer(page: np.ndarray, text: str = "a = g sin(30) = 4.9", org=(110, 465)) -> None:
+    """The student writes the corrected line under the working and boxes it: check this answer."""
     draw_handwriting(page, text, org)
     (width, _), _ = cv2.getTextSize(text, HAND, 1.0, 2)
-    draw_check(page, (org[0] + width + 34, org[1] - 3))
+    cv2.rectangle(page, (org[0] - 12, org[1] - 34), (org[0] + width + 14, org[1] + 10), PEN, 3, cv2.LINE_AA)
 
 
 def draw_target(page: np.ndarray, center=(740, 420), radius: int = 24) -> None:
@@ -279,10 +279,12 @@ def build_steps(corners=None) -> Dict[str, np.ndarray]:
     draw_highlight(page, 0, "yellow")
     draw_highlight(page, 3, "green")
     steps["highlights"] = desk_scene(page, corners=corners)
-    draw_answer_with_check(page)
+    draw_boxed_answer(page)
     steps["check"] = desk_scene(page, corners=corners)
     draw_target(page)
     steps["target"] = desk_scene(page, corners=corners)
+    draw_check(page, (700, 215), 34)  # next to the problem: show me the answer
+    steps["answer"] = desk_scene(page, corners=corners)
     return steps
 
 
@@ -329,4 +331,4 @@ def demo_frames(mode: str = "student") -> List[np.ndarray]:
         s = build_reading_steps()
         return [s["blank"], s["underline"], s["box"], s["circle"], s["highlight"], s["margin"]]
     s = build_steps()
-    return [s["blank"], s["spark"], s["underline"], s["highlights"], s["check"], s["target"]]
+    return [s["blank"], s["spark"], s["underline"], s["highlights"], s["check"], s["target"], s["answer"]]

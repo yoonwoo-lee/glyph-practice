@@ -47,6 +47,16 @@ The README covers how to run it; this file covers the why and the plan.
   (0.8 s, faint tail), the new mode's name is worked out letter by letter from mark characters
   (`*_?[]()|`), the sheet's corners lock on again, and the mode's rows and keys come in one after
   another. Nothing else moves and the background is untouched. He has not seen it yet.
+  **Nov 21 afternoon, "less like AI slop" (his words; he sent a list of 20 design fixes and asked
+  for the ones that apply). These replace what is said above where they differ:** the name is
+  written "Glyph", not lowercase; the logo is a G drawn as a pen ring with a pink bar (the pink
+  asterisk looked like Claude's mark); no label under the name ("Your page, flattened" is gone); no
+  ruler ticks round the page; no stripes over the background; the first-screen headline is one solid
+  color, not a gradient; the readouts are Sheet and Page only; **strong pink is too much for him**:
+  `--pink` is `#E56BAE`, End session, the count badges, the page number and the "reading" status
+  pill are pale pink with dark text. Also: one stroke weight for all icons, tabular numbers, balanced
+  headlines, darker faint text. The modes are named **STEM** and **Humanities** on the page (ids
+  `student` and `editor` in code and in `GLYPH_MODE`; `GLYPH_MODE=stem` works too).
   **Toned down after outside feedback (Nov 19, 19:20):** the pink in the background is one soft glow in
   the bottom left corner (several strong blooms read as "blotches"), and the scan is a thin line
   passing slowly down the page with a faint glow, not a tall fast pink bar. Don't turn either back up.
@@ -145,13 +155,16 @@ you draw marks, and Glyph reacts:
 | Underline a word | **Defines** it in the context of the page (≤35 words) |
 | Highlighter (yellow / green / pink / blue) | Saves the highlight; "End session" builds a **study guide** grouped by color |
 | Circled question mark (extra, removable) | **Explains** the passage (≤70 words) |
-| Check mark next to an answer (student mode) | **Checks** it: "Looks right" / "Not yet" + which step to look at again. Never the answer (≤40 words) |
+| Check mark next to a problem (STEM mode) | The **worked answer** in three to five steps (≤90 words). Yoon Woo's change of Nov 21: the one mark that does give the answer |
+| Box around your answer (STEM mode) | **Checks** it: "Looks right" / "Not yet" + which step to look at again. Never the answer (≤40 words) |
 | Target, a bullseye, next to a problem (student mode) | One **new problem** of the same kind, unsolved (≤60 words) |
 | Box around a word (editor mode) | **Finds** every other place the word appears and outlines them on the page view (paper Ctrl+F) |
 | Circle around a word (editor mode) | Three to five **synonyms** that fit the sentence (≤35 words) |
 | Line down the margin beside a passage (editor mode) | **Summary** of that passage (≤60 words) |
 
 Hint-first is the core idea: it should push the student to solve it themselves, not hand over answers.
+(Since Nov 21 the check mark hands over the worked answer when the student asks for it; every other
+mark still holds it back.)
 
 **Two modes (built Nov 20 night, Yoon Woo's answers in brackets):** Student, for solving problems
 (spark, check mark, target, underline, circled question mark) and Editor, for reading and writing
@@ -204,6 +217,10 @@ on the camera):
 - A second start at 00:25: the first read timed out on all four models (39 s, four requests). Now
   two timeouts in a row end the round. That start also had the page on its side: the turn made with
   Rotate is now kept for the next start (`sessions/view.json`).
+
+**Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
+(a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
+prompt that answered on the camera is unchanged apart from "inside the box"; the answer prompt is new.
 
 **Built and covered by the checks (83 pass: 17 + 9 + 57), but not yet seen on the real camera or
 answered by live Gemini:**

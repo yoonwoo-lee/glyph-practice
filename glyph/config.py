@@ -114,7 +114,7 @@ DEFAULT_LEGEND = {
         {
             "name": "check mark",
             "looks_like": "a tick: a short stroke down, then a longer stroke up to the right",
-            "action": "check",
+            "action": "answer",
         },
         {
             "name": "target",
@@ -127,12 +127,14 @@ DEFAULT_LEGEND = {
     # Each mode uses some of the symbols and marks above. Highlights work in every mode.
     "modes": {
         "student": {
-            "label": "Student",
+            "label": "STEM",
             "about": "Solving problems",
-            "use": ["spark", "check mark", "target", "underline", "circled question mark"],
+            "use": ["spark", "check mark", "box", "target", "underline", "circled question mark"],
+            # In this mode a box is drawn round an answer, and asks for it to be checked.
+            "marks": {"box": "check"},
         },
         "editor": {
-            "label": "Editor",
+            "label": "Humanities",
             "about": "Reading and writing",
             "use": ["underline", "box", "circle", "margin line", "circled question mark"],
         },
@@ -145,19 +147,28 @@ DEFAULT_LEGEND = {
     },
 }
 
-ACTIONS = ("hint", "explain", "define", "check", "practice", "find", "synonym", "summarize")
+ACTIONS = ("hint", "explain", "define", "answer", "check", "practice", "find", "synonym", "summarize")
 VERDICTS = ("right", "wrong", "unsure")  # what a check says about the student's answer
 
 # What each mark on words looks like, as the vision model is told.
 MARKS = {
     "underline": "a pen line drawn under a word or short phrase. Fraction bars, equals signs, answer boxes and printed rules are not underlines.",
-    "box": "a hand-drawn rectangle around a word or short phrase. Printed boxes, table cells and answer boxes are not marks.",
+    "box": "a hand-drawn rectangle around a word, a short phrase or an answer the student wrote. Printed boxes, table cells and printed answer boxes are not marks.",
     "circle": "a hand-drawn circle or oval around a printed word or short phrase. A circle drawn around the student's own question mark is the circled question mark, not this.",
     "margin line": "a long hand-drawn line running down the margin beside several lines of text. A printed rule or the edge of the sheet is not one.",
 }
 
 # The mode Glyph starts in. GLYPH_MODE in .env changes it; the button on the web page switches it.
 START_MODE = (os.getenv("GLYPH_MODE") or "student").strip().lower()
+
+
+def mode_id(legend: dict, name: str) -> str:
+    """The id of a mode given its id or its label ("stem" and "student" are the same mode). "" if none."""
+    name = str(name or "").strip().lower()
+    for key, m in (legend.get("modes") or {}).items():
+        if name in (key.lower(), str(m.get("label", "")).lower()):
+            return key
+    return ""
 
 
 # How the page view was last turned with the Rotate button, kept between runs: the camera and the
@@ -221,6 +232,8 @@ def legend_for(legend: dict, mode: str = "") -> dict:
         use = list(spec.get("use") or [])
         out["symbols"] = [s for s in legend.get("symbols", []) if s.get("name") in use]
         out["marks"] = {k: v for k, v in legend.get("marks", {}).items() if k in use}
+        # A mode may give a mark a job of its own (a box checks an answer where problems are solved).
+        out["marks"].update({k: v for k, v in (spec.get("marks") or {}).items() if k in use and k in MARKS and v in ACTIONS})
     else:
         use = [s.get("name") for s in legend.get("symbols", [])] + list(legend.get("marks", {}))
     # The actions in the order the mode lists its marks: the order they are shown in on the web page.

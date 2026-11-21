@@ -609,7 +609,7 @@ def test_underlines_already_on_a_sheet_are_left_alone():
 
 
 def _check(verdict="right", response="That is right. Splitting the weight was the step.", target="Problem 1"):
-    return {"kind": "symbol", "symbol": "check mark", "action": "check", "target": target,
+    return {"kind": "box", "symbol": None, "action": "check", "target": target,
             "work": "a = g sin(30) = 4.9", "verdict": verdict, "response": response}
 
 
@@ -654,7 +654,7 @@ def test_a_check_drawn_before_the_sheet_was_taken_in_is_answered():
     """Nov 21: the first check of the session was drawn while Glyph was still getting a steady
     view of the sheet, and got no answer."""
     page = demo.base_page()
-    demo.draw_answer_with_check(page)
+    demo.draw_boxed_answer(page)
     marked = demo.desk_scene(page)
     engine, session, show = _stepper(read_first_page=True)
     engine.brain.script = lambda n, crop, shape: {"occluded": False, "triggers": [_check()]}
@@ -668,7 +668,7 @@ def test_a_check_drawn_before_the_sheet_was_taken_in_is_answered():
 def test_a_sheet_covered_in_ticks_is_left_alone():
     """A marked sheet (a teacher's ticks): nothing until the student asks for it to be read."""
     page = demo.base_page()
-    demo.draw_answer_with_check(page)
+    demo.draw_boxed_answer(page)
     marked = demo.desk_scene(page)
     engine, session, show = _stepper(read_first_page=True)
     about = ["the block on the incline", "the pulley", "momentum of the cart", "energy at the top"]
@@ -685,10 +685,10 @@ def test_a_sheet_covered_in_ticks_is_left_alone():
 def test_a_check_without_a_clear_verdict_is_never_right():
     from glyph.brain import build_system_prompt, clean_result
 
-    legend = config.load_legend()
+    legend = config.legend_for(config.load_legend(), "student")  # where a box round an answer checks it
 
     def one(legend=legend, **kw):
-        t = dict(kind="symbol", symbol="check mark", action="check", target="p1", response="ok")
+        t = dict(kind="box", symbol=None, action="check", target="p1", response="ok")
         t.update(kw)
         return clean_result({"triggers": [t]}, legend)["triggers"]
 
@@ -696,8 +696,8 @@ def test_a_check_without_a_clear_verdict_is_never_right():
     assert one(verdict="incorrect")[0]["verdict"] == "wrong"
     assert one(verdict="probably")[0]["verdict"] == "unsure"
     assert one()[0]["verdict"] == "unsure"
-    # With the check mark taken out of symbols.json, the action is not accepted and not asked for.
-    bare = dict(legend, symbols=[s for s in legend["symbols"] if s["action"] != "check"])
+    # Where a box does not check answers (editor mode), the action is not accepted and not asked for.
+    bare = config.legend_for(config.load_legend(), "editor")
     assert one(legend=bare, verdict="right") == []
     assert '"verdict"' in build_system_prompt(legend) and '"verdict"' not in build_system_prompt(bare)
 
@@ -709,10 +709,12 @@ def test_the_demo_ends_with_a_checked_answer():
     engine.brain = MockBrain(engine.legend, demo=True)
     for frame in demo.demo_frames():
         show(frame, 5)
-    assert kinds(session) == ["hint", "define", "highlight", "highlight", "check", "practice"], kinds(session)
+    assert kinds(session) == ["hint", "define", "highlight", "highlight", "check", "practice", "answer"], kinds(session)
     assert session.events_of("check")[0]["title"] == "Looks right"
     assert session.events_of("practice")[0]["title"] == "Try this one"
-    assert "Problems to try" in engine.study_guide()
+    assert session.events_of("answer")[0]["title"] == "Answer" and "4.9" in session.events_of("answer")[0]["body"]
+    guide = engine.study_guide()
+    assert "Problems to try" in guide and "Worked answers" in guide, guide
 
 
 def test_a_short_underline_right_under_a_small_word_is_looked_at():
@@ -861,8 +863,10 @@ def test_the_card_shows_the_one_mark_that_was_answered():
         return found[0] <= x <= found[2] and found[1] <= y <= found[3]
 
     both = drawn(circle, check)
-    got = pick_mark(both, "check")
-    assert inside(got, 650, 500) and not inside(got, 150, 400), got  # the check, not the circled letter
+    got = pick_mark(both, "answer")
+    assert inside(got, 650, 500) and not inside(got, 150, 400), got  # the check mark, not the circled letter
+    got = pick_mark(drawn(check, box), "check")
+    assert inside(got, 550, 820) and not inside(got, 650, 500), got  # checking an answer: the box round it
     got = pick_mark(both, "synonym")
     assert inside(got, 150, 400) and not inside(got, 650, 500), got  # asked about a circle: the circle
     got = pick_mark(drawn(words, spark), "hint")
@@ -898,13 +902,16 @@ def test_each_mode_has_its_own_marks():
     legend = config.load_legend()
     student, editor = config.legend_for(legend, "student"), config.legend_for(legend, "editor")
     assert [m["id"] for m in config.modes_of(legend)] == ["student", "editor"]
-    assert config.actions_of(student) == ["hint", "explain", "define", "check", "practice"], config.actions_of(student)
+    assert config.actions_of(student) == ["hint", "explain", "define", "answer", "check", "practice"], config.actions_of(student)
+    assert student["marks"]["box"] == "check" and editor["marks"]["box"] == "find"  # one mark, a job per mode
+    assert [m["label"] for m in config.modes_of(legend)] == ["STEM", "Humanities"]
+    assert config.mode_id(legend, "stem") == "student" and config.mode_id(legend, "Humanities") == "editor" and config.mode_id(legend, "x") == ""
     assert config.actions_of(editor) == ["explain", "define", "find", "synonym", "summarize"], config.actions_of(editor)
     assert editor["order"] == ["define", "find", "synonym", "summarize", "explain"], editor["order"]
     # The model is only told about the marks of the mode that is on, and only those come back.
     told = build_system_prompt(editor)
     assert '"box"' in told and '"margin line"' in told and '"spark"' not in told and '"verdict"' not in told
-    assert '"box"' not in build_system_prompt(student)
+    assert '"find"' not in build_system_prompt(student) and '"answer"' in build_system_prompt(student)
     raw = {"triggers": [
         {"kind": "symbol", "symbol": "spark", "action": "hint", "target": "p1", "response": "a hint"},
         {"kind": "box", "action": "find", "target": "heat", "response": "", "places": [{"box_2d": [100, 200, 130, 260]}]},
@@ -915,7 +922,7 @@ def test_each_mode_has_its_own_marks():
     assert [t["action"] for t in clean_result(raw, student)["triggers"]] == ["hint"]
     # A legend with no modes works as before: every mark, one mode.
     plain = {k: v for k, v in legend.items() if k != "modes"}
-    assert config.modes_of(plain) == [] and len(config.actions_of(config.legend_for(plain, "student"))) == 8
+    assert config.modes_of(plain) == [] and len(config.actions_of(config.legend_for(plain, "student"))) == 8  # (no check: without modes a box finds)
 
 
 def test_found_places_must_be_the_size_of_a_word():

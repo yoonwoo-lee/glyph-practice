@@ -13,7 +13,7 @@
     {
       "name": "check mark",
       "looks_like": "a tick: a short stroke down, then a longer stroke up to the right",
-      "action": "check"
+      "action": "answer"
     },
     {
       "name": "target",
@@ -29,18 +29,22 @@
   },
   "modes": {
     "student": {
-      "label": "Student",
+      "label": "STEM",
       "about": "Solving problems",
       "use": [
         "spark",
         "check mark",
+        "box",
         "target",
         "underline",
         "circled question mark"
-      ]
+      ],
+      "marks": {
+        "box": "check"
+      }
     },
     "editor": {
-      "label": "Editor",
+      "label": "Humanities",
       "about": "Reading and writing",
       "use": [
         "underline",

@@ -8,14 +8,15 @@ A study tutor that watches your paper through a camera. You never type: you draw
 | **Underline** a word | Defines it, in the context of the page |
 | **Highlight** in yellow, green, pink or blue | Saves it. "End session" turns all highlights into a study guide |
 | Draw a **circled question mark** next to a passage | Explains it in plain language |
-| Draw a **check mark** next to your answer | Checks it: "Looks right" or "Not yet" and which step to look at again. Never the answer. |
+| Draw a **check mark** next to a problem | Gives the worked answer, step by step |
+| Draw a **box** around your answer | Checks it: "Looks right" or "Not yet" and which step to look at again. Never the answer. |
 | Draw a **target** (a bullseye) next to a problem | Gives one new problem of the same kind |
 
-There are two modes, switched with the **Student | Editor** button at the top left of the page. The
-marks above are student mode, for solving problems. Editor mode is for reading and writing: it keeps
+There are two modes, switched with the **STEM | Humanities** button at the top left of the page. The
+marks above are STEM mode, for solving problems. Humanities mode is for reading and writing: it keeps
 the underline, the highlights and the circled question mark, and adds these.
 
-| In editor mode | Glyph does this |
+| In Humanities mode | Glyph does this |
 |---|---|
 | Draw a **box** around a word | Finds every other place the word appears and outlines them on the page |
 | Draw a **circle** around a word | Gives synonyms that fit the sentence |

@@ -66,7 +66,7 @@ CUT_OFF_TEXT = "Part of the sheet is outside the camera's view. Slide it back, o
 NO_SHEET_TEXT = "No sheet in view. Put your page under the camera."
 
 TITLES = {
-    "hint": "Hint", "explain": "Explanation", "define": "Definition", "check": "Check",
+    "hint": "Hint", "explain": "Explanation", "define": "Definition", "check": "Check", "answer": "Answer",
     "practice": "Try this one", "find": "Find", "synonym": "Synonyms", "summarize": "Summary",
 }
 VERDICT_TITLES = {"right": "Looks right", "wrong": "Not yet", "unsure": "Could not tell"}
@@ -75,7 +75,8 @@ NAMED = {"define": "Definition", "find": "Find", "synonym": "Synonyms"}  # title
 # A second mark by the same problem or passage may be answered again: a stronger hint, another
 # try at the answer, one more practice problem. A mark on a word is answered once.
 REPEATABLE = ("hint", "explain", "check", "practice")
-FIRST_LOOK_CHECKS = 3  # check marks already on a sheet when it is first seen: this many are answered
+FIRST_LOOK_CHECKS = 3  # boxed answers, or check marks, already on a sheet when it is first seen: this many are answered
+COUNTED = ("check", "answer")  # the actions that rule applies to
 
 # Shown when the student has not written anything for a while. Never an answer, no model call.
 NUDGES = [
@@ -123,7 +124,7 @@ class Engine:
         self.session = session
         self.legend = legend
         modes = [m["id"] for m in config.modes_of(legend)]
-        self.mode = config.START_MODE if config.START_MODE in modes else (modes[0] if modes else "")
+        self.mode = config.mode_id(legend, config.START_MODE) or (modes[0] if modes else "")
         self._mode_was = self.mode
         self._legends: dict = {}  # mode -> the legend as that mode uses it
         self._found: Optional[dict] = None  # the places a boxed word was found, drawn on the page view
@@ -951,7 +952,7 @@ class Engine:
             # (by a teacher, or last week). Up to three were drawn just now, perhaps in the seconds
             # before the sheet was taken in, and are answered (Nov 21: the first check of a
             # session got no answer).
-            old_ticks = job["full"] and sum(1 for t in result.get("triggers", []) if t["action"] == "check") > FIRST_LOOK_CHECKS
+            many = {a for a in COUNTED if job["full"] and sum(1 for t in result.get("triggers", []) if t["action"] == a) > FIRST_LOOK_CHECKS}
             for t in result.get("triggers", []):
                 key = (t["action"], _norm(t["target"]))
                 page_no = job.get("page_no") or 0
@@ -961,7 +962,8 @@ class Engine:
                     # so is everything when the student asks for the sheet to be read.
                     # The same goes for every mark on words (a box, a circle, a margin line), and
                     # for the check marks of a sheet that is covered in them.
-                    if (t.get("kind", "symbol") != "symbol" or (t["action"] == "check" and old_ticks)) and job["reason"] != "you asked":
+                    old = t["action"] in many if t["action"] in COUNTED else t.get("kind", "symbol") != "symbol"
+                    if old and job["reason"] != "you asked":
                         continue
                     # Reading a whole sheet finds every mark on it, old ones too. One that was
                     # answered before, on any sheet, is the same mark seen again.
@@ -1126,6 +1128,7 @@ class Engine:
             ("Synonyms", self.session.events_of("synonym"), lambda e: "**{}**: {}".format(e["meta"].get("target", "?"), e["body"])),
             ("Summaries", self.session.events_of("summarize"), lambda e: e["body"]),
             ("Problems to try", self.session.events_of("practice"), lambda e: e["body"]),
+            ("Worked answers", self.session.events_of("answer"), lambda e: "{}: {}".format(e["meta"].get("target", "?"), " ".join(e["body"].split()))),
         ]
         every = defs + helped + checked + [e for _, events, _ in more for e in events]
         pages = sorted({r["page_no"] for r in regions} | {e["meta"].get("page") for e in every if e["meta"].get("page") is not None})

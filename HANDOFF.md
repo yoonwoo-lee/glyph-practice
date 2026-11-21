@@ -14,6 +14,32 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-21 (14:10), Yoon Woo's Claude
+
+Yoon Woo asked for three things, answering questions first: the check mark gives the answer
+("answer with the steps"), another mark checks an answer (he chose a box round it), and the page
+should look "less built by AI" (he sent a list of 20 design fixes, to apply where they fit).
+While I worked he added: modes renamed STEM and Humanities; "Glyph" with a capital; a logo that is
+not Claude's asterisk; no label under the name; readouts down to Sheet and Page; strong pink is
+"too much", lighten it.
+
+**Done** (one commit after `3e6b81a`; `main` and `camera-test`)
+- New action `answer` (check mark, STEM mode). `check` moved to the box in STEM mode through a
+  per-mode override, `modes.student.marks` in `symbols.json`. Up to three boxed answers or check
+  marks already on a sheet are answered on a first look, each kind counted on its own.
+- Page: everything listed under "Nov 21 afternoon" in the Look section of `CLAUDE.md`.
+- Demo worksheet: the corrected line is boxed (check), and a check mark comes last (answer).
+- Checks: 83 pass (17 + 9 + 57).
+
+**Not verified:** the `answer` prompt and a box as "check" have never been sent to live Gemini. The
+logo is my drawing: Skylar owns the logo and may want his own.
+
+`[open]` Yoon Woo's side: restart Glyph, then section 3d of `docs/camera-test-checklist.md`.
+`[open]` Skylar's side: the logo (`.logo` in `glyph/static/index.html`, and the favicon) and the two
+mode names are placeholders until he says otherwise.
+
+---
+
 ## 2026-11-21 (01:10), Yoon Woo's Claude
 
 Yoon Woo tested the check mark on the camera with live Gemini at 00:20 (`sessions/2026-11-21_002011`
