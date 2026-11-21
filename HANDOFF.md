@@ -14,6 +14,21 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-21 (14:30), Yoon Woo's Claude
+
+Yoon Woo asked for a cleaner right side and a color change between the modes, and chose the color
+("warm peach") and the opening line ("Start by drawing a glyph") himself.
+
+**Done** (one commit after `7fdd708`; `main` and `camera-test`; only `glyph/static/index.html` and notes)
+- Opening screen: the logo and one faded line. The headline, the paragraph and the list of marks are gone from it.
+- The marks of the mode are under a new **Legend** tab. The legend beside End session is removed.
+- Humanities mode turns the background warm peach (`#F4A98C`), over 0.9 s. STEM is sky blue as before.
+- 83 checks pass. Seen in screenshots of `--demo --mock` only; he has not seen it yet.
+
+**Need from the other side**
+- [open] Skylar: the G logo is a placeholder drawn by Claude, and the two mode colors are Yoon Woo's
+  picks for now. Both are yours to change.
+
 ## 2026-11-21 (14:10), Yoon Woo's Claude
 
 Yoon Woo asked for three things, answering questions first: the check mark gives the answer

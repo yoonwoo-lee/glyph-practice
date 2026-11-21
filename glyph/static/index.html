@@ -30,17 +30,29 @@
   .num { font-variant-numeric: tabular-nums; }
   svg.g { width: 1em; height: 1em; flex: none; }
 
+  /* Humanities mode: warm peach where STEM is sky blue. Everything that was sky follows.
+     The colors are registered, so the field turns from one to the other instead of jumping. */
+  @property --sky { syntax: '<color>'; inherits: true; initial-value: #45B6EC; }
+  @property --sky-mid { syntax: '<color>'; inherits: true; initial-value: #2CA5DE; }
+  @property --sky-deep { syntax: '<color>'; inherits: true; initial-value: #0B7FB0; }
+  @property --sky-far { syntax: '<color>'; inherits: true; initial-value: #8FD6F6; }
+  @property --sky-shade { syntax: '<color>'; inherits: true; initial-value: rgba(5,147,198,.62); }
+  @property --sky-light { syntax: '<color>'; inherits: true; initial-value: rgba(222,244,254,.88); }
+  :root { --sky-far: #8FD6F6; --sky-shade: rgba(5,147,198,.62); --sky-light: rgba(222,244,254,.88);
+    transition: --sky .9s ease, --sky-mid .9s ease, --sky-deep .9s ease, --sky-far .9s ease, --sky-shade .9s ease, --sky-light .9s ease; }
+  :root[data-mode="editor"] { --sky: #F4A98C; --sky-mid: #EF9A7A; --sky-deep: #B4532F; --sky-soft: #F9CFBD; --sky-pale: #FDEEE6; --sky-line: #F6D3C4;
+    --sky-far: #F8C9AE; --sky-shade: rgba(226,120,84,.5); --sky-light: rgba(255,241,230,.88); }
   .app { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 100vh; min-height: 620px;
     position: relative; isolation: isolate; overflow: hidden;
-    background: linear-gradient(150deg, var(--sky-mid) 0%, var(--sky) 44%, #8FD6F6 100%); }
+    background: linear-gradient(150deg, var(--sky-mid) 0%, var(--sky) 44%, var(--sky-far) 100%); }
   /* The blooms: one soft pink glow rising from the bottom left corner and a fainter one bottom right
      (several stronger ones read as blotches); light at the top; deep blue in the top left corner. */
   .app::before { content: ""; position: absolute; inset: -14%; z-index: -2; pointer-events: none;
     background:
       radial-gradient(48% 40% at 10% 92%, rgba(229,107,174,.72), rgba(229,107,174,.30) 46%, rgba(229,107,174,0) 78%),
       radial-gradient(26% 26% at 90% 93%, rgba(229,107,174,.30), rgba(229,107,174,0) 74%),
-      radial-gradient(46% 40% at 56% 3%, rgba(222,244,254,.88), rgba(222,244,254,0) 72%),
-      radial-gradient(34% 32% at 5% 6%, rgba(5,147,198,.62), rgba(5,147,198,0) 72%);
+      radial-gradient(46% 40% at 56% 3%, var(--sky-light), transparent 72%),
+      radial-gradient(34% 32% at 5% 6%, var(--sky-shade), transparent 72%);
     animation: drift 30s ease-in-out infinite alternate; will-change: transform; }
   @keyframes drift { from { transform: translate3d(-2%, 1.5%, 0) scale(1); } to { transform: translate3d(3%, -2.5%, 0) scale(1.08); } }
 
@@ -53,7 +65,7 @@
   .brand .logo svg { width: 22px; height: 22px; }
   .brand .word { font-size: 30px; font-weight: 800; font-stretch: 125%; letter-spacing: -0.035em; line-height: 1; }
   .state { margin-left: auto; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 6px 15px 6px 12px; font-weight: 600; font-size: 14px; transition: background .3s, color .3s, box-shadow .3s; }
-  .state .lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 0 3px rgba(69,182,236,.28); }
+  .state .lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sky) 28%, transparent); }
   .state.wait .lamp { background: var(--faint); box-shadow: none; }
   .state.busy { background: var(--pink-pale); border-color: rgba(255,255,255,.8); color: var(--ink); box-shadow: 0 0 0 5px rgba(229,107,174,.28), 0 14px 30px -12px rgba(229,107,174,.9); }
   .state.busy .lamp { background: var(--white); box-shadow: none; animation: pulse .8s ease-in-out infinite; }
@@ -74,7 +86,7 @@
   /* One thin line of light crosses the window when the mode changes, towards the side of the new
      mode, and what belongs to the mode is replaced behind it. Once, and quickly. */
   .msweep { position: absolute; top: 0; bottom: 0; left: 0; width: 9vw; z-index: 6; pointer-events: none; opacity: 0;
-    background: linear-gradient(90deg, rgba(69,182,236,0) 0%, rgba(69,182,236,.05) 60%, rgba(229,107,174,.08) 100%);
+    background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--sky) 5%, transparent) 60%, rgba(229,107,174,.08) 100%);
     border-right: 1.5px solid transparent; border-image: linear-gradient(to bottom, var(--sky) 0%, var(--white) 46%, var(--pink) 100%) 1; }
   .msweep.fwd { animation: msweep-f .8s cubic-bezier(.5,0,.25,1) both; }
   .msweep.back { animation: msweep-b .8s cubic-bezier(.5,0,.25,1) both; }
@@ -103,7 +115,7 @@
   /* While a mark is being read: a thin line passes slowly down the picture, and the picture gets a
      fine pink edge. Kept quiet on purpose: a tall, fast, glowing bar was too much. */
   .sweep { position: absolute; left: 0; right: 0; top: 0; height: 9%; opacity: 0; pointer-events: none;
-    background: linear-gradient(to bottom, rgba(69,182,236,0) 0%, rgba(69,182,236,.08) 55%, rgba(229,107,174,.14) 100%); border-bottom: 1.5px solid rgba(229,107,174,.7); }
+    background: linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--sky) 8%, transparent) 55%, rgba(229,107,174,.14) 100%); border-bottom: 1.5px solid rgba(229,107,174,.7); }
   .stage.scanning .sweep { opacity: 1; animation: sweep 2.8s cubic-bezier(.45,.05,.55,.95) infinite; }
   .stage.scanning .fit { box-shadow: 0 0 0 2px var(--pink), 0 0 0 5px rgba(229,107,174,.14), 0 28px 56px -22px rgba(6,70,105,.6); }
   @keyframes sweep { from { transform: translateY(-100%); } to { transform: translateY(1112%); } }
@@ -115,7 +127,7 @@
   .hud .sheet-dot { fill: var(--pink); stroke: var(--white); stroke-width: 2; }
   .hud .hl { fill: none; stroke-width: 2.5; }
   /* Every other place a boxed word appears. They arrive one after another, in reading order. */
-  .hud .found { fill: rgba(69,182,236,.20); stroke: var(--sky-deep); stroke-width: 2; stroke-linejoin: round; }
+  .hud .found { fill: color-mix(in srgb, var(--sky) 20%, transparent); stroke: var(--sky-deep); stroke-width: 2; stroke-linejoin: round; }
   .hud .found.in { transform-box: fill-box; transform-origin: center; animation: lock .4s cubic-bezier(.2,.9,.2,1) both; animation-delay: calc(var(--k, 0) * 70ms); }
   .hud .cover { fill: rgba(6,42,64,.10); stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 5; }
   .hud .mark { fill: none; stroke: var(--pink); stroke-width: 3; stroke-linecap: square; stroke-linejoin: round; }
@@ -151,7 +163,7 @@
 
   /* ================= right: what it says ================= */
   .say { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin: 14px 14px 14px 0; border-radius: 28px; overflow: hidden;
-    background: radial-gradient(70% 44% at 104% -4%, rgba(69,182,236,.17), rgba(69,182,236,0) 70%), radial-gradient(60% 40% at -6% 104%, rgba(229,107,174,.12), rgba(229,107,174,0) 70%), var(--white);
+    background: radial-gradient(70% 44% at 104% -4%, color-mix(in srgb, var(--sky) 17%, transparent), transparent 70%), radial-gradient(60% 40% at -6% 104%, rgba(229,107,174,.12), rgba(229,107,174,0) 70%), var(--white);
     box-shadow: 0 0 0 1px rgba(255,255,255,.6), 0 40px 80px -36px rgba(6,70,105,.6); }
   .bar { display: flex; align-items: center; gap: 16px; padding: 20px 34px 0; flex-wrap: wrap; }
   .seg { display: inline-flex; border-bottom: 2px solid var(--line); }
@@ -178,9 +190,8 @@
   .nowhead .reading { order: 2; margin: 0; }
 
   /* ---- first screen: the marks ---- */
-  .intro h1 { font-size: clamp(32px, 3.2vw, 46px); font-weight: 800; font-stretch: 118%; line-height: 1; letter-spacing: -0.04em; margin: 10px 0 16px; padding-bottom: .06em; color: var(--ink); text-wrap: balance; }
-  .intro p { margin: 0 0 22px; font-size: 17px; color: var(--soft); max-width: 34em; }
-  @media (max-height: 860px) { .intro h1 { font-size: clamp(30px, 3.1vw, 42px); margin: 2px 0 10px; } .intro p { margin-bottom: 14px; font-size: 16px; } .markrow { padding: 5px 0; } }
+  .hello { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 26vh 0 0; font-size: clamp(28px, 2.6vw, 40px); font-weight: 500; letter-spacing: -0.02em; color: var(--faint); }
+  .hello svg { width: 1.15em; height: 1.15em; flex: none; opacity: .9; }
   /* Parts of the first screen fold away smoothly: the headline when a read starts, the list of marks
      when the first answer arrives. (A grid row animating from 1fr to 0fr is a height animation.) */
   .fold { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .6s cubic-bezier(.3,.7,.2,1), opacity .4s ease, transform .6s cubic-bezier(.3,.7,.2,1); }
@@ -190,7 +201,7 @@
   .caret { display: inline-block; width: .075em; height: .95em; margin-left: .05em; vertical-align: -.12em; border-radius: 1px; background: var(--pink); animation: blink .8s steps(1) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
   .marks { border-top: 0; background: var(--blend) no-repeat 0 0 / 100% 3px; padding-top: 3px; }
-  .markrow { display: grid; grid-template-columns: 82px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .markrow { display: grid; grid-template-columns: 82px minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 0 18px; padding: 12px 0; border-bottom: 1px solid var(--line); }
   .markrow svg { width: 82px; height: 48px; display: block; background: linear-gradient(120deg, var(--sky-pale), #F3EAF6 130%); border-radius: 10px; }
   .markrow b { font-size: 18px; font-stretch: 108%; font-weight: 700; letter-spacing: -0.01em; }
   .markrow span { color: var(--soft); font-size: 15px; line-height: 1.4; }
@@ -209,7 +220,7 @@
   /* ---- the newest answer ---- */
   .now { border: 2px solid transparent; border-radius: 20px; padding: 24px 28px 26px; margin-bottom: 30px; position: relative;
     background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(125deg, var(--sky) 0%, #A996DD 50%, var(--pink) 100%) border-box;
-    box-shadow: -22px 26px 50px -34px rgba(69,182,236,.95), 22px 26px 50px -34px rgba(229,107,174,.85); }
+    box-shadow: -22px 26px 50px -34px color-mix(in srgb, var(--sky) 95%, transparent), 22px 26px 50px -34px rgba(229,107,174,.85); }
   .now.error { background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(var(--bad), var(--bad)) border-box; box-shadow: none; }
   .now.fresh { animation: arrive .4s cubic-bezier(.2,.8,.2,1) both; }
   @keyframes arrive { from { opacity: 0; transform: translateY(12px); } }
@@ -287,20 +298,13 @@
 
   /* ---- bottom bar ---- */
   .foot { display: flex; align-items: center; gap: 14px; padding: 12px 34px 18px; border-top: 1px solid var(--line); }
-  .keys { display: flex; flex-wrap: wrap; gap: 6px 16px; min-width: 0; }
-  .key { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--soft); white-space: nowrap; }
-  .key .ic { width: 24px; height: 24px; border-radius: 7px; background: var(--sky-pale); color: var(--sky-deep); display: grid; place-items: center; font-size: 13px; }
-  .key b { color: var(--ink); font-weight: 700; }
-  .keyhead { align-self: center; font-size: 13px; font-weight: 700; color: var(--pink-deep); white-space: nowrap; min-width: 6.4em; }
-  .key .sws { display: inline-flex; gap: 2px; padding-left: 2px; }
-  .key .sws i { width: 8px; height: 16px; border-radius: 2px; }
+  .legendhead { margin: 4px 0 18px; font-size: 17px; color: var(--soft); }
   .btn { flex: none; background: var(--pink-soft); color: var(--ink); border: 0; border-radius: 12px; padding: 11px 20px; font-weight: 700; font-size: 15px; box-shadow: 0 10px 20px -14px rgba(229,107,174,.9); transition: transform .2s, box-shadow .2s, filter .2s; }
   .btn:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 18px 30px -14px rgba(229,107,174,1); }
   .btn:disabled { opacity: .6; cursor: default; }
   .foot .btn { margin-left: auto; }
   .c-yellow { background: var(--yellow); } .c-green { background: var(--green); } .c-blue { background: var(--blue); } .c-pink { background: var(--hl-pink); }
 
-  @media (max-width: 1360px) { .key .d { display: none; } }
   @media (max-width: 620px) { .now .body.pic { grid-template-columns: minmax(0, 1fr); } .now .snip { max-width: 240px; margin-top: 14px; } }
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; height: auto; }
@@ -371,6 +375,7 @@
       <div class="seg" role="tablist">
         <button class="on" id="tFeed" role="tab">Answers <span class="n hide" id="aCount">0</span></button>
         <button id="tGuide" role="tab">Study guide <span class="n hide" id="tCount">0</span></button>
+        <button id="tLegend" role="tab">Legend</button>
       </div>
       <div class="pages hide" id="pages" aria-label="Pages seen this session"></div>
       <div class="clock" title="Session length"><span>Session</span><b id="clock" class="num">0:00</b></div>
@@ -380,12 +385,8 @@
     <div class="pane" id="feed">
       <div class="intro" id="intro">
         <div class="fold" id="introTop"><div>
-        <h1>Mark the page.<br>__NAME__ reads it.</h1>
-        <p id="introWords">Keep working on paper. No typing, nothing to switch to. Draw one of these and lift your hand.</p>
+        <div class="hello"><svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke-width="4.2" stroke-linecap="round"><path d="M24.6 9.6A10.6 10.6 0 1 0 26.6 16" stroke="#062A40"/><path d="M26.6 16H17.4" stroke="#E56BAE"/></g></svg><span>Start by drawing a glyph</span></div>
         </div></div>
-        <div class="fold" id="introMarks"><div>
-        <div class="marks" id="markRows"></div>
-      </div></div>
       </div>
       <div class="label nowhead hide" id="nowHead"><span id="nowWord">Latest answer</span>
         <div class="reading hide" id="reading"><span class="dot"><svg class="g"><use href="#g-spark"/></svg></span><span>Reading your mark</span></div>
@@ -407,8 +408,12 @@
       </div>
     </div>
 
+    <div class="pane hide" id="legend">
+      <p class="legendhead" id="legendHead"></p>
+      <div class="marks" id="markRows"></div>
+    </div>
+
     <footer class="foot">
-      <div class="keys" id="keys"></div>
       <button class="btn" id="make">End session</button>
     </footer>
   </section>
@@ -577,7 +582,7 @@ function showModes(list, now) {
    sheet's corners lock on again, and the new mode's name is worked out. */
 function markMode(id, moving) {
   const was = modeList.findIndex(m => m.id === mode), i = Math.max(0, modeList.findIndex(m => m.id === id)), box = $('modes');
-  mode = id; box.style.setProperty('--i', i);
+  mode = id; box.style.setProperty('--i', i); document.documentElement.dataset.mode = id;
   box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === id)));
   document.documentElement.style.setProperty('--dir', i >= was ? 1 : -1);
   if (!moving) return;
@@ -638,9 +643,9 @@ const MARK = {   // action -> how its row reads, and the little picture of the m
 const VERB = { hint: 'hint', explain: 'explanation', define: 'meaning', answer: 'the answer', check: 'checks your answer', practice: 'new problem', find: 'finds the word', synonym: 'synonyms', summarize: 'summary' };
 const SHORT = { explain: 'Circled ?' };   // names that are too long for the bottom line
 function setLegend(l, moving) {
-  legend = l; showRows(l, moving); showKeys(l, moving);
+  legend = l; showRows(l, moving);
   const m = modeList.find(x => x.id === l.mode);
-  $('introWords').textContent = (m ? m.label + ' mode, for ' + m.about.toLowerCase() + '. ' : 'Keep working on paper. ') + 'Draw one of these and lift your hand. Nothing to type.';
+  $('legendHead').textContent = m ? m.label + ' mode, for ' + m.about.toLowerCase() + '. Draw one of these and lift your hand.' : 'Draw one of these and lift your hand.';
 }
 function restagger(box, moving) {   // the children come in one after another when the mode has just changed
   box.classList.remove('swap');
@@ -654,22 +659,6 @@ function showRows(l, moving) {
     const row = el('div', 'markrow'), art = svg('svg', { viewBox: '0 0 92 54', 'aria-hidden': 'true' });
     art.innerHTML = m[2]; row.append(art, el('b', '', m[0]), el('span', '', m[1])); box.append(row);
   });
-  restagger(box, moving);
-}
-function showKeys(l, moving) {
-  const box = $('keys'); box.textContent = '';
-  const m = modeList.find(x => x.id === l.mode);
-  if (m) { const h = el('span', 'keyhead', m.label + ' marks'); box.append(h); if (moving) decode(h, m.label + ' marks', 520); }
-  const add = (ic, name, does) => { const k = el('span', 'key'), i = el('span', 'ic'); i.append(icon(ic)); k.title = name + ' ' + does; k.append(i, el('b', '', name), el('span', 'd', does)); box.append(k); };
-  const named = {}; (l.symbols || []).forEach(x => named[x.action] = x.name); Object.entries(l.marks || {}).forEach(([name, a]) => named[a] = name);
-  (l.order || []).forEach(a => add(ICON[a] || 'ask', SHORT[a] || cap(named[a] || a), VERB[a] || a));
-  const colors = Object.entries(l.highlight_colors || {});
-  if (colors.length) {
-    const k = el('span', 'key'), i = el('span', 'ic'), sw = el('span', 'sws'); i.append(icon('pen'));
-    colors.forEach(([c, label]) => { const x = el('i', 'c-' + c); x.title = label; sw.append(x); });
-    k.title = colors.map(([c, label]) => cap(c) + ': ' + label).join('\n');
-    k.append(i, el('b', '', 'Highlight'), el('span', 'd', 'saved'), sw); box.append(k);
-  }
   restagger(box, moving);
 }
 
@@ -788,7 +777,7 @@ function showShelf() {
 }
 
 function addEvent(e, fresh) {
-  seen = true; $('introTop').classList.add('gone'); $('introMarks').classList.add('gone'); $('intro').classList.add('done');
+  seen = true; $('introTop').classList.add('gone'); $('intro').classList.add('done');
   if (ANSWERS.includes(e.kind)) {
     if (current) past.unshift(current);
     current = e; showPast(); $('now').classList.remove('hide'); $('nowHead').classList.remove('hide'); $('nowWord').textContent = 'Latest answer'; showNow(e, fresh);
@@ -835,8 +824,7 @@ function renderGuide(md) {
 }
 
 function tab(which) {
-  $('tFeed').classList.toggle('on', which === 'feed'); $('tGuide').classList.toggle('on', which === 'guide');
-  $('feed').classList.toggle('hide', which !== 'feed'); $('guide').classList.toggle('hide', which !== 'guide');
+  for (const [t, pane] of [['tFeed', 'feed'], ['tGuide', 'guide'], ['tLegend', 'legend']]) { $(t).classList.toggle('on', which === pane); $(pane).classList.toggle('hide', which !== pane); }
 }
 /* The two pictures are fetched one frame at a time, in a loop. Swapping them just changes which
    picture each loop asks for, so nothing has to reconnect. */
@@ -883,6 +871,7 @@ async function build() {
 
 $('tFeed').onclick = () => tab('feed');
 $('tGuide').onclick = () => tab('guide');
+$('tLegend').onclick = () => tab('legend');
 $('vPage').onclick = () => view('page');
 $('vRaw').onclick = () => view('raw');
 $('pip').onclick = () => view(big === 'page' ? 'raw' : 'page');

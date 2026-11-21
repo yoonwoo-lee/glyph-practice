@@ -57,6 +57,14 @@ The README covers how to run it; this file covers the why and the plan.
   pill are pale pink with dark text. Also: one stroke weight for all icons, tabular numbers, balanced
   headlines, darker faint text. The modes are named **STEM** and **Humanities** on the page (ids
   `student` and `editor` in code and in `GLYPH_MODE`; `GLYPH_MODE=stem` works too).
+  **Nov 21, 14:30, a clean opening (his words: "not overload people"; he sent Claude's own start
+  screen as the reference and chose both answers himself):** the right side opens with the logo and
+  one faded line, "Start by drawing a glyph", nothing else. The list of marks is a third tab,
+  **Legend**, beside Answers and Study guide; there is no legend along the bottom any more, only End
+  session. **Humanities turns the background warm peach** (`#F4A98C`; he picked it from four
+  options, wanting a contrast "but not too much"): every `--sky*` color has a peach twin under
+  `:root[data-mode="editor"]`, and the colors are registered with `@property` so the field turns in
+  0.9 s. The pink glow, the white sheet and the pale pink buttons are the same in both modes.
   **Toned down after outside feedback (Nov 19, 19:20):** the pink in the background is one soft glow in
   the bottom left corner (several strong blooms read as "blotches"), and the scan is a thin line
   passing slowly down the page with a faint glow, not a tall fast pink bar. Don't turn either back up.
@@ -239,8 +247,8 @@ answered by live Gemini:**
 - Spark → hint, underline → definition, circled question mark → explanation, highlights → study guide
   (one section per sheet when more than one was used). Check mark → verdict, target → practice
   problem, and in editor mode box → find, circle → synonyms, margin line → summary (see the table).
-- Student | Editor switch at the top left of the page (`POST /api/mode`). The list of marks on the
-  first screen and the line of marks along the bottom follow the mode.
+- Student | Editor switch at the top left of the page (`POST /api/mode`). The Legend tab and the
+  background color (sky blue for STEM, warm peach for Humanities) follow the mode.
 - Web page at http://127.0.0.1:8765: left half is what Glyph sees: the flattened page with
   corner brackets, a pink frame and sweep while a mark is read, the camera as an inset (swappable; the camera view shows the same
   mark frame, highlights and covers, mapped onto the desk from `status.view.cam`),
