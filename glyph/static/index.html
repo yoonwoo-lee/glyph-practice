@@ -190,8 +190,17 @@
   .nowhead .reading { order: 2; margin: 0; }
 
   /* ---- first screen: the marks ---- */
-  .hello { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 26vh 0 0; font-size: clamp(28px, 2.6vw, 40px); font-weight: 500; letter-spacing: -0.02em; color: var(--faint); }
-  .hello svg { width: 1.15em; height: 1.15em; flex: none; opacity: .9; }
+  /* The opening: the logo in the middle of the sheet, a little above dead center, and one faded line. */
+  .hello { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; min-height: calc(100vh - 250px); padding-bottom: 11vh;
+    font-size: clamp(22px, 2vw, 30px); font-weight: 500; letter-spacing: -0.015em; color: var(--faint); text-align: center; }
+  .hello > svg { width: 68px; height: 68px; flex: none; }
+  .hello > span { opacity: .8; }
+  /* hints: the mode's marks as small quiet pictures under the line (a trial; delete this block, the #hints div and the three lines marked "hints" in showRows) */
+  .hints { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+  .hints button { all: unset; cursor: pointer; border-radius: 9px; opacity: .62; transition: opacity .2s ease, transform .2s ease; }
+  .hints button:hover, .hints button:focus-visible { opacity: 1; transform: translateY(-2px); }
+  .hints button:focus-visible { outline: 2px solid var(--sky-deep); outline-offset: 2px; }
+  .hints svg { display: block; width: 54px; height: 32px; border-radius: 9px; background: linear-gradient(120deg, var(--sky-pale), #F3EAF6 130%); }
   /* Parts of the first screen fold away smoothly: the headline when a read starts, the list of marks
      when the first answer arrives. (A grid row animating from 1fr to 0fr is a height animation.) */
   .fold { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .6s cubic-bezier(.3,.7,.2,1), opacity .4s ease, transform .6s cubic-bezier(.3,.7,.2,1); }
@@ -385,7 +394,7 @@
     <div class="pane" id="feed">
       <div class="intro" id="intro">
         <div class="fold" id="introTop"><div>
-        <div class="hello"><svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke-width="4.2" stroke-linecap="round"><path d="M24.6 9.6A10.6 10.6 0 1 0 26.6 16" stroke="#062A40"/><path d="M26.6 16H17.4" stroke="#E56BAE"/></g></svg><span>Start by drawing a glyph</span></div>
+        <div class="hello"><svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke-width="4.2" stroke-linecap="round"><path d="M24.6 9.6A10.6 10.6 0 1 0 26.6 16" stroke="#062A40"/><path d="M26.6 16H17.4" stroke="#E56BAE"/></g></svg><span>Start by drawing a glyph</span><div class="hints" id="hints"></div></div>
         </div></div>
       </div>
       <div class="label nowhead hide" id="nowHead"><span id="nowWord">Latest answer</span>
@@ -654,10 +663,12 @@ function restagger(box, moving) {   // the children come in one after another wh
 }
 function showRows(l, moving) {
   const box = $('markRows'); box.textContent = '';
+  const hints = $('hints'); if (hints) hints.textContent = '';   // hints
   (l.order || []).concat(Object.keys(l.highlight_colors || {}).length ? ['highlight'] : []).forEach(a => {
     const m = MARK[a]; if (!m) return;
     const row = el('div', 'markrow'), art = svg('svg', { viewBox: '0 0 92 54', 'aria-hidden': 'true' });
     art.innerHTML = m[2]; row.append(art, el('b', '', m[0]), el('span', '', m[1])); box.append(row);
+    if (hints) { const b = el('button'), small = art.cloneNode(true); b.type = 'button'; b.title = m[0] + ': ' + m[1]; b.setAttribute('aria-label', m[0] + '. Open the legend.'); b.onclick = () => tab('legend'); b.append(small); hints.append(b); }   // hints
   });
   restagger(box, moving);
 }

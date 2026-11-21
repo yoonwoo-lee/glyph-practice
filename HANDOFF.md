@@ -34,7 +34,11 @@ Yoon Woo ran Glyph at a different desk (a light gray table by a window) and a sp
 - Not re-run on the camera yet.
 
 **Need from the other side**
-- Nothing new. He finds the opening screen's right side too empty; suggestions were sent, waiting for his pick.
+- Nothing new.
+
+**Later, 14:55:** opening screen, his pick: the logo centered a little above the middle with the faded
+line under it, plus a trial row of small marks under the line ("I'll probably want to delete it":
+`#hints` in `index.html`). Only `index.html` and notes changed; 85 checks pass.
 
 ## 2026-11-21 (14:30), Yoon Woo's Claude
 
