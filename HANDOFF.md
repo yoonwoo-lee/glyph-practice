@@ -14,6 +14,59 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-20 (19:30), Yoon Woo's Claude
+
+Second camera run on live Gemini (`sessions/2026-11-20_175202` on the Mac, 8 looks, all answered by
+`gemini-3.5-flash-lite` in 1.5 to 5.8 s). The pink close-up works: spark, three underlines on print.
+Yoon Woo: tracking and page "amazing", "starting to look like its final form". He reported two hints
+for one spark, "ball" not working, was unsure about highlights, liked that old underlines were not
+read, and asked for the answers side to be a little more organized. Then he left; all of this was
+done unattended.
+
+**Found (from the logs and pictures)**
+- Two hints: look 2 was the first full read of the sheet after Rotate, with the spark already in
+  its picture → hint. The spark was not in the remembered page, so look 3 sent it as new ink →
+  second hint (the "second spark by the same problem" rule let it through).
+- "ball": the underline lay one or two pixels under the letters, seven pixels thick, 25 long. The
+  "new ink" rule refuses anything within four pixels of print, which left 35 pixels; a look needs 120.
+  It was only read when "acceleration" was underlined a minute later (both defined in one look).
+- Highlight: he drew one green stroke over a line of small print. Nothing was saved. The stroke is
+  13 px tall, cut up by the letters (a 5x5 opening erased it), and half of it is paler than the range.
+- Rotate gave the sheet a new page number: signatures were filtered along the text lines and then
+  turned, and matched at 0.43 (0.6 needed). Turned first and filtered afterwards: 0.93.
+- Old underlines on the speech were not answered only because the model happened to report none.
+
+**Done** (`8f6105d` fixes, `90d1d66` answers side, then this note; `main` and `camera-test`)
+- Full read that gave an answer → its picture becomes the remembered page (not under a hand).
+- `new_ink` also takes solid ink beside print where the print has not moved (`_added_beside_print`);
+  `short_underline` lets a short flat stroke under print trigger a look below 120 px.
+- `detect_highlights`: paler color counts when joined to color in range, in a band that is solid
+  together with its letters (keeps out-of-focus blue pen out). Real picture: green found, 432x18.
+- Signatures kept unfiltered (`page_signature`), filtered in `same_page` (`_words`).
+- First reads drop underlines in the engine (`reason != "you asked"`); symbols still answered.
+- Answers side: heading for the newest answer with the reading pill in it (the card no longer
+  moves, measured 141 px before and during a read), two-column card, earlier answers grouped by
+  page, hints say which problem, counts on headings. Look unchanged.
+- Checks: 64 pass (17 + 9 + 38); six new ones, each fails on the old code. Replays of the Nov 19
+  and Nov 20 pictures give the expected looks.
+
+**Not verified:** all of the above on the real camera and against live Gemini (replays and checks
+only). The Mac could not be reached at the end, so its clone is at `7bff551`: it needs
+`git pull --ff-only origin camera-test`.
+
+**Left as it is**
+- "functions" underlined → the model answered "functions of time t". Prompt not changed (cannot be
+  tried against Gemini from here).
+- Sheet outline unsure with pale floor in view (16:40 entry): not seen in the second run.
+- The "arm across the sheet" replay ends with an ink look: its last picture has new marks in it, so
+  that is right; the "expect" line in the replay script is out of date.
+
+`[open]` Yoon Woo's side: pull, then `docs/camera-test-checklist.md` section 3c (five lines, about
+five requests). He has roughly 10 requests a day on the free key; 8 were used on Nov 20.
+`[done]` (from 16:40) He restarted and drew a spark: it was answered.
+
+---
+
 ## 2026-11-20 (16:40), Yoon Woo's Claude
 
 First camera run on live Gemini with the Nov 19 changes (`sessions/2026-11-20_161627` on the Mac,

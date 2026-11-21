@@ -81,6 +81,16 @@ Write a real physics problem with some working first. Lift your hand off the she
 - [ ] Stop writing for 90 seconds with the sheet in view: exactly one "Keep going" card appears, and
       no second one until you write again.
 
+## 3c. Added Nov 20 evening: the four things that went wrong that afternoon (5 min, about 5 requests)
+
+- [ ] Put the sheet down sideways, click **Rotate**: the page number stays the same.
+- [ ] Draw one spark and wait 20 seconds: one hint, not two.
+- [ ] Underline a short word in small print, close under the letters ("ball"), and nothing else: its
+      definition comes within about 10 seconds.
+- [ ] Highlight one line with the green highlighter: a green row appears under "Saved for your study
+      guide" on the right, and the line is outlined in green on the page.
+- [ ] Click **End session**: the study guide lists the highlight and the words you looked up.
+
 ## 4. If something is off (4 min)
 
 - [ ] Open http://127.0.0.1:8765/tune. Ink missed or noisy: move the ink slider. Wrong highlight

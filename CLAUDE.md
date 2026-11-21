@@ -32,6 +32,11 @@ The README covers how to run it; this file covers the why and the plan.
   The one thing he rejected there is a thick, full-width hot pink "Reading your mark" bar: that is a
   small sky-blue pill now. Two other tries were dropped the same evening (pink removed from that
   side; the answer as a filled blue block). Don't restyle this side again unless he asks.
+  **Nov 20, he asked for it to be "a little more organized"** (same look): the newest answer has a
+  heading ("Latest answer") with the reading pill at the end of that line, so the card does not jump;
+  the answer text and the picture of the mark stand in two columns (no text wrapping round the
+  picture); earlier answers are grouped under page numbers, hints say which problem; headings carry
+  counts. Colors, card, type and motion are as he approved them.
   **Motion he asked for (Nov 19):** text Glyph writes is written out letter by letter with a pink
   caret (answers in about 2.5 s, the study guide in about 3 s), never dropped in whole; the first-screen
   headline folds away smoothly when a read starts and the list of marks when the first answer arrives.
@@ -66,7 +71,7 @@ Walk Skylar through these in order, checking each one works before moving on.
    definition and two highlights, then click "End session" to see the study guide. Ctrl+C stops it.
    Needs Python 3.9+.
 5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 17 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 59 checks in total.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 64 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -135,27 +140,30 @@ Hint-first is the core idea: it should push the student to solve it themselves, 
 
 Symbol → action mapping lives in `symbols.json`, so new symbols are a config change, not a code change.
 
-## Current status (Nov 19)
+## Current status (Nov 20)
 
-**Works, checked on the real camera (Nov 17 and Nov 19, iPhone on a gooseneck, 0.5x lens, wooden desk):**
-- Sheet found and flattened; Rotate turns it upright; the first full read of a sheet; spark → hint and
-  underline → definition on handwriting; yellow highlights saved; marks are picked up quickly.
+**Works, checked on the real camera with live Gemini (Nov 20, iPhone on a gooseneck, 0.5x lens,
+wooden desk, `gemini-3.5-flash-lite` on a free-tier key, answers in 1.5 to 6 s):**
+- Sheet found, flattened and tracked; Rotate; spark → hint with the pink close-up; underline →
+  definition on small print ("functions", "acceleration", a three-word phrase); a second and a third
+  sheet numbered in order; underlines already on a sheet left alone; the redesigned page and the
+  marks drawn on the page view. Yoon Woo: "working really well", "starting to look like its final form".
 
-**What the Nov 19 camera session got wrong (all fixed the same day, see `HANDOFF.md`):**
-- The same mark answered several times; underlines on a printed speech got the wrong word or none;
-  one sheet taken away and brought back counted as a new page (numbers ran up to 18); a gray hoodie
-  merged into the sheet's outline; the bare desk was read as a page and saved as highlights.
+**What that run got wrong (fixed the same evening, see `HANDOFF.md`; replayed, not yet re-run on the
+camera):**
+- Two hints for one spark (the first read of the sheet answered it, then it counted as new ink).
+- "ball" underlined close under the word in small print: no look until the next mark was drawn.
+- A pale green highlight over one line of small print was not saved.
+- Rotate gave the same sheet a new page number.
 
-**Built and covered by the checks (59 pass: 17 + 9 + 33), but not yet run on the real camera or
-against live Gemini:**
-- The Nov 19 fixes: new strokes recolored pink in the close-up and the model told to answer only
-  those; nothing sent until the remembered page lines up with the page now; specks and edge slivers
-  dropped; one answer per mark; page numbers 1, 2, 3 that survive a sheet leaving and returning;
-  "No sheet in view" on a bare desk; the redesigned page.
-- They were developed by replaying the pictures saved during the Nov 19 session. The replay now gives
-  one full read per sheet, no repeats and no false highlights. No Gemini call was made in that replay
-  (the sandbox cannot reach Gemini), so how the model takes the pink close-up is untested.
-- Study guide sections per page; highlights in green, pink and blue; the circled question mark.
+**Earlier camera sessions (Nov 17, Nov 19):** repeated answers, wrong words for underlines on print, a
+returning sheet counted as new, a gray hoodie merged into the outline, the bare desk read as a page.
+All fixed on Nov 19 and none of them came back on Nov 20.
+
+**Built and covered by the checks (64 pass: 17 + 9 + 38), but not yet seen on the real camera:**
+- The Nov 20 fixes above; the stuck nudge; the marks drawn on the Camera view.
+- Study guide sections per page and the real study guide call; pink and blue highlighters; the
+  circled question mark.
 
 **What is in the app:**
 - Spark → hint, underline → definition, circled question mark → explanation, highlights → study guide
@@ -178,7 +186,10 @@ against live Gemini:**
 - `bench.py` times each model on the demo page. Still not run: it needs a key with allowance left.
 
 **Known limits:**
-- A free Gemini key runs out after a few dozen reads in a day. Yoon Woo's ran out on Nov 17.
+- Gemini keys (Nov 20): the first key's project is on a paid tier with no credit, so it is refused
+  until credit is bought ($5 is the smallest amount). The key in `.env` now is from a second project on
+  the free tier, which showed about 10 requests a day for the model Glyph uses first. A session
+  costs one request per new sheet and one per mark. Yoon Woo plans to buy the $5 for the event.
 - A full page of small print at 0.5x and 1080p is near the limit of what the camera resolves.
 - Glare directly on a highlight splits or hides it.
 - The page view updates a few times a second (each frame is analysed); the camera view is smooth.
@@ -220,6 +231,17 @@ against live Gemini:**
 Key design choices:
 - (Nov 20: the pink goes on the ink itself, by darkness, after the close-up is enlarged. Painting the
   whole new-ink area turned a small spark into a solid pink blob and live Gemini answered nothing.)
+- After a full read that gave an answer, the picture it was given is the remembered page (not under a
+  hand). The remembered page can be older than that picture: the read waits for the cooldown.
+- A sheet that comes into view with underlines on it: those are left alone (Yoon Woo wants this).
+  Symbols on it are answered. "Read page now" answers everything.
+- Ink within four pixels of print is not "new" by the main rule (a slipped sheet looks like that).
+  It does count where it is solid, the paper there was clean, and the print around it is still in
+  place spot for spot. A short flat stroke under print is enough for a look even under 120 pixels:
+  a word in 10-point type is 25 pixels wide on the flattened page.
+- A highlight is a pale-colored patch with enough strongly colored paint in it, in a band that is
+  solid together with its letters. Colored pen strokes are not solid.
+- Page signatures are kept unfiltered and filtered when compared, so they can be turned with the view.
 - In the close-up sent to the model, the **new** strokes are recolored hot pink and nothing is faded;
   the prompt says to answer only the pink strokes. Fading the old ink left the model little to read
   around an underline on print (the likely cause of the Nov 19 misses; not yet confirmed against live
@@ -244,8 +266,8 @@ Key design choices:
    features): the same marks do different
    jobs per mode. Writer = solving problems, annotation = readings and books.
 
-1. **Run `docs/camera-test-checklist.md` on the real camera** with the Nov 19 changes, on a key with
-   billing turned on.
+1. **Camera run on live Gemini: done Nov 20** (see Current status). Left: re-check the four fixes from
+   that run (`docs/camera-test-checklist.md`, section 3c), the study guide, the nudge on the camera.
 2. **Stuck nudge** — built Nov 19 (no writing for `GLYPH_STUCK_SECONDS`, 90 by default → one "keep going"
    card, no model call). Still open from the idea: noticing the student pick up their phone.
 3. **Mistake catcher + mistake log/calendar** — spot errors in written work, keep a running log over time.
@@ -259,7 +281,9 @@ Key design choices:
 - Answer latency with live Gemini now that thinking is off and the fast model goes first.
 - Does `gemini-3.5-flash-lite` accept the thinking setting, and are its hints good enough? (If it
   refuses the setting, Glyph asks again without it; the terminal says so.)
-- Do green, pink and blue highlighters separate cleanly under the desk lamp and at the venue?
+- Do green, pink and blue highlighters separate cleanly under the desk lamp and at the venue? (Nov 20:
+  his green is pale, saturation 30 to 65 after the lighting is evened out; found after the fix, on the
+  saved picture only.)
 - Does Continuity Camera stay connected for a whole session on a cable?
 - HackwithBay rules: the event page lists no rule on pre-built code (checked Nov 17). Ask at the opening.
   Build time is 11:00 to 15:30. See `docs/event-day-plan.md`.
