@@ -250,7 +250,7 @@
   .snip img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--white); border: 2px solid var(--sky-line); border-radius: 10px; }
   .snip figcaption { margin-top: 5px; font-size: 12px; font-stretch: 85%; font-weight: 600; color: var(--sky-deep); }
   .words { white-space: pre-line; font-size: clamp(23px, 2.15vw, 33px); font-weight: 500; line-height: 1.22; letter-spacing: -0.012em; margin: 0; text-wrap: pretty; }
-  .words mark { color: inherit; background: linear-gradient(90deg, #F9D3E8, #D2ECF7) no-repeat 0 92% / 100% 42%; padding: 0 .05em; margin: 0 -.05em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .words mark { color: inherit; background: none; font-weight: 700; padding: 0; margin: 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .now.fresh .words mark { animation: swipe .7s .2s cubic-bezier(.3,.7,.2,1) both; }
   @keyframes swipe { from { background-size: 0% 42%; } }
   .words.mid { font-size: clamp(21px, 1.9vw, 29px); }
@@ -682,13 +682,13 @@ function showNow(e, fresh) {
   const m = e.meta || {};
   const meta = el('div', 'meta'), tag = el('span', 'tag ' + e.kind);
   tag.append(icon(iconOf(e)), nameOf(e)); meta.append(tag);
-  if (m.seconds != null) { const t = el('span', 'took num'); t.append('answered in ', el('b', '', secs(m.seconds))); if (m.page) t.append(' on page ', el('b', '', String(m.page))); meta.append(t); }
+  if (m.page) { const t = el('span', 'took num'); t.append('Page ', el('b', '', String(m.page))); meta.append(t); }
   n.append(meta);
   const body = el('div', 'body'), w = el('p', 'words' + (e.body.length > 170 ? ' long' : e.body.length > 90 ? ' mid' : ''));
   n.append(body);
   if (e.kind === 'error') w.textContent = e.body;
   else if (TERMED.includes(e.kind) && m.target) { const t = el('span', 'term'); t.append(el('mark', '', m.target)); w.append(t, e.body); }
-  else { // a pink stripe runs under the first sentence
+  else { // the first sentence is bold
     const s = e.body.match(/^(.+?[.?!])(\s+[\s\S]*)?$/);
     if (s && s[2]) w.append(el('mark', '', s[1]), s[2]); else w.append(el('mark', '', e.body));
   }
