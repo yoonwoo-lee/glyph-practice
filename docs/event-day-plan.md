@@ -117,6 +117,30 @@ Seeing the page
 - Save a camera picture whenever the sheet is not found. Those pictures are what made every fix
   above possible. Replay them with noise added to test without the camera.
 
+Added Nov 20 and 21
+- **Test on more than one desk.** A light gray table by a window passed for paper, and near the
+  window it was 0.9 times as bright as the sheet. The whole camera picture was read as "the page"
+  and four requests went on the ceiling, the table and a pair of jeans. Paper on gray is found by
+  the step in brightness round it (the desk beside the sheet has something brighter close by), not
+  by any one brightness level. Bring the dark mat anyway: it makes this problem go away.
+- **Never send a picture with nothing written on it.** A ceiling or a bare table has a handful of
+  dark pieces; a printed sheet has hundreds. Count them before spending a request.
+- A sheet in the writer's own shadow turns beige and stops looking like paper. Allow more color when
+  the bright things in view fall into two clear groups (paper and desk).
+- The first look at a new sheet is not "reading a mark". Say "Taking in the page" and keep it calm,
+  or it looks like a bug.
+- For checking an answer, have the model solve the problem first in a field the student never sees,
+  then give the verdict. No clear verdict means "could not tell", never "right".
+- Show a close picture of the one mark that was answered, chosen by its shape, not everything that
+  was new on the page.
+- Two timeouts in a row: stop the round. Four models times 10 s is a 40 s freeze.
+- Marks drawn in the first seconds, before the sheet is taken in, are easy to lose. Let the first
+  look answer up to three of them.
+- One mark, one meaning per mode. A box means "check this" on a problem set and "find this" in a
+  reading; say which mode is on with color, so nobody has to read a label.
+- People want less on the screen than you think: the legend, the tuning button, the model name and
+  five of the seven readouts all came off in one afternoon.
+
 Demo
 - Have a mode that runs with no camera and no network, in case the venue Wi-Fi or the camera fails.
 - Show the cut-out of the mark next to its answer. It makes the cause and effect obvious.
@@ -140,4 +164,7 @@ Demo
 - [ ] Run the camera test checklist (`docs/camera-test-checklist.md`) and write down the timings.
 - [ ] Each of you rebuilds your half once from a blank folder, timed. That is the real rehearsal.
 - [ ] Decide what counts as notes you may bring (this plan, the prompt wording, the mark table).
-- [ ] Write the 60-second demo script.
+- [ ] Write the 60-second demo script. (A draft is in the doc "Glyph: judge questions and demo script", Nov 21.)
+- [ ] Decide the demo cut: which three or four marks, which sheet for each mode. The build table above predates the modes and the box-as-check; redo it once the cut is chosen.
+- [ ] Check the event page for sponsors and sponsor prizes (HackwithBay 3.0 had a partner stack). If a sponsor tool is rewarded, decide where one fits before the day.
+- [ ] Screen-record one clean run of the demo as a backup video.

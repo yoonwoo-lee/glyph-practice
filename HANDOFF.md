@@ -14,6 +14,28 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-21 (21:00), Yoon Woo's Claude
+
+Yoon Woo: Sunday is the last working day. He asked for a plan for tonight (10:30pm to 1:30am), prep
+he does not have to do himself, and judge questions.
+
+**Done** (notes only; no code changed)
+- A doc for both of you, "Glyph: judge questions and demo script":
+  https://claude.ai/artifact/PGTZe79W6BTCd88MWe1DRq (Yoon Woo owns it and has to share it with Skylar).
+  A 60-second demo script, about 40 likely questions with short answers, and a "Still to decide" list.
+- `docs/camera-test-checklist.md`: a "Tonight" section at the top for the marks that have never
+  answered on live Gemini (check mark as worked answer, target, all of Humanities, the study guide).
+- `docs/event-day-plan.md`: lessons from Nov 20 and 21, and four more "Before the day" items.
+
+**Found**
+- HackwithBay 3.0 (July) had a sponsor partner stack: Neo4j, RocketRide, Butterbase, Daytona, Nebius,
+  Opsera. The 4.0 page could not be opened from Claude's side. Glyph uses none of these.
+
+**Need from the other side**
+- [open] Skylar: the four open answers under "Users and business" in the doc (proof students want
+  it, how it makes money, the competitor check, why this team), and the pitch length if you know it.
+- [open] Skylar: does the 4.0 event page list sponsors or sponsor prizes?
+
 ## 2026-11-21 (14:45), Yoon Woo's Claude
 
 Yoon Woo ran Glyph at a different desk (a light gray table by a window) and a spark got no answer.

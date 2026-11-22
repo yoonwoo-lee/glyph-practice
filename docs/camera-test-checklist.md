@@ -3,6 +3,30 @@
 About 15 minutes. The goal is to answer the open questions in `CLAUDE.md`, so write numbers down.
 Put results in `HANDOFF.md` when done.
 
+## Tonight (Nov 21): the marks that have never answered on live Gemini (25 min, about 12 requests)
+
+Needs the paid key: the free one gives about 10 requests a day. Restart Glyph after changing `.env`.
+Lift your hand after every mark and wait for the answer before the next one. Say which line failed
+and Claude reads the session from the Mac.
+
+STEM mode, a sheet with two or three problems:
+- [ ] The status says "Taking in the page" at the start, then "Watching". The right side stays on the logo.
+- [ ] **Check mark** next to a problem → a card titled "Answer" with the steps. One request.
+- [ ] **Target** next to a problem → "Try this one", a new problem of the same kind, unsolved.
+- [ ] A small check mark, the size you would really draw → still gets a look (the open question: is it enough ink).
+- [ ] The picture on each card shows the one mark, close up.
+
+Humanities mode (click it: the background turns peach), a page of reading:
+- [ ] **Underline** a word → definition.
+- [ ] **Box** a word that appears several times → "Find", and every other place is outlined on the page view. The riskiest one.
+- [ ] **Circle** a word → three to five synonyms.
+- [ ] **Line down the margin** beside a paragraph → summary of that paragraph, not the whole page.
+- [ ] Highlight one line in yellow and one in another color → both appear under Highlights. No request.
+
+Then:
+- [ ] **End session** → the study guide writes itself out, with a section per sheet. One request.
+- [ ] Switch back to STEM and leave the sheet alone for 90 seconds → one "Still with it?" card. No request.
+
 ## Setup
 
 - [ ] Phone on the gooseneck, camera pointing straight down. **Lock the phone** (screen off) and keep
