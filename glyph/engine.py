@@ -186,6 +186,7 @@ class Engine:
         self._debug_last, self._debug_saved = 0.0, 0
         self._cover_shot, self._cover_shots = 0.0, 0
         self._hl_old_until = 0.0
+        self._sat0: Optional[np.ndarray] = None  # the page's colorfulness when it was taken in (never refreshed)
         self._quads: deque = deque(maxlen=7)  # recent sightings of the sheet's corners
         self._fills: deque = deque(maxlen=7)  # ...and how much of each outline was visibly paper
         self._quad_fill = 1.0  # the same, for the outline in use
@@ -693,7 +694,7 @@ class Engine:
                         self.store.already_there(regions)
                         self.store.update(regions, page)
                     elif hl_new:
-                        self._add_highlights(self.store.update(regions, page))
+                        self._add_highlights(self.store.update(self._drawn_since(regions, hl_mask, page), page))
                         if len(regions) > len(self.store.on_this_page()):
                             self._hl_age = 3  # a highlight is waiting to be confirmed: look again next pass
                     if self._want_full and self._want_full != "you asked" and cv2.countNonZero(marks_only(ink, edge=-1)) < s.min_page_ink * ink.size:
@@ -766,8 +767,33 @@ class Engine:
         self.base_gray = move(self.base_gray, m)
         if self.base_sat is not None:
             self.base_sat = move(self.base_sat, m)
+        if self._sat0 is not None:
+            self._sat0 = move(self._sat0, m)
         self.pending = [(cv2.threshold(move(mask, m), 127, 255, cv2.THRESH_BINARY)[1], t, move(st, m)) for mask, t, st in self.pending]
         return "moved"
+
+    def _drawn_since(self, regions: List[dict], hl_mask: np.ndarray, page: np.ndarray) -> List[dict]:
+        """The highlights that were not on the sheet when it was taken in.
+
+        Nov 22: a highlight from an earlier session was saved again although old highlights are
+        noted when a sheet is taken in (that look can miss one, in glare or under a hand). So each
+        highlight is also checked against the page's colorfulness at that moment: where the paper
+        under it was already as colorful as now, the highlight was there before."""
+        if self._sat0 is None or self._sat0.shape != hl_mask.shape:
+            return regions
+        now_sat = page_saturation(page)
+        keep, old = [], []
+        for r in regions:
+            x, y, w, h = r["bbox"]
+            inside = hl_mask[y:y + h, x:x + w] > 0
+            if not inside.any():
+                keep.append(r)
+                continue
+            gain = now_sat[y:y + h, x:x + w][inside].astype(np.int16) - self._sat0[y:y + h, x:x + w][inside].astype(np.int16)
+            (keep if float(np.median(gain)) >= config.HIGHLIGHT_NEW_GAIN else old).append(r)
+        if old:
+            self.store.already_there(old)
+        return keep
 
     def _accept_page(self, strength: np.ndarray, page: np.ndarray, now: float) -> None:
         """Remember the page as it is now; only later changes count as new."""
@@ -775,6 +801,7 @@ class Engine:
         self.baseline = strength_to_mask(strength)
         self.base_gray, self._base_gray_time = page_gray(page), now
         self.base_sat = page_saturation(page)
+        self._sat0 = self.base_sat.copy()
         self._wrote(now)  # a page just taken in (new sheet, turned view): the "stuck" clock starts here
         self._ink_seen = 0
         # Colored paper, or a warm lamp: how colorful "paper" is for this sheet.

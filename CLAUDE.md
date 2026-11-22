@@ -113,8 +113,8 @@ Walk Skylar through these in order, checking each one works before moving on.
    "End session" for the study guide. Ctrl+C stops it. (With a key in `.env`, plain `--demo` sends the
    demo sheets to live Gemini and spends requests: `--demo --mock` is the free one.)
    Needs Python 3.9+.
-5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 19 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 87 checks in total.
+5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 20 should pass.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 88 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -303,11 +303,19 @@ is "perfectly fine" (his words). What he did not like, and what was done:
   buttons get a fixed width, the thumb eases without overshoot (0.45 s), and the small colors
   change at once while the field crossfades.
 
+**Nov 22, 01:57, his fourth run:**
+- An old green highlight was saved again (the sheet was moved and lost several times; the look
+  when it was taken in back did not catch it). Now a highlight also has to make the paper under it
+  more colorful than it was when the sheet was taken in (`_sat0`, kept aligned with the sheet;
+  `GLYPH_HIGHLIGHT_NEW_GAIN`, 12; a real new green highlight measured about 80). New check.
+- The mode name worked out letter by letter "glitching": gone, the name just changes.
+- 88 checks (20 + 9 + 59).
+
 **Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
 (a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
 prompt that answered on the camera is unchanged apart from "inside the box"; the answer prompt is new.
 
-**Built and covered by the checks (87 pass: 19 + 9 + 59), but not yet seen on the real camera or
+**Built and covered by the checks (88 pass: 20 + 9 + 59), but not yet seen on the real camera or
 answered by live Gemini:**
 - The Nov 21 fixes above.
 - From Nov 20 night: the target, the two modes, box / circle / margin line, the places a boxed word

@@ -292,14 +292,15 @@ def _second_sheet():
 
 
 def test_study_guide_has_a_section_per_sheet():
-    first = demo.build_steps()["highlights"]
+    steps = demo.build_steps()
+    first, blank1 = steps["highlights"], steps["underline"]  # highlighted while in view (Nov 22: ones already there are not saved)
     page2 = _second_sheet()
     blank2 = demo.desk_scene(page2)
     tint = np.array(demo.MARKER["yellow"], np.float32) / 255.0
     page2[690:730, 60:640] = (page2[690:730, 60:640].astype(np.float32) * tint).astype(np.uint8)
     marked2 = demo.desk_scene(page2)
     # Sheet 1, sheet 2, then sheet 1 again: still two pages, not three.
-    engine, brain, session = run([first, blank2, marked2, first], hold=2.6, big_hold=0.6)
+    engine, brain, session = run([blank1, blank1, first, blank2, marked2, first], hold=2.6, big_hold=0.6)
     pages = sorted({r["page_no"] for r in engine.store.all()})
     assert len(pages) == 2, [(r["page_no"], r["color"]) for r in engine.store.all()]
     assert engine.store.page_no == pages[0], "back on the first sheet, it keeps its number"

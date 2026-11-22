@@ -14,6 +14,12 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-22 (02:10), Yoon Woo's Claude
+
+Fourth run: an old highlight was saved again, and the mode name's letter-by-letter effect looked
+like a glitch. Highlights now also need the paper under them to have gained color since the sheet
+was taken in; the effect is gone. 88 checks pass. See `CLAUDE.md`, "Nov 22, 01:57".
+
 ## 2026-11-22 (01:50), Yoon Woo's Claude
 
 Third run: marks and highlights already on a sheet were answered/saved again. At his request

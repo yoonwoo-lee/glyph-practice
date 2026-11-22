@@ -609,7 +609,8 @@ function markMode(id, moving) {
   document.documentElement.style.setProperty('--dir', i >= was ? 1 : -1);
   if (!moving) return;
   const line = $('msweep'); line.className = 'msweep'; void line.offsetWidth; line.className = 'msweep ' + (i >= was ? 'fwd' : 'back');
-  const b = box.querySelector('button[aria-pressed="true"]'); if (b && modeList[i]) decode(b, modeList[i].label, 420);
+  // (The name used to be worked out letter by letter from mark characters; on his screen it read as glitching, Nov 22.)
+  box.querySelectorAll('button').forEach(b => { const m = modeList.find(x => x.id === b.dataset.mode); if (m) { b._decode = (b._decode || 0) + 1; b.textContent = m.label; } });
   locked = false; shown = ''; if (last) draw(last);
 }
 async function chooseMode(id) {

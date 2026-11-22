@@ -137,6 +137,25 @@ def test_object_left_on_page_is_accepted_after_a_while():
     assert kinds(session).count("highlight") == 0, "highlights already on a sheet must not be saved: %r" % kinds(session)
 
 
+def test_an_old_highlight_missed_when_the_sheet_was_taken_in_is_still_not_saved():
+    """Nov 22: the look taken when the sheet came into view can miss a highlight (glare, a hand).
+    The paper under it was already colorful then, so it is not new."""
+    s = demo.build_steps()
+    engine, session, show = _stepper()
+    engine.store.already_there = lambda d: None  # as if that look had missed them
+    engine._hl_old_until = float("inf")
+    show(s["highlights"], 2)
+    engine._hl_old_until = 0.0
+    show(s["highlights"], 6)
+    assert kinds(session) == [], kinds(session)
+    page = demo.base_page()
+    demo.draw_spark(page); demo.draw_underline(page)
+    demo.draw_highlight(page, 0, "yellow"); demo.draw_highlight(page, 3, "green")
+    demo.draw_highlight(page, 2, "pink")  # drawn now
+    show(demo.desk_scene(page), 6)
+    assert [e["meta"]["color"] for e in session.events_of("highlight")] == ["pink"], kinds(session)
+
+
 def test_highlights_already_on_a_sheet_are_not_saved_but_new_ones_are():
     s = demo.build_steps()
     engine, session, show = _stepper()
