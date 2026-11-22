@@ -37,7 +37,7 @@
   @property --sky-deep { syntax: '<color>'; inherits: true; initial-value: #0B7FB0; }
   @property --page-shadow { syntax: '<color>'; inherits: true; initial-value: rgba(124,92,214,.78); }
   :root { --page-shadow: rgba(124,92,214,.78);
-    transition: --page-shadow .9s ease, --sky .9s ease, --sky-mid .9s ease, --sky-deep .9s ease; }
+  }  /* (no transition here: animating colors on :root restyled the whole window every frame and made the switch lag; the field crossfades in .app::after) */
   :root[data-mode="editor"] { --sky: #F4A98C; --sky-mid: #EF9A7A; --sky-deep: #B4532F; --sky-soft: #F9CFBD; --sky-pale: #FDEEE6; --sky-line: #F6D3C4; --page-shadow: rgba(222,84,160,.72); }
   .app { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 100vh; min-height: 620px;
     position: relative; isolation: isolate; overflow: hidden;
@@ -86,11 +86,12 @@
   .modes button { position: relative; z-index: 1; border: 0; background: none; min-width: 82px; padding: 5px 16px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--soft); white-space: nowrap; transition: color .35s ease; }
   .modes button:hover { color: var(--ink); }
   .modes button[aria-pressed="true"] { color: var(--white); cursor: default; }
+  .modes button { font-variant-numeric: tabular-nums; }
   .modes .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / var(--n, 2)); border-radius: 999px;
     background: linear-gradient(100deg, var(--sky-deep) 0%, #2C8FD0 30%, #7559A8 64%, var(--pink-deep) 100%) no-repeat; background-size: calc(var(--n, 2) * 100%) 100%;
     background-position: calc(var(--i, 0) * 100% / max(1, var(--n, 2) - 1)) 0; transform: translateX(calc(var(--i, 0) * 100%));
     box-shadow: 0 10px 18px -10px rgba(6,70,105,.9); }
-  .modes.ready .thumb { transition: transform .6s cubic-bezier(.6,-0.15,.2,1.2), background-position .6s ease; }
+  .modes.ready .thumb { transition: transform .45s cubic-bezier(.4,0,.2,1), background-position .45s ease; will-change: transform; }
   /* One thin line of light crosses the window when the mode changes, towards the side of the new
      mode, and what belongs to the mode is replaced behind it. Once, and quickly. */
   .msweep { position: absolute; top: 0; bottom: 0; left: 0; width: 9vw; z-index: 6; pointer-events: none; opacity: 0;
@@ -592,6 +593,8 @@ function showModes(list, now) {
     modeList = list; box.querySelectorAll('button').forEach(b => b.remove());
     box.classList.toggle('hide', list.length < 2); box.style.setProperty('--n', Math.max(1, list.length));
     list.forEach(m => { const b = el('button', '', m.label); b.dataset.mode = m.id; b.title = m.about; b.onclick = () => chooseMode(m.id); box.append(b); });
+    // Fix each button's width once: the name being worked out letter by letter used to resize the pill (it shook).
+    requestAnimationFrame(() => { const w = Math.max(...[...box.querySelectorAll('button')].map(b => b.offsetWidth)); box.querySelectorAll('button').forEach(b => { b.style.width = w + 'px'; }); });
   }
   if (now === mode || performance.now() < modeBusy) return;      // a click is still on its way to the app
   const first = mode === null; markMode(now, !first);

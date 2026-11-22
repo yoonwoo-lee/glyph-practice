@@ -101,7 +101,9 @@ class Settings:
     recent: float = config.RECENT_SECONDS
     cover_hold: float = config.COVER_HOLD
     tick: float = 0.125
-    read_first_page: bool = True  # read a sheet in full as soon as it is first seen
+    # Read a sheet in full as soon as it is first seen. Off since Nov 22 (Yoon Woo): marks already on a
+    # sheet are left alone, and a new sheet costs no request. POST /api/look still reads the whole page.
+    read_first_page: bool = config.READ_FIRST_PAGE
     # ...but only if at least this share of it is writing or print. A sheet with one line of
     # handwriting has about 0.15% (Nov 19); specks of camera noise are not counted.
     min_page_ink: float = 0.0004
@@ -183,6 +185,7 @@ class Engine:
         self._page_known = False  # the sheet on view was already read earlier this session
         self._debug_last, self._debug_saved = 0.0, 0
         self._cover_shot, self._cover_shots = 0.0, 0
+        self._hl_old_until = 0.0
         self._quads: deque = deque(maxlen=7)  # recent sightings of the sheet's corners
         self._fills: deque = deque(maxlen=7)  # ...and how much of each outline was visibly paper
         self._quad_fill = 1.0  # the same, for the outline in use
@@ -548,7 +551,11 @@ class Engine:
             phase = "settling"
             if stable and steady_ink:
                 self._accept_page(strength_any, page, now)
-                self._add_highlights(self.store.update(regions, page))
+                # Highlights already on the sheet were made some other time: not saved (Nov 22).
+                # Watched for a few seconds, since one look can miss a highlight in glare.
+                self.store.already_there(regions)
+                self._hl_old_until = now + 3.0
+                self.store.update(regions, page)
                 if s.read_first_page and not self._page_known:
                     self._want_full = "new page"  # marks already on the sheet get answered straight away
         else:
@@ -666,6 +673,8 @@ class Engine:
                         # It is not going away (a pen left on the sheet): treat it as the page.
                         self._reset_page()
                         self._accept_page(strength_any, page, now)
+                        self.store.already_there(regions)  # the same sheet: its highlights are not new
+                        self._hl_old_until = now + 3.0
                         self._want_full = "page changed"
                         fresh_px = 0
                 else:
@@ -680,7 +689,10 @@ class Engine:
                     self._wrote(now)
                 self._ink_seen = fresh_px
                 if stable and self.baseline is not None:
-                    if hl_new:
+                    if hl_new and now < self._hl_old_until:
+                        self.store.already_there(regions)
+                        self.store.update(regions, page)
+                    elif hl_new:
                         self._add_highlights(self.store.update(regions, page))
                         if len(regions) > len(self.store.on_this_page()):
                             self._hl_age = 3  # a highlight is waiting to be confirmed: look again next pass

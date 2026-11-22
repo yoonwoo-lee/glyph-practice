@@ -113,8 +113,8 @@ Walk Skylar through these in order, checking each one works before moving on.
    "End session" for the study guide. Ctrl+C stops it. (With a key in `.env`, plain `--demo` sends the
    demo sheets to live Gemini and spends requests: `--demo --mock` is the free one.)
    Needs Python 3.9+.
-5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 18 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 86 checks in total.
+5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 19 should pass.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 87 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -291,11 +291,23 @@ is "perfectly fine" (his words). What he did not like, and what was done:
 - The practice card's first sentence is not bold (a problem reads as one piece).
 - The "Reading your mark" pill's heavy pink glow is gone: a faint ring, so it blends.
 
+**Nov 22, 01:38, his third run. Replaces the "Keep it, relabel it" choice of Nov 21:**
+- **Nothing already on a sheet is answered or saved.** A spark on a sheet from earlier got a hint
+  on its first look, and a green highlight from an earlier session was saved again. Now
+  `read_first_page` is off by default (`GLYPH_READ_FIRST_PAGE=1` brings it back): a new sheet costs
+  no request and only marks drawn after "Watching" are read. Highlights in view when a sheet is
+  taken in (and for 3 s after, in case glare hid one) are `already_there` and never saved unless
+  made longer. `POST /api/look` still reads everything. 87 checks (one new, one changed).
+- The mode switch still shook: the name worked out letter by letter resized the pill, the thumb
+  overshot, and the `--sky` transitions on `:root` restyled the whole window each frame. Now the
+  buttons get a fixed width, the thumb eases without overshoot (0.45 s), and the small colors
+  change at once while the field crossfades.
+
 **Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
 (a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
 prompt that answered on the camera is unchanged apart from "inside the box"; the answer prompt is new.
 
-**Built and covered by the checks (86 pass: 18 + 9 + 59), but not yet seen on the real camera or
+**Built and covered by the checks (87 pass: 19 + 9 + 59), but not yet seen on the real camera or
 answered by live Gemini:**
 - The Nov 21 fixes above.
 - From Nov 20 night: the target, the two modes, box / circle / margin line, the places a boxed word

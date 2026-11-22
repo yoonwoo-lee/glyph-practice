@@ -119,6 +119,7 @@ class HighlightStore:
         self._signatures: Dict[int, np.ndarray] = {}
         self._next_id = 1
         self._last: List[Tuple[str, Box]] = []
+        self._old: List[Tuple[str, Box]] = []  # highlights that were on the sheet when it came into view
         self._lock = threading.Lock()
 
     def new_page(self) -> None:
@@ -126,6 +127,7 @@ class HighlightStore:
         `identify` has compared it with the sheets seen so far."""
         self.page_no = 0
         self._last = []
+        self._old = []
 
     def identify(self, signature, used=()) -> bool:
         """Call once the new page is steady. Gives the sheet on view its page number.
@@ -189,6 +191,13 @@ class HighlightStore:
         ph, pw = page.shape[:2]
         return page[max(0, y - 8) : min(ph, y + h + 8), max(0, x - 10) : min(pw, x + w + 10)].copy()
 
+    def already_there(self, detections: List[dict]) -> None:
+        """These highlights were on the sheet when it came into view (Nov 22: one from an earlier
+        session was saved again). They are not saved unless the student makes them longer."""
+        for d in detections:
+            if not any(c == d["color"] and _iou(d["bbox"], b) > 0.5 for c, b in self._old):
+                self._old.append((d["color"], d["bbox"]))
+
     def update(self, detections: List[dict], page: np.ndarray) -> List[dict]:
         """Take this frame's highlights; return the ones that are new.
 
@@ -202,6 +211,8 @@ class HighlightStore:
                 color, bbox = d["color"], d["bbox"]
                 if not any(c == color and _iou(bbox, b) > 0.6 for c, b in prev):
                     continue
+                if any(c == color and (_iou(bbox, b) > 0.3 or _inside(bbox, b) > 0.6) and bbox[2] * bbox[3] <= 1.15 * b[2] * b[3] for c, b in self._old):
+                    continue  # it was there before the sheet was taken in
                 crop = self._crop(page, bbox)
                 thumb = _thumb(crop)
                 match: Optional[dict] = None

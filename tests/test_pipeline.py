@@ -133,7 +133,21 @@ def test_object_left_on_page_is_accepted_after_a_while():
     hand = demo.add_hand(s["highlights"])
     engine, brain, session = run([s["highlights"], hand], hold=2.4, cover_hold=0.8)
     assert [c["full"] for c in brain.calls] == [True], brain.calls
-    assert kinds(session).count("highlight") == 2, "highlights must not be saved twice: %r" % kinds(session)
+    # The highlights were on the sheet before it came into view: not saved, then or after (Nov 22).
+    assert kinds(session).count("highlight") == 0, "highlights already on a sheet must not be saved: %r" % kinds(session)
+
+
+def test_highlights_already_on_a_sheet_are_not_saved_but_new_ones_are():
+    s = demo.build_steps()
+    engine, session, show = _stepper()
+    show(s["highlights"], 6)
+    assert kinds(session) == [], kinds(session)
+    page = demo.base_page()
+    demo.draw_spark(page); demo.draw_underline(page)
+    demo.draw_highlight(page, 0, "yellow"); demo.draw_highlight(page, 3, "green")
+    demo.draw_highlight(page, 2, "pink")  # drawn now
+    show(demo.desk_scene(page), 6)
+    assert [e["meta"]["color"] for e in session.events_of("highlight")] == ["pink"], kinds(session)
 
 
 def test_new_sheet_gets_one_full_look():

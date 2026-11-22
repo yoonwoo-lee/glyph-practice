@@ -14,6 +14,12 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-22 (01:50), Yoon Woo's Claude
+
+Third run: marks and highlights already on a sheet were answered/saved again. At his request
+nothing already on a sheet is read now (first look off, old highlights skipped). Mode pill no
+longer resizes or bounces. 87 checks pass. See `CLAUDE.md`, "Nov 22, 01:38".
+
 ## 2026-11-22 (01:20), Yoon Woo's Claude
 
 Second run of the night: good apart from four things, all addressed, 86 checks pass (one check

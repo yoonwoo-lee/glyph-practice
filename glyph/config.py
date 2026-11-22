@@ -50,6 +50,7 @@ COVER_MIN_FRAC = _num("GLYPH_COVER_MIN_FRAC", 0.004)
 COVER_DIFF = int(_num("GLYPH_COVER_DIFF", 32))
 # A cover that stays put this long is accepted as part of the page.
 COVER_HOLD = _num("GLYPH_COVER_HOLD", 20.0)
+READ_FIRST_PAGE = _num("GLYPH_READ_FIRST_PAGE", 0) > 0  # 1: answer marks already on a new sheet (one request per sheet)
 # Ink that got no response stays "new" this long, so a symbol that was read
 # while half-drawn is still shown whole on the next look.
 RECENT_SECONDS = _num("GLYPH_RECENT_SECONDS", 15.0)
