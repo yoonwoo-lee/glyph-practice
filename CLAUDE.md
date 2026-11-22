@@ -279,6 +279,18 @@ is "perfectly fine" (his words). What he did not like, and what was done:
 - An underline drawn before the sheet had been taken in got no answer (by design, see below).
 - Only one highlighter color to hand: the other colors wait for the event.
 
+**Nov 22, 01:10, his second run (all of the above confirmed good but these):**
+- The mode switch stuttered: turning the whole color field with `@property` transitions repainted
+  the window for 0.9 s and janked the thumb. The sky and peach fields are now two still layers
+  (`.app` background and `.app::after`) and only the peach layer's opacity moves; the small
+  elements keep their `--sky*` transitions. `--sky-far/-shade/-light` are gone.
+- A circled question mark was answered on a first look of the reading sheet that he never drew
+  (a printed question mark passed for one). Question marks now wait like marks on words: never
+  taken from a first look (`waits` in `brain.py`, the `explain` guard in `engine.py`); drawn once
+  the sheet is followed they answer off the pink strokes. "Read page now" still answers them.
+- The practice card's first sentence is not bold (a problem reads as one piece).
+- The "Reading your mark" pill's heavy pink glow is gone: a faint ring, so it blends.
+
 **Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
 (a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
 prompt that answered on the camera is unchanged apart from "inside the box"; the answer prompt is new.

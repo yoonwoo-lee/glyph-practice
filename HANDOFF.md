@@ -14,6 +14,14 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-22 (01:20), Yoon Woo's Claude
+
+Second run of the night: good apart from four things, all addressed, 86 checks pass (one check
+rewritten to the new question-mark rule). Mode switch is a crossfade of two still layers (it
+stuttered); a circled question mark is never answered from a first look (a printed one passed for
+drawn); the practice card is not bold; the reading pill's glow is faint. Details in `CLAUDE.md`,
+"Nov 22, 01:10". Not yet seen on the camera: all four.
+
 ## 2026-11-22 (00:50), Yoon Woo's Claude
 
 Yoon Woo ran the "Tonight" camera list on live Gemini with the paid key (10 requests, 1.4 to 2.7 s).

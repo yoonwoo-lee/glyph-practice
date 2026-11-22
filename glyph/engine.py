@@ -986,7 +986,9 @@ class Engine:
                     # so is everything when the student asks for the sheet to be read.
                     # The same goes for every mark on words (a box, a circle, a margin line), and
                     # for the check marks of a sheet that is covered in them.
-                    old = t["action"] in many if t["action"] in COUNTED else t.get("kind", "symbol") != "symbol"
+                    # A circled question mark is never taken from a first look: a page of print
+                    # holds printed question marks, and one passed for a drawn one (Nov 22).
+                    old = t["action"] in many if t["action"] in COUNTED else (t.get("kind", "symbol") != "symbol" or t["action"] == "explain")
                     if old and job["reason"] != "you asked":
                         continue
                     # Reading a whole sheet finds every mark on it, old ones too. One that was

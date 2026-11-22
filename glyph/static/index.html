@@ -35,26 +35,32 @@
   @property --sky { syntax: '<color>'; inherits: true; initial-value: #45B6EC; }
   @property --sky-mid { syntax: '<color>'; inherits: true; initial-value: #2CA5DE; }
   @property --sky-deep { syntax: '<color>'; inherits: true; initial-value: #0B7FB0; }
-  @property --sky-far { syntax: '<color>'; inherits: true; initial-value: #8FD6F6; }
-  @property --sky-shade { syntax: '<color>'; inherits: true; initial-value: rgba(5,147,198,.42); }
   @property --page-shadow { syntax: '<color>'; inherits: true; initial-value: rgba(124,92,214,.78); }
-  @property --sky-light { syntax: '<color>'; inherits: true; initial-value: rgba(222,244,254,.88); }
-  :root { --sky-far: #8FD6F6; --sky-shade: rgba(5,147,198,.42); --sky-light: rgba(222,244,254,.88); --page-shadow: rgba(124,92,214,.78);
-    transition: --page-shadow .9s ease, --sky .9s ease, --sky-mid .9s ease, --sky-deep .9s ease, --sky-far .9s ease, --sky-shade .9s ease, --sky-light .9s ease; }
-  :root[data-mode="editor"] { --sky: #F4A98C; --sky-mid: #EF9A7A; --sky-deep: #B4532F; --sky-soft: #F9CFBD; --sky-pale: #FDEEE6; --sky-line: #F6D3C4;
-    --sky-far: #F8C9AE; --sky-shade: rgba(226,120,84,.5); --sky-light: rgba(255,241,230,.88); --page-shadow: rgba(222,84,160,.72); }
+  :root { --page-shadow: rgba(124,92,214,.78);
+    transition: --page-shadow .9s ease, --sky .9s ease, --sky-mid .9s ease, --sky-deep .9s ease; }
+  :root[data-mode="editor"] { --sky: #F4A98C; --sky-mid: #EF9A7A; --sky-deep: #B4532F; --sky-soft: #F9CFBD; --sky-pale: #FDEEE6; --sky-line: #F6D3C4; --page-shadow: rgba(222,84,160,.72); }
   .app { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 100vh; min-height: 620px;
     position: relative; isolation: isolate; overflow: hidden;
-    background: linear-gradient(150deg, var(--sky-mid) 0%, var(--sky) 44%, var(--sky-far) 100%); }
+    background:
+      radial-gradient(46% 40% at 56% 3%, rgba(222,244,254,.88), transparent 72%),
+      radial-gradient(34% 32% at 5% 6%, rgba(5,147,198,.42), transparent 72%),
+      linear-gradient(150deg, #2CA5DE 0%, #45B6EC 44%, #8FD6F6 100%); }
+  /* Humanities: the same field in peach, faded in over the sky one. A crossfade between two
+     still layers, so the switch costs no repaint of the window (it stuttered the mode thumb). */
+  .app::after { content: ""; position: absolute; inset: 0; z-index: -3; pointer-events: none; opacity: 0;
+    transition: opacity .9s ease;
+    background:
+      radial-gradient(46% 40% at 56% 3%, rgba(255,241,230,.88), transparent 72%),
+      radial-gradient(34% 32% at 5% 6%, rgba(226,120,84,.5), transparent 72%),
+      linear-gradient(150deg, #EF9A7A 0%, #F4A98C 44%, #F8C9AE 100%); }
+  :root[data-mode="editor"] .app::after { opacity: 1; }
   /* The blooms: one soft pink glow rising from the bottom left corner and a fainter one bottom right
      (several stronger ones read as blotches); light at the top; deep blue in the top left corner. */
   .app::before { content: ""; position: absolute; inset: -14%; z-index: -2; pointer-events: none;
     background:
       radial-gradient(54% 50% at 9% 90%, rgba(229,107,174,.74), rgba(229,107,174,.34) 46%, rgba(229,107,174,0) 80%),
       radial-gradient(34% 50% at 11% 50%, rgba(236,140,192,.44), rgba(236,140,192,0) 78%),
-      radial-gradient(26% 26% at 90% 93%, rgba(229,107,174,.30), rgba(229,107,174,0) 74%),
-      radial-gradient(46% 40% at 56% 3%, var(--sky-light), transparent 72%),
-      radial-gradient(34% 32% at 5% 6%, var(--sky-shade), transparent 72%);
+      radial-gradient(26% 26% at 90% 93%, rgba(229,107,174,.30), rgba(229,107,174,0) 74%);
     animation: drift 30s ease-in-out infinite alternate; will-change: transform; }
   @keyframes drift { from { transform: translate3d(-2%, 1.5%, 0) scale(1); } to { transform: translate3d(3%, -2.5%, 0) scale(1.08); } }
 
@@ -69,7 +75,7 @@
   .state { margin-left: auto; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 6px 15px 6px 12px; font-weight: 600; font-size: 14px; transition: background .3s, color .3s, box-shadow .3s; }
   .state .lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sky) 28%, transparent); }
   .state.wait .lamp { background: var(--faint); box-shadow: none; }
-  .state.busy { background: var(--pink-pale); border-color: rgba(255,255,255,.8); color: var(--ink); box-shadow: 0 0 0 5px rgba(229,107,174,.28), 0 14px 30px -12px rgba(229,107,174,.9); }
+  .state.busy { background: var(--pink-pale); border-color: rgba(255,255,255,.8); color: var(--ink); box-shadow: 0 0 0 4px rgba(229,107,174,.18); }
   .state.busy .lamp { background: var(--white); box-shadow: none; animation: pulse .8s ease-in-out infinite; }
   .state.bad .lamp { background: var(--bad); }
   @keyframes pulse { 50% { transform: scale(1.7); opacity: .5; } }
@@ -690,6 +696,7 @@ function showNow(e, fresh) {
   n.append(body);
   if (e.kind === 'error') w.textContent = e.body;
   else if (TERMED.includes(e.kind) && m.target) { const t = el('span', 'term'); t.append(el('mark', '', m.target)); w.append(t, e.body); }
+  else if (e.kind === 'practice') w.append(e.body);   // a new problem reads as one piece: nothing bold
   else { // the first sentence is bold
     const s = e.body.match(/^(.+?[.?!])(\s+[\s\S]*)?$/);
     if (s && s[2]) w.append(el('mark', '', s[1]), s[2]); else w.append(el('mark', '', e.body));

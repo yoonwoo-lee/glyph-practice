@@ -81,9 +81,13 @@ def build_system_prompt(legend: dict) -> str:
     # A sheet seen for the first time: symbols are answered. Marks on words were drawn some other
     # day (Yoon Woo, Nov 20), unless the student asks.
     asking = {"check": "checked", "answer": "answered"}  # marks a marked sheet may be covered in
+    # Nov 22: on a page of reading, a printed question mark passed for a drawn one on a first look.
+    # So circled question marks wait like marks on words do: drawn once the sheet is being followed,
+    # they are answered off the pink strokes, where print cannot be mistaken for them.
+    waits = {"explain"}
     counted = [k for k, v in list(marks.items()) + [(s["name"], s["action"]) for s in legend.get("symbols", [])] if v in asking]
-    first = [s["name"] for s in legend.get("symbols", []) if s["action"] not in asking]
-    left = [k for k, v in marks.items() if v not in asking]
+    first = [s["name"] for s in legend.get("symbols", []) if s["action"] not in asking and s["action"] not in waits]
+    left = [k for k, v in marks.items() if v not in asking] + [s["name"] for s in legend.get("symbols", []) if s["action"] in waits]
     first_look = "Report only these hand-drawn symbols, where you can see them clearly: {}.".format(
         ", ".join(first) if first else "(none)"
     )

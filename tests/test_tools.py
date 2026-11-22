@@ -1018,10 +1018,12 @@ def test_marks_on_words_already_on_a_sheet_are_left_alone_in_editor_mode():
     ]}
     show(marked, 4)
     assert [(c["full"], c["mode"]) for c in engine.brain.calls] == [(True, "editor")], engine.brain.calls
-    assert kinds(session) == ["explain"], kinds(session)  # the symbol, not the old box
+    # Nothing: the old box, and the question mark too. A printed question mark on a page of
+    # reading passed for a drawn one (Nov 22), so question marks wait like marks on words do.
+    assert kinds(session) == [], kinds(session)
     engine.look_now()
     show(marked, 3)
-    assert kinds(session) == ["explain", "find"], kinds(session)
+    assert kinds(session) == ["find", "explain"], kinds(session)
     assert session.events_of("find")[0]["body"] == "It appears 2 more times on this page.", session.events_of("find")[0]["body"]
 
 
