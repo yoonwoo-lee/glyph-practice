@@ -75,7 +75,7 @@
   .state { margin-left: auto; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 6px 15px 6px 12px; font-weight: 600; font-size: 14px; transition: background .3s, color .3s, box-shadow .3s; }
   .state .lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sky) 28%, transparent); }
   .state.wait .lamp { background: var(--faint); box-shadow: none; }
-  .state.busy { background: var(--pink-pale); border-color: rgba(255,255,255,.8); color: var(--ink); box-shadow: 0 0 0 4px rgba(229,107,174,.18); }
+  .state.busy { background: var(--tag-fill); border-color: transparent; color: var(--white); box-shadow: none; }
   .state.busy .lamp { background: var(--white); box-shadow: none; animation: pulse .8s ease-in-out infinite; }
   .state.bad .lamp { background: var(--bad); }
   @keyframes pulse { 50% { transform: scale(1.7); opacity: .5; } }
@@ -226,7 +226,7 @@
   .markrow span { color: var(--soft); font-size: 15px; line-height: 1.4; }
 
   /* ---- reading right now ---- */
-  .reading { display: flex; width: fit-content; align-items: center; gap: 9px; padding: 6px 16px 6px 7px; background: linear-gradient(100deg, var(--sky-deep) 0%, #1A93CE 100%); color: var(--white); border-radius: 999px; font-size: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 12px 22px -14px rgba(11,127,176,.95); }
+  .reading { display: flex; width: fit-content; align-items: center; gap: 9px; padding: 6px 16px 6px 7px; background: var(--tag-fill); color: var(--white); border-radius: 999px; font-size: 14px; font-weight: 700; position: relative; overflow: hidden; box-shadow: 0 10px 20px -14px rgba(124,92,214,.7); }
   .reading > * { position: relative; z-index: 1; }
   .intro:not(.done) + .nowhead { margin-top: 18px; }
   .reading:not(.hide) { animation: arrive .35s cubic-bezier(.2,.8,.2,1) both; }
@@ -244,9 +244,11 @@
   .now.fresh { animation: arrive .4s cubic-bezier(.2,.8,.2,1) both; }
   @keyframes arrive { from { opacity: 0; transform: translateY(12px); } }
   .meta { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
-  .tag { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(105deg, var(--sky-deep) 0%, #7559A8 58%, var(--pink-deep) 100%); color: var(--white); border-radius: 999px; padding: 5px 14px 5px 11px; font-size: 14px; font-weight: 700; }
+  /* One fill for the answer tags and the "Reading your mark" pills (his ask, Nov 22: the same color as the Summary tag). */
+  :root { --tag-fill: linear-gradient(105deg, var(--sky-deep) 0%, #7559A8 58%, var(--pink-deep) 100%); }
+  :root[data-mode="editor"] { --tag-fill: linear-gradient(105deg, #EE9A7E, var(--pink)); }
+  .tag { display: inline-flex; align-items: center; gap: 7px; background: var(--tag-fill); color: var(--white); border-radius: 999px; padding: 5px 14px 5px 11px; font-size: 14px; font-weight: 700; }
   .tag svg { color: var(--white); font-size: 15px; }
-  :root[data-mode="editor"] .tag:not(.error) { background: linear-gradient(105deg, #EE9A7E, var(--pink)); }
   .tag.error { background: var(--bad); }
   .took { font-variant-numeric: tabular-nums; font-size: 13px; font-stretch: 90%; font-weight: 600; color: var(--soft); }
   .took b { color: var(--ink); }

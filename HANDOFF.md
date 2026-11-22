@@ -14,6 +14,12 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-22 (13:20), Yoon Woo's Claude
+
+Morning run: "everything is good". Last change: the "Reading your mark" pills use the answer tags'
+fill (`--tag-fill`). He runs the whole demo once more today, then the practice build is done.
+[open] Skylar: the four answers in the judge-questions doc, before pitch practice.
+
 ## 2026-11-22 (02:45), Yoon Woo's Claude
 
 Fifth run: an old margin line (sheet lost and found) and ink off the desk were answered as

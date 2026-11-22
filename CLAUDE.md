@@ -321,6 +321,11 @@ wood-colored now, over 120) and it must not match, within 30 pixels, the strokes
 it was taken in (`_strength0`, moved with the sheet, never refreshed; `GLYPH_OLD_MARK_MATCH`, 0.7).
 What is dropped joins the remembered page. Not yet seen on the camera. 89 checks (21 + 9 + 59).
 
+**Nov 22, 13:12:** he confirmed "everything is good" after the morning run. Last change, at his
+request: both "Reading your mark" pills (the status pill and the one by "Latest answer") take the
+same fill as the answer tags (`--tag-fill`: sky to purple to pink in STEM, peach to pink in
+Humanities), white text. He is doing one final run of the whole demo today.
+
 **Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
 (a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
 prompt that answered on the camera is unchanged apart from "inside the box"; the answer prompt is new.
