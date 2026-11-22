@@ -182,6 +182,7 @@ class Engine:
         self._seen_whole = False  # the full sheet has been in view at least once
         self._page_known = False  # the sheet on view was already read earlier this session
         self._debug_last, self._debug_saved = 0.0, 0
+        self._cover_shot, self._cover_shots = 0.0, 0
         self._quads: deque = deque(maxlen=7)  # recent sightings of the sheet's corners
         self._fills: deque = deque(maxlen=7)  # ...and how much of each outline was visibly paper
         self._quad_fill = 1.0  # the same, for the outline in use
@@ -647,6 +648,16 @@ class Engine:
                 if covered:
                     text = "Watching (part of the page is covered)"
                     phase = "covered"
+                    # A few camera pictures of what counted as covering the page (a shadow should not).
+                    if stable and now - self._cover_shot > 4 and self._cover_shots < 10:
+                        self._cover_shot, self._cover_shots = now, self._cover_shots + 1
+                        try:
+                            folder = self.session.dir / "camera"
+                            folder.mkdir(exist_ok=True)
+                            cv2.imwrite(str(folder / "covered_{:02d}.jpg".format(self._cover_shots)), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+                            cv2.imwrite(str(folder / "covered_{:02d}_mask.png".format(self._cover_shots)), cover)
+                        except OSError:
+                            pass
                     if not stable:
                         self._cover_since = None
                     elif self._cover_since is None:
