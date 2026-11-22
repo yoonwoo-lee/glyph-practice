@@ -141,7 +141,7 @@ DEFAULT_LEGEND = {
     },
     "highlight_colors": {
         "yellow": "Key ideas",
-        "green": "Definitions",
+        "green": "Important notes",
         "pink": "Formulas",
         "blue": "Examples",
     },

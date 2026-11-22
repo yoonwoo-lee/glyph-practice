@@ -81,7 +81,7 @@ def test_full_flow():
     colors = sorted(e["meta"]["color"] for e in session.events_of("highlight"))
     assert colors == ["green", "yellow"], colors
     guide = engine.study_guide()
-    assert "## Key ideas" in guide and "## Definitions" in guide, guide
+    assert "## Key ideas" in guide and "## Important notes" in guide, guide
     assert "Words you looked up" in guide and "inertia" in guide, guide
     assert "Where you asked for help" in guide, guide
     assert (session.dir / "study_guide.md").exists()

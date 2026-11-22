@@ -239,6 +239,7 @@
   .meta { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
   .tag { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(105deg, var(--sky-deep) 0%, #7559A8 58%, var(--pink-deep) 100%); color: var(--white); border-radius: 999px; padding: 5px 14px 5px 11px; font-size: 14px; font-weight: 700; }
   .tag svg { color: var(--white); font-size: 15px; }
+  :root[data-mode="editor"] .tag:not(.error) { background: linear-gradient(105deg, #EE9A7E, var(--pink)); }
   .tag.error { background: var(--bad); }
   .took { font-variant-numeric: tabular-nums; font-size: 13px; font-stretch: 90%; font-weight: 600; color: var(--soft); }
   .took b { color: var(--ink); }
@@ -605,6 +606,7 @@ function markMode(id, moving) {
 async function chooseMode(id) {
   if (id === mode) return;
   modeBusy = performance.now() + 1500; markMode(id, true);
+  if (last) last.work_mode = id;   // so nothing drawn from the last status (the Page | Camera switch) puts the old mode back
   try {
     const d = await (await fetch('/api/mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: id }) })).json();
     if (d.legend) setLegend(d.legend, true);

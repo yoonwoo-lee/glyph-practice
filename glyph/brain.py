@@ -51,7 +51,7 @@ HOW = {
   the top left corner). Use an empty list when it appears nowhere else. "response" is one short
   sentence saying how many more times the word appears.""",
     "synonym": """- synonym: give three to five words that could replace the circled word in its sentence, best fit first,
-  separated by commas. Then one short sentence on the shade of meaning that matters here. At most 35 words.""",
+  separated by commas. The response is that list of words and nothing else: no sentence, no explanation.""",
     "summarize": """- summarize: the passage is every line of text the margin line runs beside; read all of it from image 1.
   Say what it says in two or three plain sentences, using only what is in the passage. At most 60
   words. The target is the first four or five words of the passage.""",
@@ -450,7 +450,7 @@ class Brain:
 
 DEMO_GUIDE = {
     "Key ideas": "Newton's first law: an object stays at rest or moves at constant velocity unless a net force acts on it.",
-    "Definitions": "Momentum is the product of mass and velocity: p = m v.",
+    "Important notes": "Momentum is the product of mass and velocity: p = m v.",
     "Examples": "Trees, cool roofs and lighter pavement all cut the heat.",
 }
 # What the practice brain says. "demo" is for the built-in demo sheets, where it answers as the real
@@ -485,7 +485,7 @@ MOCK = {
         "practice": ("the word in your box", ""),
     },
     "synonym": {
-        "demo_editor": ("exacerbate", "worsen, intensify, aggravate, compound. Here it means making an existing problem more severe, so worsen is the closest plain word."),
+        "demo_editor": ("exacerbate", "worsen, intensify, aggravate, compound"),
         "practice": ("the word in your circle", "words that could replace the word you circled"),
     },
     "summarize": {

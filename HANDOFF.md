@@ -14,6 +14,20 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-22 (00:50), Yoon Woo's Claude
+
+Yoon Woo ran the "Tonight" camera list on live Gemini with the paid key (10 requests, 1.4 to 2.7 s).
+- Answered: check mark, target, underline, circle, margin line, one green highlight, the study guide.
+- Find (box in Humanities) is not good enough to show: one of two other places returned, outline off
+  the word. Advice to him: leave it out of the demo. Not fixed.
+- Changed at his request: synonyms are the words only; green highlights are "Important notes", not
+  "Definitions"; the card's first sentence is bold; no answer time on the card; a softer tag color
+  in Humanities.
+- Open: his shadow over blank paper counts as "covered". Pictures of it are saved from the next
+  start (`camera/covered_NN.jpg`). Details in `CLAUDE.md`, "Nov 22".
+- [open] Skylar: nothing new. The four answers in the judge-questions doc are still wanted.
+
+
 ## 2026-11-21 (21:00), Yoon Woo's Claude
 
 Yoon Woo: Sunday is the last working day. He asked for a plan for tonight (10:30pm to 1:30am), prep

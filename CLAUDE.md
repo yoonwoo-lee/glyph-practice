@@ -182,7 +182,7 @@ you draw marks, and Glyph reacts:
 | Box around your answer (STEM mode) | **Checks** it: "Looks right" / "Not yet" + which step to look at again. Never the answer (≤40 words) |
 | Target, a bullseye, next to a problem (student mode) | One **new problem** of the same kind, unsolved (≤60 words) |
 | Box around a word (editor mode) | **Finds** every other place the word appears and outlines them on the page view (paper Ctrl+F) |
-| Circle around a word (editor mode) | Three to five **synonyms** that fit the sentence (≤35 words) |
+| Circle around a word (editor mode) | Three to five **synonyms** that fit the sentence: the words only, no sentence after them (his request, Nov 22) |
 | Line down the margin beside a passage (editor mode) | **Summary** of that passage (≤60 words) |
 
 Hint-first is the core idea: it should push the student to solve it themselves, not hand over answers.
@@ -258,6 +258,26 @@ found and followed. A spark got its hint, two boxed answers their verdicts ("Not
 right" after he changed the answer), an underlined phrase its definition, each in 2 to 3 s. So the
 box as "check" and `_sheet_by_edges` have now worked on the camera. The first request was the first
 look at the clean sheet (7 s, nothing to answer); he took its "Reading your mark" for a bug, see below.
+
+**Nov 22, 00:25 to 00:50, the camera run of the "Tonight" list on live Gemini (paid key, 10 requests,
+1.4 to 2.7 s each):** check mark → worked answer, target → new problem, underline → definition,
+circle → synonyms, margin line → summary, a green highlight and the study guide all answered. STEM
+is "perfectly fine" (his words). What he did not like, and what was done:
+- **Find is "very very wonky"**: three "victory" on the page, one place returned, the outline not
+  on the word. `gemini-3.5-flash-lite` does not place `box_2d` well on small print. Not fixed.
+  Advice given: leave find out of the demo.
+- Synonyms came with a sentence of explanation: the prompt now asks for the words only.
+- A green highlight went into the study guide under "Definitions", which overlaps with the
+  underline. Green is "Important notes" now (`symbols.json`). Highlights are for things to remember.
+- The tag on the card (brown to purple to pink in Humanities) "stands out way too much": in
+  Humanities it runs peach to pink.
+- On the card: the first sentence is bold, not striped; "answered in N s" is gone (page number only).
+- He saw Humanities go back to STEM on a click of Page | Camera. Not reproduced. One way it could
+  happen (the switch redrew from a status older than the mode change) is closed.
+- His shadow over a blank part of the sheet counts as "covered" (no print there to see through).
+  Not fixed: no picture of it. `camera/covered_NN.jpg` and its mask are saved now for that.
+- An underline drawn before the sheet had been taken in got no answer (by design, see below).
+- Only one highlighter color to hand: the other colors wait for the event.
 
 **Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
 (a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
