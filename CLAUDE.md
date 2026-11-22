@@ -113,8 +113,8 @@ Walk Skylar through these in order, checking each one works before moving on.
    "End session" for the study guide. Ctrl+C stops it. (With a key in `.env`, plain `--demo` sends the
    demo sheets to live Gemini and spends requests: `--demo --mock` is the free one.)
    Needs Python 3.9+.
-5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 20 should pass.
-   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 88 checks in total.
+5. **Run the checks:** `source venv/bin/activate && python -m tests.test_pipeline` → all 21 should pass.
+   (Two more suites: `python -m tests.test_rough` and `python -m tests.test_tools`; 89 checks in total.
    Run them one after another: run together they starve each other and miss their timing.)
 6. **Read the code** in the order of the "How it works" table below, so he understands the pipeline.
 7. **Optional camera test:** `bash start.sh --list-cameras`, open `camera_check/` to find his camera
@@ -311,11 +311,21 @@ is "perfectly fine" (his words). What he did not like, and what was done:
 - The mode name worked out letter by letter "glitching": gone, the name just changes.
 - 88 checks (20 + 9 + 59).
 
+**Nov 22, 02:25, his fifth run ("FOR ANY GLYPH make it so that it does NOT read the glyphs that
+are ALREADY ON THERE"):** two summaries he did not ask for. One was a margin line already on the
+sheet, answered after the sheet was lost and found again (seen a little out of place, it looked
+new). The other was read off the desk: a lifted corner let wood and his hoodie into the bottom of
+the page picture. Now every piece of new ink, whatever the mark, goes through `_not_old` before a
+look: it must lie on paper (around it the sheet as taken in was paper, `_sat0`, and it is not
+wood-colored now, over 120) and it must not match, within 30 pixels, the strokes of the sheet as
+it was taken in (`_strength0`, moved with the sheet, never refreshed; `GLYPH_OLD_MARK_MATCH`, 0.7).
+What is dropped joins the remembered page. Not yet seen on the camera. 89 checks (21 + 9 + 59).
+
 **Nov 21, 13:30:** the check mark now gives the worked answer and a box round an answer checks it
 (a box means "find" only in Humanities mode: `modes.student.marks` in `symbols.json`). The check
 prompt that answered on the camera is unchanged apart from "inside the box"; the answer prompt is new.
 
-**Built and covered by the checks (88 pass: 20 + 9 + 59), but not yet seen on the real camera or
+**Built and covered by the checks (89 pass: 21 + 9 + 59), but not yet seen on the real camera or
 answered by live Gemini:**
 - The Nov 21 fixes above.
 - From Nov 20 night: the target, the two modes, box / circle / margin line, the places a boxed word

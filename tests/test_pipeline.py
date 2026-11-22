@@ -137,6 +137,46 @@ def test_object_left_on_page_is_accepted_after_a_while():
     assert kinds(session).count("highlight") == 0, "highlights already on a sheet must not be saved: %r" % kinds(session)
 
 
+def test_old_marks_out_of_place_and_ink_off_the_paper_are_not_new():
+    """Nov 22: a margin line already on the sheet was answered after the sheet was lost and found
+    again (the old line, a little out of place, looked new), and a "margin line" was read off the
+    desk where a lifted corner let it into the page picture. Neither is answered now; a mark drawn
+    where there was nothing like it is."""
+    import numpy as np
+    engine, session, show = _stepper()
+    rng = np.random.RandomState(1)
+    h, w = 600, 500
+    s0 = np.zeros((h, w), np.uint8)
+    for _ in range(400):  # print: small dark pieces in lines
+        y, x = rng.randint(20, h - 20), rng.randint(140, w - 20)
+        s0[y:y + 6, x:x + rng.randint(3, 9)] = 120
+    s0[200:330, 100:104] = 160  # the margin line already on the sheet
+    engine._strength0, engine._sat0, engine._paper_sat = s0, np.full((h, w), 20, np.uint8), 75.0
+    engine.baseline, engine.base_strength = np.zeros((h, w), np.uint8), s0.copy()
+    page = np.full((h, w, 3), 230, np.uint8)
+
+    def bar(x, y0=200, y1=330):
+        now, m = s0.copy(), np.zeros((h, w), np.uint8)
+        now[y0:y1, x:x + 4] = 160
+        m[y0:y1, x:x + 4] = 255
+        return m, now
+
+    old, now = bar(112, 212, 342)  # the old line, seen 12 pixels off
+    assert cv2.countNonZero(engine._not_old(old, now, page)) == 0
+    new, now = bar(100, 420, 540)  # a margin line beside another paragraph
+    assert cv2.countNonZero(engine._not_old(new, now, page)) > 0
+    engine._sat0 = np.full((h, w), 20, np.uint8)
+    engine._sat0[400:560, 60:140] = 150  # desk, not paper, around this one
+    assert cv2.countNonZero(engine._not_old(new, now, page)) == 0
+    engine._sat0[:] = 20  # paper when taken in, but the desk shows there now (a lifted corner)
+    desk = page.copy()
+    desk[400:560, 60:140] = (40, 110, 190)
+    assert cv2.countNonZero(engine._not_old(new, now, desk)) == 0
+    warm = page.copy()
+    warm[:, :] = (150, 190, 225)  # a warm shadow over the paper: still paper
+    assert cv2.countNonZero(engine._not_old(new, now, warm)) > 0
+
+
 def test_an_old_highlight_missed_when_the_sheet_was_taken_in_is_still_not_saved():
     """Nov 22: the look taken when the sheet came into view can miss a highlight (glare, a hand).
     The paper under it was already colorful then, so it is not new."""

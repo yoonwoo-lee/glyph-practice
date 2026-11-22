@@ -51,6 +51,7 @@ COVER_DIFF = int(_num("GLYPH_COVER_DIFF", 32))
 # A cover that stays put this long is accepted as part of the page.
 COVER_HOLD = _num("GLYPH_COVER_HOLD", 20.0)
 HIGHLIGHT_NEW_GAIN = _num("GLYPH_HIGHLIGHT_NEW_GAIN", 12)  # a new highlight makes the paper this much more colorful than when the sheet was taken in
+OLD_MARK_MATCH = _num("GLYPH_OLD_MARK_MATCH", 0.7)  # new ink this like ink near it on the sheet as taken in is an old mark out of place
 READ_FIRST_PAGE = _num("GLYPH_READ_FIRST_PAGE", 0) > 0  # 1: answer marks already on a new sheet (one request per sheet)
 # Ink that got no response stays "new" this long, so a symbol that was read
 # while half-drawn is still shown whole on the next look.

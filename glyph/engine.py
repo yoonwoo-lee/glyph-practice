@@ -187,6 +187,7 @@ class Engine:
         self._cover_shot, self._cover_shots = 0.0, 0
         self._hl_old_until = 0.0
         self._sat0: Optional[np.ndarray] = None  # the page's colorfulness when it was taken in (never refreshed)
+        self._strength0: Optional[np.ndarray] = None  # its ink when it was taken in (never refreshed, only moved with the sheet)
         self._quads: deque = deque(maxlen=7)  # recent sightings of the sheet's corners
         self._fills: deque = deque(maxlen=7)  # ...and how much of each outline was visibly paper
         self._quad_fill = 1.0  # the same, for the outline in use
@@ -704,6 +705,8 @@ class Engine:
                     if self._want_full:
                         text = self._try_look(now, page, ink, None, full=True, strength=strength_any) or text
                     elif fresh_px:
+                        fresh = self._not_old(fresh, strength_any, page)
+                        fresh_px = cv2.countNonZero(fresh)
                         unread = fresh
                         if self.pending:
                             seen = self.pending[0][0].copy()
@@ -769,8 +772,59 @@ class Engine:
             self.base_sat = move(self.base_sat, m)
         if self._sat0 is not None:
             self._sat0 = move(self._sat0, m)
+        if self._strength0 is not None:
+            self._strength0 = move(self._strength0, m)
         self.pending = [(cv2.threshold(move(mask, m), 127, 255, cv2.THRESH_BINARY)[1], t, move(st, m)) for mask, t, st in self.pending]
         return "moved"
+
+    def _not_old(self, fresh: np.ndarray, strength_now: np.ndarray, page: np.ndarray) -> np.ndarray:
+        """New ink, without what cannot have been drawn just now (Nov 22: a margin line already on
+        the sheet was answered after the sheet had been lost and found again, and a "margin line"
+        was read off the desk where a lifted corner let it into the page picture). For any mark:
+
+        - It has to lie on paper: around it, the sheet as taken in was as pale as paper.
+        - It must not be an old mark seen a little out of place: the same strokes are looked for
+          within 30 pixels on the sheet as it was when taken in, and if they are there, it is old.
+
+        What is dropped joins the remembered page, so it does not come back as new ink."""
+        if self._strength0 is None or self._strength0.shape != fresh.shape or cv2.countNonZero(fresh) == 0:
+            return fresh
+        sat = page_saturation(page)
+        n, labels, stats, _ = cv2.connectedComponentsWithStats(cv2.dilate(fresh, np.ones((25, 25), np.uint8)), connectivity=8)
+        h_img, w_img = fresh.shape[:2]
+        out = fresh.copy()
+        R, P = 30, 4
+        for i in range(1, n):
+            comp = cv2.bitwise_and(fresh, ((labels == i) * 255).astype(np.uint8))
+            if cv2.countNonZero(comp) == 0:
+                continue
+            ys, xs = np.nonzero(comp)
+            x0, y0, x1, y1 = int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+            # 1. On paper?
+            ring = cv2.subtract(cv2.dilate(comp, np.ones((31, 31), np.uint8)), cv2.dilate(comp, np.ones((9, 9), np.uint8)))
+            on_paper = True
+            if cv2.countNonZero(ring) > 50:
+                # Judged on the sheet as it was taken in: a warm shadow over it now must not count.
+                base = self._sat0 if self._sat0 is not None and self._sat0.shape == ring.shape else sat
+                # And now: a lifted corner can let the desk into the page picture (wood is about
+                # 160; paper in a warm shadow stays under 90).
+                on_paper = float(np.median(base[ring > 0])) <= self._paper_sat and float(np.median(sat[ring > 0])) <= max(self._paper_sat, 120.0)
+            # 2. An old mark, a little out of place?
+            old = False
+            tx0, ty0, tx1, ty1 = max(0, x0 - P), max(0, y0 - P), min(w_img, x1 + P), min(h_img, y1 + P)
+            sx0, sy0, sx1, sy1 = max(0, tx0 - R), max(0, ty0 - R), min(w_img, tx1 + R), min(h_img, ty1 + R)
+            near = cv2.dilate(comp, np.ones((3, 3), np.uint8))[ty0:ty1, tx0:tx1] > 0
+            tmpl = np.where(near, strength_now[ty0:ty1, tx0:tx1], 0).astype(np.float32)
+            area = self._strength0[sy0:sy1, sx0:sx1].astype(np.float32)
+            if tmpl.shape[0] >= 8 and tmpl.shape[1] >= 8 and area.shape[0] >= tmpl.shape[0] and area.shape[1] >= tmpl.shape[1] and tmpl.std() > 1:
+                score = float(cv2.matchTemplate(area, tmpl, cv2.TM_CCOEFF_NORMED).max())
+                old = score >= config.OLD_MARK_MATCH
+            if not on_paper or old:
+                out[comp > 0] = 0
+                self.baseline = cv2.bitwise_or(self.baseline, cv2.dilate(comp, _K9))
+                self.base_strength = cv2.max(self.base_strength, np.where(cv2.dilate(comp, _K9) > 0, strength_now, 0).astype(self.base_strength.dtype))
+                log.info("new ink at (%d, %d) left alone: %s", x0, y0, "not on paper" if not on_paper else "an old mark out of place")
+        return out
 
     def _drawn_since(self, regions: List[dict], hl_mask: np.ndarray, page: np.ndarray) -> List[dict]:
         """The highlights that were not on the sheet when it was taken in.
@@ -802,6 +856,7 @@ class Engine:
         self.base_gray, self._base_gray_time = page_gray(page), now
         self.base_sat = page_saturation(page)
         self._sat0 = self.base_sat.copy()
+        self._strength0 = strength.copy()
         self._wrote(now)  # a page just taken in (new sheet, turned view): the "stuck" clock starts here
         self._ink_seen = 0
         # Colored paper, or a warm lamp: how colorful "paper" is for this sheet.

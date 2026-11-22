@@ -14,6 +14,13 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-22 (02:45), Yoon Woo's Claude
+
+Fifth run: an old margin line (sheet lost and found) and ink off the desk were answered as
+summaries. All new ink now has to be on paper and unlike any stroke near it on the sheet as taken
+in (`_not_old`). 89 checks pass. Pulled onto his Mac; he tests in the morning. See `CLAUDE.md`,
+"Nov 22, 02:25".
+
 ## 2026-11-22 (02:10), Yoon Woo's Claude
 
 Fourth run: an old highlight was saved again, and the mode name's letter-by-letter effect looked
