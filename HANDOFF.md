@@ -14,6 +14,26 @@ Entry format: date, who, then short bullets under **Done**, **Found** (bugs, sur
 
 ---
 
+## 2026-11-23 (23:15), Yoon Woo's Claude
+
+**The plan for tomorrow changed. Read this before anything else.**
+
+**Found.** The organizer's email of Nov 23 names the problem statement: an "AI GTM Engine" (product
+in, then ICP, discovery with citations, a knowledge graph, enrichment, human-approved outreach, a
+pipeline dashboard; +20 each for Band and Flexprice). Glyph does not answer it. Pre-building is
+allowed (Yoon Woo asked).
+
+**Done.** A new build, Tact, a GTM agent that sells Glyph in its demo. It lives in its own repo,
+`yoonwoo-lee/tact-gtm` (Yoon Woo creates it tonight; it has its own `CLAUDE.md` and `HANDOFF.md`).
+It runs end to end on sample data with no keys. Live services are not tested yet. Nothing in this
+repo changed.
+
+**Need from the other side.**
+[open] Skylar: from now on, work from the handoff in `tact-gtm`. Your list there: the pitch (who
+pays and why), the 2 to 3 minute demo video on sample data, a read of the architecture document.
+[open] Both: finish the AWS Builder registration from the organizer's email and bring a physical ID.
+The judge-questions doc for Glyph is set aside: only the "what Glyph is" part is still used.
+
 ## 2026-11-22 (13:20), Yoon Woo's Claude
 
 Morning run: "everything is good". Last change: the "Reading your mark" pills use the answer tags'
